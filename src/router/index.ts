@@ -39,7 +39,11 @@ const router = createRouter({
     {
       path: '/dashboard',
       beforeEnter: authGuard,
-      component: () => import('../app/shared/presentation/views/NotFoundView.vue'),
+      component: () => import('../app/shared/presentation/layout/UserLayout.vue'),
+      children: [
+        { path: '',       component: () => import('../app/shared/presentation/views/UserDashboardView.vue') },
+        { path: 'zones',  component: () => import('../app/parking/presentation/views/ZonesView.vue') },
+      ],
     },
 
     { path: '/:pathMatch(.*)*', component: () => import('../app/shared/presentation/views/NotFoundView.vue') },
