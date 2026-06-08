@@ -24,7 +24,7 @@ async function handleRegister() {
     localError.value = 'La contraseña debe tener al menos 8 caracteres'
     return
   }
-  const ok = await authStore.register(email.value, password.value)
+  const ok = await authStore.register(email.value, password.value, firstName.value, lastName.value, phone.value)
   if (ok) router.push('/login')
 }
 </script>

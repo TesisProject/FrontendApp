@@ -3,6 +3,7 @@ import { useAsyncState } from '../../shared/helpers/async-state'
 import { AuthApi } from '../infrastructure/auth-api'
 import { toAuthToken } from '../infrastructure/auth-assembler'
 import { tokenRepository } from '../../shared/infrastructure/token-repository'
+import { Role } from '../domain/model/role.vo'
 import type { User } from '../domain/model/user.model'
 
 const authApi = new AuthApi()
@@ -26,14 +27,37 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(email: string, password: string): Promise<boolean> {
+  async function register(email: string, password: string, firstName: string, lastName: string, phone: string): Promise<boolean> {
     registerState.setLoading()
     try {
-      await authApi.register({ email, password, roleName: 'USER' })
+      const { id } = await authApi.register({ email, password, roleName: 'USER' })
+      const signIn  = await authApi.signIn({ email, password })
+      tokenRepository.save(signIn.token)
+      await authApi.updateProfile(id, { firstName, lastName, phone })
+      tokenRepository.clear()
       registerState.setData(null)
       return true
     } catch (err: any) {
+      tokenRepository.clear()
       registerState.setError(err?.message ?? 'Error al registrar usuario')
+      return false
+    }
+  }
+
+  async function adminLogin(email: string, password: string): Promise<boolean> {
+    loginState.setLoading()
+    try {
+      const response = await authApi.signIn({ email, password })
+      if (response.role !== Role.ADMIN) {
+        loginState.setError('Acceso no autorizado')
+        return false
+      }
+      const authToken = toAuthToken(response)
+      tokenRepository.save(authToken.token)
+      loginState.setData(authToken.user)
+      return true
+    } catch (err: any) {
+      loginState.setError(err?.message ?? 'Credenciales incorrectas')
       return false
     }
   }
@@ -88,6 +112,7 @@ export const useAuthStore = defineStore('auth', () => {
     recoveryLoading: recoveryState.loading,
     recoveryError:   recoveryState.error,
     login,
+    adminLogin,
     register,
     forgotPassword,
     verifyOtp,

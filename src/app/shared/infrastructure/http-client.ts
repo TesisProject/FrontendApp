@@ -3,8 +3,12 @@ import { tokenRepository } from './token-repository'
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
-async function request<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
-  const token = tokenRepository.getAccessToken()
+interface RequestOptions {
+  skipAuth?: boolean
+}
+
+async function request<T>(method: HttpMethod, path: string, body?: unknown, options?: RequestOptions): Promise<T> {
+  const token = options?.skipAuth ? null : tokenRepository.getAccessToken()
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (token) headers['Authorization'] = `Bearer ${token}`
@@ -25,9 +29,9 @@ async function request<T>(method: HttpMethod, path: string, body?: unknown): Pro
 }
 
 export const httpClient = {
-  get:    <T>(path: string)                => request<T>('GET',    path),
-  post:   <T>(path: string, body?: unknown) => request<T>('POST',   path, body),
-  put:    <T>(path: string, body?: unknown) => request<T>('PUT',    path, body),
-  patch:  <T>(path: string, body?: unknown) => request<T>('PATCH',  path, body),
-  delete: <T>(path: string)                => request<T>('DELETE', path),
+  get:    <T>(path: string, options?: RequestOptions)                 => request<T>('GET',    path, undefined, options),
+  post:   <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>('POST',   path, body,      options),
+  put:    <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>('PUT',    path, body,      options),
+  patch:  <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>('PATCH',  path, body,      options),
+  delete: <T>(path: string, options?: RequestOptions)                 => request<T>('DELETE', path, undefined, options),
 }

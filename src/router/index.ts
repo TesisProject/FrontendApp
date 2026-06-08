@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { authGuard } from '../app/iam/infrastructure/auth.guard'
+import { authGuard }  from '../app/iam/infrastructure/auth.guard'
+import { adminGuard } from '../app/iam/infrastructure/admin.guard'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -15,6 +16,23 @@ const router = createRouter({
         { path: 'forgot-password', component: () => import('../app/iam/presentation/views/ForgotPasswordView.vue') },
         { path: 'otp',             component: () => import('../app/iam/presentation/views/OtpView.vue') },
         { path: 'reset-password',  component: () => import('../app/iam/presentation/views/ResetPasswordView.vue') },
+      ],
+    },
+
+    {
+      path: '/admin',
+      component: () => import('../app/iam/presentation/layout/AuthLayout.vue'),
+      children: [
+        { path: '', component: () => import('../app/iam/presentation/views/AdminLoginView.vue') },
+      ],
+    },
+
+    {
+      path: '/admin',
+      beforeEnter: adminGuard,
+      component: () => import('../app/shared/presentation/layout/AdminLayout.vue'),
+      children: [
+        { path: 'dashboard', component: () => import('../app/shared/presentation/views/AdminDashboardView.vue') },
       ],
     },
 
