@@ -148,20 +148,21 @@ function handleResend() {
 .otp-input {
   flex: 1;
   height: 56px;
-  background: #f8f8f8;
-  border: 1px solid transparent;
+  background: white;
+  border: 1.5px solid #e2e8f0;
   border-radius: 8px;
   text-align: center;
   font-size: 22px;
   font-weight: 700;
   color: #092c4c;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   min-width: 0;
 }
 
 .otp-input:focus {
   border-color: #f2894a;
+  box-shadow: 0 0 0 3px rgba(242, 137, 74, 0.12);
 }
 
 .otp-error {

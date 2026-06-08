@@ -165,9 +165,9 @@ async function handleRegister() {
 }
 
 .input {
-  height: 40px;
-  background: #f8f8f8;
-  border: 1px solid transparent;
+  height: 42px;
+  background: white;
+  border: 1.5px solid #e2e8f0;
   border-radius: 8px;
   padding: 0 12px;
   font-size: 14px;
@@ -175,11 +175,12 @@ async function handleRegister() {
   outline: none;
   width: 100%;
   box-sizing: border-box;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input:focus {
   border-color: #f2894a;
+  box-shadow: 0 0 0 3px rgba(242, 137, 74, 0.12);
 }
 
 .hint {
