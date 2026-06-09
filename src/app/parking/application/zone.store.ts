@@ -26,6 +26,7 @@ export const useZoneStore = defineStore('zone', () => {
   }
 
   async function fetchZone(id: number) {
+    zoneState.reset()
     zoneState.setLoading()
     try {
       const response = await zoneApi.getById(id)
