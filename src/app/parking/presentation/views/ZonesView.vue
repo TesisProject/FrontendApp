@@ -2,11 +2,25 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useZoneStore } from '../../application/zone.store'
+import { useFavoriteStore } from '../../../favorites/application/favorite.store'
+import { useAuthStore } from '../../../iam/application/auth.store'
 import { loadGoogleMaps } from '../../../shared/infrastructure/maps-loader'
 import type { Zone, ZoneClassification } from '../../domain/model/zone.model'
 
 const router         = useRouter()
 const zoneStore      = useZoneStore()
+const favoriteStore  = useFavoriteStore()
+const authStore      = useAuthStore()
+
+const userId = computed(() => authStore.user?.id ?? 0)
+
+async function toggleFavorite(zone: Zone) {
+  if (favoriteStore.isFavorite(zone.id)) {
+    await favoriteStore.removeFavorite(userId.value, zone.id)
+  } else {
+    await favoriteStore.addFavorite(userId.value, zone.id)
+  }
+}
 const mapRef         = ref<HTMLElement | null>(null)
 const mapPanelRef    = ref<HTMLElement | null>(null)
 const search         = ref('')
@@ -106,7 +120,10 @@ async function initMap() {
 watch(filteredZones, () => addMarkers())
 
 onMounted(async () => {
-  await zoneStore.fetchZones()
+  await Promise.all([
+    zoneStore.fetchZones(),
+    favoriteStore.fetchFavorites(userId.value),
+  ])
   await initMap()
 })
 </script>
@@ -155,9 +172,21 @@ onMounted(async () => {
               <p class="zone-name">{{ zone.name }}</p>
               <p class="zone-address">{{ zone.street }}, {{ zone.district }}</p>
             </div>
-            <span class="badge" :style="{ background: classificationColor(zone.classification) }">
-              {{ classificationLabel(zone.classification) }}
-            </span>
+            <div class="card-top-right">
+              <span class="badge" :style="{ background: classificationColor(zone.classification) }">
+                {{ classificationLabel(zone.classification) }}
+              </span>
+              <button
+                class="fav-icon-btn"
+                :class="{ active: favoriteStore.isFavorite(zone.id) }"
+                :title="favoriteStore.isFavorite(zone.id) ? 'Quitar de favoritos' : 'Guardar en favoritos'"
+                @click.stop="toggleFavorite(zone)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" :fill="favoriteStore.isFavorite(zone.id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div class="card-bottom">
@@ -347,8 +376,14 @@ onMounted(async () => {
   margin: 0;
 }
 
-.badge {
+.card-top-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
+}
+
+.badge {
   padding: 3px 9px;
   border-radius: 12px;
   font-size: 10px;
@@ -357,6 +392,20 @@ onMounted(async () => {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+
+.fav-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ddd;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+.fav-icon-btn:hover  { color: #f2894a; }
+.fav-icon-btn.active { color: #f2894a; }
 
 .bar-wrap {
   display: flex;

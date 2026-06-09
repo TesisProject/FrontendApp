@@ -3,15 +3,29 @@ import { computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useZoneStore } from '../../application/zone.store'
 import { useCameraStore } from '../../../vision/application/camera.store'
+import { useFavoriteStore } from '../../../favorites/application/favorite.store'
+import { useAuthStore } from '../../../iam/application/auth.store'
 import type { ZoneClassification } from '../../domain/model/zone.model'
 import type { CameraStatus } from '../../../vision/domain/model/camera.model'
 
-const router      = useRouter()
-const route       = useRoute()
-const zoneStore   = useZoneStore()
-const cameraStore = useCameraStore()
+const router        = useRouter()
+const route         = useRoute()
+const zoneStore     = useZoneStore()
+const cameraStore   = useCameraStore()
+const favoriteStore = useFavoriteStore()
+const authStore     = useAuthStore()
 
 const zoneId = computed(() => Number(route.params.id))
+const userId = computed(() => authStore.user?.id ?? 0)
+const isFav  = computed(() => favoriteStore.isFavorite(zoneId.value))
+
+async function toggleFavorite() {
+  if (isFav.value) {
+    await favoriteStore.removeFavorite(userId.value, zoneId.value)
+  } else {
+    await favoriteStore.addFavorite(userId.value, zoneId.value)
+  }
+}
 
 const classificationColor = (c: ZoneClassification) =>
   ({ LIBRE: '#38a169', MODERADO: '#f2894a', OCUPADO: '#e53e3e' }[c])
@@ -34,6 +48,7 @@ onMounted(async () => {
     zoneStore.fetchZone(zoneId.value),
     zoneStore.fetchSpacesByZone(zoneId.value),
     cameraStore.fetchByZone(zoneId.value),
+    favoriteStore.fetchFavorites(userId.value),
   ])
 })
 </script>
@@ -71,12 +86,20 @@ onMounted(async () => {
             {{ zoneStore.zone.street }}, {{ zoneStore.zone.district }} · {{ zoneStore.zone.city }}
           </p>
         </div>
-        <span
-          class="classification-badge"
-          :style="{ background: classificationColor(zoneStore.zone.classification) }"
-        >
-          {{ classificationLabel(zoneStore.zone.classification) }}
-        </span>
+        <div class="title-actions">
+          <span
+            class="classification-badge"
+            :style="{ background: classificationColor(zoneStore.zone.classification) }"
+          >
+            {{ classificationLabel(zoneStore.zone.classification) }}
+          </span>
+          <button class="fav-btn" :class="{ active: isFav }" @click="toggleFavorite" :title="isFav ? 'Quitar de favoritos' : 'Guardar en favoritos'">
+            <svg width="18" height="18" viewBox="0 0 24 24" :fill="isFav ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            {{ isFav ? 'Guardado' : 'Guardar' }}
+          </button>
+        </div>
       </div>
 
       <!-- Stats row -->
@@ -231,8 +254,15 @@ onMounted(async () => {
   align-items: center;
 }
 
-.classification-badge {
+.title-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.classification-badge {
   padding: 5px 14px;
   border-radius: 20px;
   font-size: 12px;
@@ -240,8 +270,24 @@ onMounted(async () => {
   color: white;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  margin-top: 4px;
 }
+
+.fav-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #e0e0e0;
+  background: white;
+  color: #aaa;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.fav-btn:hover        { border-color: #f2894a; color: #f2894a; }
+.fav-btn.active       { border-color: #f2894a; color: #f2894a; background: #fff5ef; }
 
 /* Stats */
 .stats-row {

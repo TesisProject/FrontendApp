@@ -19,6 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response  = await authApi.signIn({ email, password })
       const authToken = toAuthToken(response)
       tokenRepository.save(authToken.token)
+      tokenRepository.saveUser(authToken.user)
       loginState.setData(authToken.user)
       return true
     } catch (err: any) {
@@ -54,6 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
       const authToken = toAuthToken(response)
       tokenRepository.save(authToken.token)
+      tokenRepository.saveUser(authToken.user)
       loginState.setData(authToken.user)
       return true
     } catch (err: any) {
@@ -98,6 +100,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function initSession(): void {
+    if (loginState.data.value) return
+    const user = tokenRepository.getUser<User>()
+    if (user) loginState.setData(user)
+  }
+
   function logout(): void {
     tokenRepository.clear()
     loginState.reset()
@@ -118,5 +126,6 @@ export const useAuthStore = defineStore('auth', () => {
     verifyOtp,
     resetPassword,
     logout,
+    initSession,
   }
 })
