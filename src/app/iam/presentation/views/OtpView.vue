@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../application/auth.store'
 
@@ -12,7 +12,24 @@ const digits    = ref<string[]>(['', '', '', '', ''])
 const inputRefs = ref<HTMLInputElement[]>([])
 const countdown = ref(30)
 
+let timer: ReturnType<typeof setInterval> | null = null
+
 const code = computed(() => digits.value.join(''))
+
+function startCountdown() {
+  if (timer) clearInterval(timer)
+  countdown.value = 30
+  timer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(timer!)
+      timer = null
+    }
+  }, 1000)
+}
+
+onMounted(startCountdown)
+onUnmounted(() => { if (timer) clearInterval(timer) })
 
 function onInput(index: number, event: Event) {
   const target = event.target as HTMLInputElement
@@ -46,11 +63,7 @@ async function handleSubmit() {
 function handleResend() {
   if (countdown.value > 0) return
   authStore.forgotPassword(email.value)
-  countdown.value = 30
-  const interval = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) clearInterval(interval)
-  }, 1000)
+  startCountdown()
 }
 </script>
 

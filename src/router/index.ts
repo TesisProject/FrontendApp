@@ -42,7 +42,8 @@ const router = createRouter({
       component: () => import('../app/shared/presentation/layout/UserLayout.vue'),
       children: [
         { path: '',       component: () => import('../app/shared/presentation/views/UserDashboardView.vue') },
-        { path: 'zones',  component: () => import('../app/parking/presentation/views/ZonesView.vue') },
+        { path: 'zones',     component: () => import('../app/parking/presentation/views/ZonesView.vue') },
+        { path: 'zones/:id', component: () => import('../app/parking/presentation/views/ZoneDetailView.vue') },
       ],
     },
 

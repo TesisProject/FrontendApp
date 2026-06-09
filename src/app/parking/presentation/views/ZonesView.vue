@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
+import { useRouter } from 'vue-router'
 import { useZoneStore } from '../../application/zone.store'
-import { env } from '../../../../environments/env'
+import { loadGoogleMaps } from '../../../shared/infrastructure/maps-loader'
 import type { Zone, ZoneClassification } from '../../domain/model/zone.model'
 
-// Singleton: setOptions solo se puede llamar una vez por sesión de navegador
-let mapsConfigured = false
-
+const router         = useRouter()
 const zoneStore      = useZoneStore()
 const mapRef         = ref<HTMLElement | null>(null)
 const mapPanelRef    = ref<HTMLElement | null>(null)
@@ -90,12 +88,7 @@ function focusZone(zone: Zone) {
 }
 
 async function initMap() {
-  if (!mapsConfigured) {
-    setOptions({ key: env.googleMapsKey, version: 'weekly' })
-    mapsConfigured = true
-  }
-  await importLibrary('maps')
-  await importLibrary('marker')
+  await loadGoogleMaps()
 
   map = new google.maps.Map(mapRef.value!, {
     center: { lat: -12.0464, lng: -77.0428 },
@@ -179,6 +172,12 @@ onMounted(async () => {
               <span class="space-stat occupied">{{ zone.occupiedCount }} ocupados</span>
               <span class="space-stat total">/ {{ zone.totalSpaces }}</span>
             </div>
+            <button
+              class="detail-link"
+              @click.stop="router.push(`/dashboard/zones/${zone.id}`)"
+            >
+              Ver detalle →
+            </button>
           </div>
         </div>
       </div>
@@ -397,6 +396,20 @@ onMounted(async () => {
 .space-stat.free     { color: #38a169; font-weight: 600; }
 .space-stat.occupied { color: #e53e3e; font-weight: 600; }
 .space-stat.total    { color: #bbb; }
+
+.detail-link {
+  margin-top: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f2894a;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.2s;
+}
+.detail-link:hover { color: #e07a3a; }
 
 .map-panel {
   flex: 1;
