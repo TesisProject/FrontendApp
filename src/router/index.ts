@@ -46,6 +46,7 @@ const router = createRouter({
         { path: 'zones/:id',  component: () => import('../app/parking/presentation/views/ZoneDetailView.vue') },
         { path: 'favorites',  component: () => import('../app/favorites/presentation/views/FavoritesView.vue') },
         { path: 'alerts',     component: () => import('../app/notifications/presentation/views/AlertsView.vue') },
+        { path: 'profile',    component: () => import('../app/profile/presentation/views/ProfileView.vue') },
       ],
     },
 

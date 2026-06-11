@@ -4,8 +4,13 @@ import router from './router'
 import App from './App.vue'
 import './style.css'
 
-const app = createApp(App)
+// Apply dark mode immediately from localStorage to avoid flash on load
+const stored = localStorage.getItem('pv_dark_mode')
+if (stored === '1') document.documentElement.classList.add('dark')
 
-app.use(createPinia())
+const app = createApp(App)
+const pinia = createPinia()
+
+app.use(pinia)
 app.use(router)
 app.mount('#app')

@@ -147,19 +147,19 @@ onMounted(() => zoneStore.fetchZones())
 .welcome-title {
   font-size: 22px;
   font-weight: 700;
-  color: #092c4c;
+  color: var(--color-title);
   margin: 0 0 6px;
   text-transform: capitalize;
 }
 
 .welcome-sub {
   font-size: 13px;
-  color: #888;
+  color: var(--color-muted);
   margin: 0;
 }
 
 .loading {
-  color: #888;
+  color: var(--color-muted);
   font-size: 14px;
   padding: 40px 0;
 }
@@ -172,10 +172,10 @@ onMounted(() => zoneStore.fetchZones())
 }
 
 .metric-card {
-  background: white;
+  background: var(--color-card);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0px 2px 8px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -200,13 +200,13 @@ onMounted(() => zoneStore.fetchZones())
 .metric-value {
   font-size: 26px;
   font-weight: 700;
-  color: #092c4c;
+  color: var(--color-title);
   line-height: 1;
 }
 
 .metric-label {
   font-size: 12px;
-  color: #888;
+  color: var(--color-muted);
 }
 
 .section { margin-bottom: 28px; }
@@ -214,7 +214,7 @@ onMounted(() => zoneStore.fetchZones())
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: #092c4c;
+  color: var(--color-title);
   margin: 0 0 14px;
 }
 
@@ -225,10 +225,10 @@ onMounted(() => zoneStore.fetchZones())
 }
 
 .classif-card {
-  background: white;
+  background: var(--color-card);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0px 2px 8px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -251,26 +251,26 @@ onMounted(() => zoneStore.fetchZones())
 .classif-name {
   font-size: 13px;
   font-weight: 600;
-  color: #555;
+  color: var(--color-sub);
 }
 
 .classif-count {
   font-size: 32px;
   font-weight: 700;
-  color: #092c4c;
+  color: var(--color-title);
   line-height: 1;
 }
 
 .classif-sub {
   font-size: 12px;
-  color: #aaa;
+  color: var(--color-faint);
 }
 
 .global-bar-card {
-  background: white;
+  background: var(--color-card);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0px 2px 8px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -285,7 +285,7 @@ onMounted(() => zoneStore.fetchZones())
 .global-bar {
   flex: 1;
   height: 12px;
-  background: #f0f0f0;
+  background: var(--color-border-soft);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -300,7 +300,7 @@ onMounted(() => zoneStore.fetchZones())
 .global-pct {
   font-size: 16px;
   font-weight: 700;
-  color: #092c4c;
+  color: var(--color-title);
   min-width: 40px;
 }
 
@@ -314,7 +314,7 @@ onMounted(() => zoneStore.fetchZones())
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #555;
+  color: var(--color-sub);
 }
 
 .legend-dot {

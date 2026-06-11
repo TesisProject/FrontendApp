@@ -174,13 +174,13 @@ onMounted(() => notificationStore.fetchAll(userId.value))
 .page-title {
   font-size: 22px;
   font-weight: 700;
-  color: #092c4c;
+  color: var(--color-title);
   margin: 0 0 4px;
 }
 
 .page-subtitle {
   font-size: 13px;
-  color: #888;
+  color: var(--color-muted);
   margin: 0;
 }
 
@@ -196,13 +196,13 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   transition: all 0.2s;
   margin-top: 4px;
 }
-.mark-all-btn:hover { border-color: #092c4c; color: #092c4c; }
+.mark-all-btn:hover { border-color: var(--color-title); color: var(--color-title); }
 
 /* Tabs */
 .tabs {
   display: flex;
   gap: 4px;
-  background: #f5f5f5;
+  background: var(--color-border-soft);
   padding: 4px;
   border-radius: 10px;
   width: fit-content;
@@ -218,14 +218,14 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #888;
+  color: var(--color-muted);
   cursor: pointer;
   transition: all 0.2s;
 }
-.tab.active { background: white; color: #092c4c; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.tab.active { background: var(--color-card); color: var(--color-title); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 
 .tab-count {
-  background: #e8e8e8;
+  background: var(--color-border);
   color: #666;
   font-size: 11px;
   font-weight: 700;
@@ -240,7 +240,7 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   justify-content: center;
   padding: 60px 0;
 }
-.state-text       { font-size: 14px; color: #aaa; }
+.state-text       { font-size: 14px; color: var(--color-faint); }
 .state-text.error { color: #e53e3e; }
 
 .empty-state {
@@ -251,7 +251,7 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   gap: 10px;
 }
 .empty-icon  { margin-bottom: 8px; }
-.empty-title { font-size: 15px; font-weight: 600; color: #888; margin: 0; }
+.empty-title { font-size: 15px; font-weight: 600; color: var(--color-muted); margin: 0; }
 
 /* Notifications */
 .notifications-list {
@@ -264,9 +264,9 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  background: white;
+  background: var(--color-card);
   border-radius: 12px;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--color-border);
   padding: 14px 16px;
   cursor: pointer;
   transition: box-shadow 0.2s, border-color 0.2s;

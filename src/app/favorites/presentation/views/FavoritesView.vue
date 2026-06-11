@@ -154,19 +154,19 @@ onMounted(async () => {
 .page-title {
   font-size: 22px;
   font-weight: 700;
-  color: #092c4c;
+  color: var(--color-title);
   margin: 0 0 4px;
 }
 
 .page-subtitle {
   font-size: 13px;
-  color: #888;
+  color: var(--color-muted);
   margin: 0;
 }
 
 .count-badge {
   background: #eef2f7;
-  color: #092c4c;
+  color: var(--color-title);
   font-size: 12px;
   font-weight: 600;
   padding: 4px 12px;
@@ -179,7 +179,7 @@ onMounted(async () => {
   justify-content: center;
   padding: 60px 0;
 }
-.state-text       { font-size: 14px; color: #aaa; }
+.state-text       { font-size: 14px; color: var(--color-faint); }
 .state-text.error { color: #e53e3e; }
 
 .empty-state {
@@ -190,8 +190,8 @@ onMounted(async () => {
   gap: 10px;
 }
 .empty-icon  { margin-bottom: 8px; }
-.empty-title { font-size: 16px; font-weight: 600; color: #555; margin: 0; }
-.empty-sub   { font-size: 13px; color: #aaa; margin: 0; text-align: center; }
+.empty-title { font-size: 16px; font-weight: 600; color: var(--color-sub); margin: 0; }
+.empty-sub   { font-size: 13px; color: var(--color-faint); margin: 0; text-align: center; }
 
 .btn-explore {
   margin-top: 8px;
@@ -214,9 +214,9 @@ onMounted(async () => {
 }
 
 .zone-card {
-  background: white;
+  background: var(--color-card);
   border-radius: 12px;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--color-border);
   padding: 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
   display: flex;
@@ -236,13 +236,13 @@ onMounted(async () => {
 .zone-name {
   font-size: 14px;
   font-weight: 700;
-  color: #092c4c;
+  color: var(--color-title);
   margin: 0 0 3px;
 }
 
 .zone-address {
   font-size: 12px;
-  color: #888;
+  color: var(--color-muted);
   margin: 0;
 }
 
@@ -284,7 +284,7 @@ onMounted(async () => {
 .bar {
   flex: 1;
   height: 5px;
-  background: #f0f0f0;
+  background: var(--color-border-soft);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -309,7 +309,7 @@ onMounted(async () => {
 .stat          { font-size: 11px; }
 .stat.free     { color: #38a169; font-weight: 600; }
 .stat.occupied { color: #e53e3e; font-weight: 600; }
-.stat.total    { color: #bbb; }
+.stat.total    { color: var(--color-faint); }
 .sep           { color: #ddd; font-size: 11px; }
 
 .card-footer {
@@ -317,12 +317,12 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding-top: 8px;
-  border-top: 1px solid #f5f5f5;
+  border-top: 1px solid var(--color-border-soft);
 }
 
 .saved-at {
   font-size: 11px;
-  color: #bbb;
+  color: var(--color-faint);
 }
 
 .detail-link {

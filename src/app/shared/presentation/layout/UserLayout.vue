@@ -237,6 +237,8 @@ function handleLogout() {
   flex: 1;
   padding: 32px;
   transition: margin-left 0.25s ease;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 .content.collapsed {
