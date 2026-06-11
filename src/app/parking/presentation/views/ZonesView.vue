@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { useZoneStore } from '../../application/zone.store'
 import { useFavoriteStore } from '../../../favorites/application/favorite.store'
@@ -21,9 +21,16 @@ async function toggleFavorite(zone: Zone) {
     await favoriteStore.addFavorite(userId.value, zone.id)
   }
 }
-const mapRef         = ref<HTMLElement | null>(null)
-const mapPanelRef    = ref<HTMLElement | null>(null)
-const search         = ref('')
+const mapRef          = ref<HTMLElement | null>(null)
+const mapPanelRef     = ref<HTMLElement | null>(null)
+const searchInputRef  = ref<HTMLInputElement | null>(null)
+const search          = ref('')
+const suggestions     = ref<{ mainText: string; secondaryText: string; _raw: any }[]>([])
+const showSuggestions = ref(false)
+
+let placesLib:    any = null
+let sessionToken: any = null
+let suggestTimer: ReturnType<typeof setTimeout> | null = null
 const activeFilter   = ref<ZoneClassification | 'TODOS'>('TODOS')
 const selectedZone   = ref<Zone | null>(null)
 const popupZone      = ref<Zone | null>(null)
@@ -115,6 +122,62 @@ async function initMap() {
   })
 
   addMarkers()
+  await initPlacesAutocomplete()
+}
+
+async function initPlacesAutocomplete() {
+  placesLib = await google.maps.importLibrary('places')
+}
+
+async function fetchSuggestions(input: string) {
+  if (!placesLib || input.trim().length < 2) {
+    suggestions.value     = []
+    showSuggestions.value = false
+    return
+  }
+  if (!sessionToken) sessionToken = new placesLib.AutocompleteSessionToken()
+  try {
+    const result = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+      input,
+      sessionToken,
+      includedRegionCodes: ['pe'],
+    })
+    suggestions.value = (result.suggestions ?? []).map((s: any) => {
+      const pred = s.placePrediction
+      return {
+        mainText:      pred.mainText?.toString()      ?? pred.text?.toString() ?? '',
+        secondaryText: pred.secondaryText?.toString() ?? '',
+        _raw:          markRaw(pred),
+      }
+    })
+    showSuggestions.value = suggestions.value.length > 0
+  } catch (err) {
+    console.error('[Places] error:', err)
+    suggestions.value     = []
+    showSuggestions.value = false
+  }
+}
+
+async function selectSuggestion(item: { mainText: string; secondaryText: string; _raw: any }) {
+  showSuggestions.value = false
+  suggestions.value     = []
+  sessionToken          = null
+  const place = item._raw.toPlace()
+  await place.fetchFields({ fields: ['location'] })
+  if (place.location) {
+    map!.panTo(place.location)
+    map!.setZoom(15)
+    search.value = ''
+  }
+}
+
+function onSearchInput() {
+  if (suggestTimer) clearTimeout(suggestTimer)
+  suggestTimer = setTimeout(() => fetchSuggestions(search.value), 300)
+}
+
+function hideSuggestions() {
+  setTimeout(() => { showSuggestions.value = false }, 150)
 }
 
 watch(filteredZones, () => addMarkers())
@@ -137,7 +200,32 @@ onMounted(async () => {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input v-model="search" type="text" placeholder="Buscar zona o distrito..." class="search-input" />
+          <input
+            ref="searchInputRef"
+            v-model="search"
+            type="text"
+            placeholder="Buscar zona, distrito o lugar..."
+            class="search-input"
+            autocomplete="off"
+            @input="onSearchInput"
+            @blur="hideSuggestions"
+          />
+          <div v-if="showSuggestions" class="suggestions-dropdown">
+            <button
+              v-for="(pred, i) in suggestions"
+              :key="i"
+              class="suggestion-item"
+              @mousedown.prevent="selectSuggestion(pred)"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="suggestion-icon">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+              <div class="suggestion-texts">
+                <span class="suggestion-main">{{ pred.mainText }}</span>
+                <span class="suggestion-secondary">{{ pred.secondaryText }}</span>
+              </div>
+            </button>
+          </div>
         </div>
 
         <div class="filters">
@@ -544,5 +632,65 @@ onMounted(async () => {
 .popup-enter-from, .popup-leave-to {
   opacity: 0;
   transform: translate(-50%, calc(-100% - 10px));
+}
+
+/* Places suggestions dropdown */
+.search-box { position: relative; }
+
+.suggestions-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.15s;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.suggestion-item:last-child { border-bottom: none; }
+.suggestion-item:hover { background: #f8f8f8; }
+
+.suggestion-icon { color: #aaa; flex-shrink: 0; }
+
+.suggestion-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.suggestion-main {
+  font-size: 13px;
+  font-weight: 600;
+  color: #092c4c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-secondary {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
