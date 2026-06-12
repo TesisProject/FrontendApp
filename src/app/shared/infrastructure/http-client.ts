@@ -24,8 +24,8 @@ async function request<T>(method: HttpMethod, path: string, body?: unknown, opti
     throw error
   }
 
-  if (response.status === 204) return undefined as T
-  return response.json() as Promise<T>
+  const text = await response.text()
+  return text ? (JSON.parse(text) as T) : (undefined as T)
 }
 
 export const httpClient = {

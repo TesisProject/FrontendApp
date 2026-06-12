@@ -6,7 +6,7 @@ export function toSpace(r: SpaceResponse): ParkingSpace {
     id:          r.id,
     zoneId:      r.zoneId,
     spaceNumber: r.spaceNumber,
-    occupied:    r.occupied,
-    lastUpdated: r.lastUpdated,
+    occupied:    r.currentStatus === 'OCCUPIED',
+    lastUpdated: r.updatedAt,
   }
 }

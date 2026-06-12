@@ -65,13 +65,6 @@ function handleLogout() {
           <span v-show="!collapsed" class="nav-label">Alertas</span>
         </router-link>
 
-        <router-link to="/dashboard/profile" class="nav-item" active-class="nav-item--active" exact-active-class="nav-item--active" :title="collapsed ? 'Perfil' : ''">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-          <span v-show="!collapsed" class="nav-label">Perfil</span>
-        </router-link>
-
         <router-link to="/dashboard/predictions" class="nav-item" active-class="nav-item--active" exact-active-class="nav-item--active" :title="collapsed ? 'Predicciones' : ''">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -89,6 +82,12 @@ function handleLogout() {
 
       <div class="sidebar-footer">
         <span v-show="!collapsed" class="user-email">{{ authStore.user?.email }}</span>
+        <router-link to="/dashboard/profile" class="profile-link" active-class="profile-link--active" :title="collapsed ? 'Mi perfil' : ''">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span v-show="!collapsed">Mi perfil</span>
+        </router-link>
         <button class="logout-btn" @click="handleLogout" :title="collapsed ? 'Cerrar sesión' : ''">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -218,6 +217,31 @@ function handleLogout() {
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: 0 8px;
+}
+
+.profile-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  font-size: 14px;
+  white-space: nowrap;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  transition: background 0.2s, color 0.2s;
+}
+
+.profile-link:hover,
+.profile-link--active {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.collapsed .profile-link {
+  justify-content: center;
+  padding: 10px;
 }
 
 .logout-btn {

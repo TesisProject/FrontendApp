@@ -1,6 +1,6 @@
 export interface ParkingSpace {
-  id:          string
-  zoneId:      string
+  id:          number
+  zoneId:      number
   spaceNumber: string
   occupied:    boolean
   lastUpdated: string

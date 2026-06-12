@@ -32,7 +32,12 @@ const router = createRouter({
       beforeEnter: adminGuard,
       component: () => import('../app/shared/presentation/layout/AdminLayout.vue'),
       children: [
-        { path: 'dashboard', component: () => import('../app/shared/presentation/views/AdminDashboardView.vue') },
+        { path: 'dashboard', component: () => import('../app/admin/presentation/views/AdminDashboardView.vue') },
+        { path: 'zones',     component: () => import('../app/admin/presentation/views/AdminZonesView.vue') },
+        { path: 'cameras',   component: () => import('../app/admin/presentation/views/AdminCamerasView.vue') },
+        { path: 'alerts',    component: () => import('../app/admin/presentation/views/AdminCameraAlertsView.vue') },
+        { path: 'users',     component: () => import('../app/admin/presentation/views/AdminUsersView.vue') },
+        { path: 'profile',   component: () => import('../app/admin/presentation/views/AdminProfileView.vue') },
       ],
     },
 

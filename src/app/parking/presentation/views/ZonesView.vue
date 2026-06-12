@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, markRaw } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { useZoneStore } from '../../application/zone.store'
 import { useFavoriteStore } from '../../../favorites/application/favorite.store'
@@ -182,13 +182,18 @@ function hideSuggestions() {
 
 watch(filteredZones, () => addMarkers())
 
+let refreshTimer: ReturnType<typeof setInterval>
+
 onMounted(async () => {
   await Promise.all([
     zoneStore.fetchZones(),
     favoriteStore.fetchFavorites(userId.value),
   ])
   await initMap()
+  refreshTimer = setInterval(() => zoneStore.fetchZones(), 30_000)
 })
+
+onUnmounted(() => clearInterval(refreshTimer))
 </script>
 
 <template>

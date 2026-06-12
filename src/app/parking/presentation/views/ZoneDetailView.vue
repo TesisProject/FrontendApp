@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useZoneStore } from '../../application/zone.store'
 import { useCameraStore } from '../../../vision/application/camera.store'
 import { useFavoriteStore } from '../../../favorites/application/favorite.store'
 import { useAuthStore } from '../../../iam/application/auth.store'
+import ZoneRating from '../../../ratings/presentation/components/ZoneRating.vue'
 import type { ZoneClassification } from '../../domain/model/zone.model'
 import type { CameraStatus } from '../../../vision/domain/model/camera.model'
 
@@ -43,6 +44,8 @@ const occupancyPct = computed(() =>
   zoneStore.zone ? Math.round(zoneStore.zone.occupancyPercentage) : 0
 )
 
+let refreshTimer: ReturnType<typeof setInterval>
+
 onMounted(async () => {
   await Promise.all([
     zoneStore.fetchZone(zoneId.value),
@@ -50,7 +53,13 @@ onMounted(async () => {
     cameraStore.fetchByZone(zoneId.value),
     favoriteStore.fetchFavorites(userId.value),
   ])
+  refreshTimer = setInterval(() => {
+    zoneStore.fetchZone(zoneId.value)
+    zoneStore.fetchSpacesByZone(zoneId.value)
+  }, 30_000)
 })
+
+onUnmounted(() => clearInterval(refreshTimer))
 </script>
 
 <template>
@@ -195,6 +204,9 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+
+        <!-- Rating -->
+        <ZoneRating :zone-id="zoneId" />
 
       </div>
     </template>

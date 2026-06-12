@@ -5,6 +5,7 @@ import { toAuthToken } from '../infrastructure/auth-assembler'
 import { tokenRepository } from '../../shared/infrastructure/token-repository'
 import { Role } from '../domain/model/role.vo'
 import type { User } from '../domain/model/user.model'
+import { useRatingsStore } from '../../ratings/application/ratings.store'
 
 const authApi = new AuthApi()
 
@@ -113,6 +114,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout(): void {
     tokenRepository.clear()
     loginState.reset()
+    useRatingsStore().reset()
   }
 
   return {
