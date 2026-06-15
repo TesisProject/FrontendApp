@@ -7,12 +7,12 @@ import { toSpace } from '../infrastructure/space-assembler'
 import type { Zone } from '../domain/model/zone.model'
 import type { ParkingSpace } from '../domain/model/space.model'
 
-const zoneApi  = new ZoneApi()
+const zoneApi = new ZoneApi()
 const spaceApi = new SpaceApi()
 
 export const useZoneStore = defineStore('zone', () => {
-  const zonesState  = useAsyncState<Zone[]>([])
-  const zoneState   = useAsyncState<Zone | null>(null)
+  const zonesState = useAsyncState<Zone[]>([])
+  const zoneState = useAsyncState<Zone | null>(null)
   const spacesState = useAsyncState<ParkingSpace[]>([])
 
   async function fetchZones() {
@@ -47,14 +47,15 @@ export const useZoneStore = defineStore('zone', () => {
   }
 
   return {
-    zones:         zonesState.data,
-    zonesLoading:  zonesState.loading,
-    zonesError:    zonesState.error,
-    zone:          zoneState.data,
-    zoneLoading:   zoneState.loading,
-    spaces:        spacesState.data,
+    zones: zonesState.data,
+    zonesLoading: zonesState.loading,
+    zonesError: zonesState.error,
+    zone: zoneState.data,
+    zoneLoading: zoneState.loading,
+    zoneError: zoneState.error,
+    spaces: spacesState.data,
     spacesLoading: spacesState.loading,
-    spacesError:   spacesState.error,
+    spacesError: spacesState.error,
     fetchZones,
     fetchZone,
     fetchSpacesByZone,

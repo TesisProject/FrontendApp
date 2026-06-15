@@ -9,16 +9,16 @@ import ZoneRating from '../../../ratings/presentation/components/ZoneRating.vue'
 import type { ZoneClassification } from '../../domain/model/zone.model'
 import type { CameraStatus } from '../../../vision/domain/model/camera.model'
 
-const router        = useRouter()
-const route         = useRoute()
-const zoneStore     = useZoneStore()
-const cameraStore   = useCameraStore()
+const router = useRouter()
+const route = useRoute()
+const zoneStore = useZoneStore()
+const cameraStore = useCameraStore()
 const favoriteStore = useFavoriteStore()
-const authStore     = useAuthStore()
+const authStore = useAuthStore()
 
 const zoneId = computed(() => Number(route.params.id))
 const userId = computed(() => authStore.user?.id ?? 0)
-const isFav  = computed(() => favoriteStore.isFavorite(zoneId.value))
+const isFav = computed(() => favoriteStore.isFavorite(zoneId.value))
 
 async function toggleFavorite() {
   if (isFav.value) {
@@ -29,19 +29,19 @@ async function toggleFavorite() {
 }
 
 const classificationColor = (c: ZoneClassification) =>
-  ({ LIBRE: '#38a169', MODERADO: '#f2894a', OCUPADO: '#e53e3e' }[c])
+  ({ LIBRE: '#38a169', MODERADO: '#f2894a', OCUPADO: '#e53e3e' })[c]
 
 const classificationLabel = (c: ZoneClassification) =>
-  ({ LIBRE: 'Libre', MODERADO: 'Moderado', OCUPADO: 'Ocupado' }[c])
+  ({ LIBRE: 'Libre', MODERADO: 'Moderado', OCUPADO: 'Ocupado' })[c]
 
 const cameraStatusColor = (s: CameraStatus) =>
-  ({ ACTIVE: '#38a169', INACTIVE: '#aaa', ERROR: '#e53e3e' }[s])
+  ({ ACTIVE: '#38a169', INACTIVE: '#aaa', ERROR: '#e53e3e' })[s]
 
 const cameraStatusLabel = (s: CameraStatus) =>
-  ({ ACTIVE: 'Activa', INACTIVE: 'Inactiva', ERROR: 'Error' }[s])
+  ({ ACTIVE: 'Activa', INACTIVE: 'Inactiva', ERROR: 'Error' })[s]
 
 const occupancyPct = computed(() =>
-  zoneStore.zone ? Math.round(zoneStore.zone.occupancyPercentage) : 0
+  zoneStore.zone ? Math.round(zoneStore.zone.occupancyPercentage) : 0,
 )
 
 let refreshTimer: ReturnType<typeof setInterval>
@@ -64,12 +64,20 @@ onUnmounted(() => clearInterval(refreshTimer))
 
 <template>
   <div class="detail-page">
-
     <!-- Header -->
     <div class="page-header">
       <button class="back-btn" @click="router.push('/dashboard/zones')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 12H5M12 5l-7 7 7 7"/>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M19 12H5M12 5l-7 7 7 7" />
         </svg>
         Zonas
       </button>
@@ -89,22 +97,52 @@ onUnmounted(() => clearInterval(refreshTimer))
         <div>
           <h1 class="zone-name">{{ zoneStore.zone.name }}</h1>
           <p class="zone-address">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#888"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              style="vertical-align: middle; margin-right: 4px"
+            >
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
             </svg>
-            {{ zoneStore.zone.street }}, {{ zoneStore.zone.district }} · {{ zoneStore.zone.city }}
+            {{ zoneStore.zone.street }}, {{ zoneStore.zone.district }} ·
+            {{ zoneStore.zone.city }}
           </p>
         </div>
         <div class="title-actions">
           <span
             class="classification-badge"
-            :style="{ background: classificationColor(zoneStore.zone.classification) }"
+            :style="{
+              background: classificationColor(zoneStore.zone.classification),
+            }"
           >
             {{ classificationLabel(zoneStore.zone.classification) }}
           </span>
-          <button class="fav-btn" :class="{ active: isFav }" @click="toggleFavorite" :title="isFav ? 'Quitar de favoritos' : 'Guardar en favoritos'">
-            <svg width="18" height="18" viewBox="0 0 24 24" :fill="isFav ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          <button
+            class="fav-btn"
+            :class="{ active: isFav }"
+            @click="toggleFavorite"
+            :title="isFav ? 'Quitar de favoritos' : 'Guardar en favoritos'"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              :fill="isFav ? 'currentColor' : 'none'"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+              />
             </svg>
             {{ isFav ? 'Guardado' : 'Guardar' }}
           </button>
@@ -122,7 +160,9 @@ onUnmounted(() => clearInterval(refreshTimer))
           <span class="stat-label">Libres</span>
         </div>
         <div class="stat-card">
-          <span class="stat-value ocupado">{{ zoneStore.zone.occupiedCount }}</span>
+          <span class="stat-value ocupado">{{
+            zoneStore.zone.occupiedCount
+          }}</span>
           <span class="stat-label">Ocupados</span>
         </div>
         <div class="stat-card">
@@ -131,7 +171,12 @@ onUnmounted(() => clearInterval(refreshTimer))
             <div class="pct-bar">
               <div
                 class="pct-fill"
-                :style="{ width: occupancyPct + '%', background: classificationColor(zoneStore.zone.classification) }"
+                :style="{
+                  width: occupancyPct + '%',
+                  background: classificationColor(
+                    zoneStore.zone.classification,
+                  ),
+                }"
               />
             </div>
           </div>
@@ -141,28 +186,43 @@ onUnmounted(() => clearInterval(refreshTimer))
 
       <!-- Main content -->
       <div class="main-grid">
-
         <!-- Spaces -->
         <div class="section-card spaces-section">
           <h2 class="section-title">Espacios</h2>
 
-          <div v-if="zoneStore.spacesLoading" class="section-state">Cargando espacios...</div>
-          <div v-else-if="zoneStore.spacesError" class="section-state error">{{ zoneStore.spacesError }}</div>
-          <div v-else-if="(zoneStore.spaces as any[]).length === 0" class="section-state">Sin espacios registrados.</div>
+          <div v-if="zoneStore.spacesLoading" class="section-state">
+            Cargando espacios...
+          </div>
+          <div v-else-if="zoneStore.spacesError" class="section-state error">
+            {{ zoneStore.spacesError }}
+          </div>
+          <div
+            v-else-if="(zoneStore.spaces as any[]).length === 0"
+            class="section-state"
+          >
+            Sin espacios registrados.
+          </div>
           <div v-else class="spaces-grid">
             <div
-              v-for="space in (zoneStore.spaces as any[])"
+              v-for="space in zoneStore.spaces as any[]"
               :key="space.id"
               class="space-box"
               :class="space.occupied ? 'space-occupied' : 'space-libre'"
-              :title="space.spaceNumber + (space.occupied ? ' · Ocupado' : ' · Libre')"
+              :title="
+                space.spaceNumber + (space.occupied ? ' · Ocupado' : ' · Libre')
+              "
             >
               <span class="space-num">{{ space.spaceNumber }}</span>
             </div>
           </div>
 
           <!-- Legend -->
-          <div class="legend" v-if="!(zoneStore.spacesLoading) && (zoneStore.spaces as any[]).length > 0">
+          <div
+            class="legend"
+            v-if="
+              !zoneStore.spacesLoading && (zoneStore.spaces as any[]).length > 0
+            "
+          >
             <span class="legend-item">
               <span class="legend-dot libre-dot" /> Libre
             </span>
@@ -176,18 +236,37 @@ onUnmounted(() => clearInterval(refreshTimer))
         <div class="section-card cameras-section">
           <h2 class="section-title">Cámaras</h2>
 
-          <div v-if="cameraStore.camerasLoading" class="section-state">Cargando cámaras...</div>
-          <div v-else-if="cameraStore.camerasError" class="section-state error">{{ cameraStore.camerasError }}</div>
-          <div v-else-if="(cameraStore.cameras as any[]).length === 0" class="section-state">Sin cámaras registradas.</div>
+          <div v-if="cameraStore.camerasLoading" class="section-state">
+            Cargando cámaras...
+          </div>
+          <div v-else-if="cameraStore.camerasError" class="section-state error">
+            {{ cameraStore.camerasError }}
+          </div>
+          <div
+            v-else-if="(cameraStore.cameras as any[]).length === 0"
+            class="section-state"
+          >
+            Sin cámaras registradas.
+          </div>
           <div v-else class="camera-list">
             <div
-              v-for="camera in (cameraStore.cameras as any[])"
+              v-for="camera in cameraStore.cameras as any[]"
               :key="camera.id"
               class="camera-row"
             >
               <div class="camera-icon-wrap">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#092c4c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#092c4c"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M23 7l-7 5 7 5V7z" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                 </svg>
               </div>
               <div class="camera-info">
@@ -196,9 +275,15 @@ onUnmounted(() => clearInterval(refreshTimer))
               </div>
               <span
                 class="camera-status"
-                :style="{ background: cameraStatusColor(camera.status) + '22', color: cameraStatusColor(camera.status) }"
+                :style="{
+                  background: cameraStatusColor(camera.status) + '22',
+                  color: cameraStatusColor(camera.status),
+                }"
               >
-                <span class="status-dot" :style="{ background: cameraStatusColor(camera.status) }" />
+                <span
+                  class="status-dot"
+                  :style="{ background: cameraStatusColor(camera.status) }"
+                />
                 {{ cameraStatusLabel(camera.status) }}
               </span>
             </div>
@@ -207,10 +292,8 @@ onUnmounted(() => clearInterval(refreshTimer))
 
         <!-- Rating -->
         <ZoneRating :zone-id="zoneId" />
-
       </div>
     </template>
-
   </div>
 </template>
 
@@ -241,7 +324,9 @@ onUnmounted(() => clearInterval(refreshTimer))
   border-radius: 8px;
   transition: background 0.2s;
 }
-.back-btn:hover { background: #f0f4f8; }
+.back-btn:hover {
+  background: #f0f4f8;
+}
 
 /* Title row */
 .zone-title-row {
@@ -298,8 +383,15 @@ onUnmounted(() => clearInterval(refreshTimer))
   cursor: pointer;
   transition: all 0.2s;
 }
-.fav-btn:hover        { border-color: #f2894a; color: #f2894a; }
-.fav-btn.active       { border-color: #f2894a; color: #f2894a; background: #fff5ef; }
+.fav-btn:hover {
+  border-color: #f2894a;
+  color: #f2894a;
+}
+.fav-btn.active {
+  border-color: #f2894a;
+  color: #f2894a;
+  background: #fff5ef;
+}
 
 /* Stats */
 .stats-row {
@@ -316,7 +408,7 @@ onUnmounted(() => clearInterval(refreshTimer))
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .stat-value {
@@ -325,8 +417,12 @@ onUnmounted(() => clearInterval(refreshTimer))
   color: #092c4c;
   line-height: 1;
 }
-.stat-value.libre   { color: #38a169; }
-.stat-value.ocupado { color: #e53e3e; }
+.stat-value.libre {
+  color: #38a169;
+}
+.stat-value.ocupado {
+  color: #e53e3e;
+}
 
 .stat-label {
   font-size: 12px;
@@ -367,7 +463,7 @@ onUnmounted(() => clearInterval(refreshTimer))
   border-radius: 12px;
   border: 1px solid #e8e8e8;
   padding: 20px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .section-title {
@@ -383,7 +479,9 @@ onUnmounted(() => clearInterval(refreshTimer))
   padding: 20px 0;
   text-align: center;
 }
-.section-state.error { color: #e53e3e; }
+.section-state.error {
+  color: #e53e3e;
+}
 
 /* Spaces grid */
 .spaces-grid {
@@ -401,7 +499,9 @@ onUnmounted(() => clearInterval(refreshTimer))
   cursor: default;
   transition: transform 0.15s;
 }
-.space-box:hover { transform: scale(1.06); }
+.space-box:hover {
+  transform: scale(1.06);
+}
 
 .space-libre {
   background: #e6f7ee;
@@ -439,8 +539,12 @@ onUnmounted(() => clearInterval(refreshTimer))
   height: 10px;
   border-radius: 2px;
 }
-.libre-dot   { background: #38a169; }
-.ocupado-dot { background: #e53e3e; }
+.libre-dot {
+  background: #38a169;
+}
+.ocupado-dot {
+  background: #e53e3e;
+}
 
 /* Cameras */
 .camera-list {
@@ -514,6 +618,11 @@ onUnmounted(() => clearInterval(refreshTimer))
   justify-content: center;
   padding: 60px 0;
 }
-.state-text       { font-size: 14px; color: #aaa; }
-.state-text.error { color: #e53e3e; }
+.state-text {
+  font-size: 14px;
+  color: #aaa;
+}
+.state-text.error {
+  color: #e53e3e;
+}
 </style>

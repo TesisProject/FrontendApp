@@ -7,10 +7,10 @@ import { useAuthStore } from '../../../iam/application/auth.store'
 import { loadGoogleMaps } from '../../../shared/infrastructure/maps-loader'
 import type { Zone, ZoneClassification } from '../../domain/model/zone.model'
 
-const router         = useRouter()
-const zoneStore      = useZoneStore()
-const favoriteStore  = useFavoriteStore()
-const authStore      = useAuthStore()
+const router = useRouter()
+const zoneStore = useZoneStore()
+const favoriteStore = useFavoriteStore()
+const authStore = useAuthStore()
 
 const userId = computed(() => authStore.user?.id ?? 0)
 
@@ -21,38 +21,42 @@ async function toggleFavorite(zone: Zone) {
     await favoriteStore.addFavorite(userId.value, zone.id)
   }
 }
-const mapRef          = ref<HTMLElement | null>(null)
-const mapPanelRef     = ref<HTMLElement | null>(null)
-const searchInputRef  = ref<HTMLInputElement | null>(null)
-const search          = ref('')
-const suggestions     = ref<{ mainText: string; secondaryText: string; _raw: any }[]>([])
+const mapRef = ref<HTMLElement | null>(null)
+const mapPanelRef = ref<HTMLElement | null>(null)
+const search = ref('')
+const suggestions = ref<
+  { mainText: string; secondaryText: string; _raw: any }[]
+>([])
 const showSuggestions = ref(false)
 
-let placesLib:    any = null
+let placesLib: any = null
 let sessionToken: any = null
 let suggestTimer: ReturnType<typeof setTimeout> | null = null
-const activeFilter   = ref<ZoneClassification | 'TODOS'>('TODOS')
-const selectedZone   = ref<Zone | null>(null)
-const popupZone      = ref<Zone | null>(null)
-const popupPos       = ref({ x: 0, y: 0 })
+const activeFilter = ref<ZoneClassification | 'TODOS'>('TODOS')
+const selectedZone = ref<Zone | null>(null)
+const popupZone = ref<Zone | null>(null)
+const popupPos = ref({ x: 0, y: 0 })
 
 let map: google.maps.Map | null = null
 let markerData: { marker: google.maps.marker.AdvancedMarkerElement }[] = []
 
 const filters: { label: string; value: ZoneClassification | 'TODOS' }[] = [
-  { label: 'Todos',    value: 'TODOS'    },
-  { label: 'Libre',    value: 'LIBRE'    },
+  { label: 'Todos', value: 'TODOS' },
+  { label: 'Libre', value: 'LIBRE' },
   { label: 'Moderado', value: 'MODERADO' },
-  { label: 'Ocupado',  value: 'OCUPADO'  },
+  { label: 'Ocupado', value: 'OCUPADO' },
 ]
 
 const filteredZones = computed(() =>
-  (zoneStore.zones as Zone[]).filter(zone => {
-    const matchSearch = zone.name.toLowerCase().includes(search.value.toLowerCase()) ||
-                        zone.district.toLowerCase().includes(search.value.toLowerCase())
-    const matchFilter = activeFilter.value === 'TODOS' || zone.classification === activeFilter.value
+  (zoneStore.zones as Zone[]).filter((zone) => {
+    const matchSearch =
+      zone.name.toLowerCase().includes(search.value.toLowerCase()) ||
+      zone.district.toLowerCase().includes(search.value.toLowerCase())
+    const matchFilter =
+      activeFilter.value === 'TODOS' ||
+      zone.classification === activeFilter.value
     return matchSearch && matchFilter
-  })
+  }),
 )
 
 function classificationColor(c: ZoneClassification) {
@@ -64,11 +68,13 @@ function classificationLabel(c: ZoneClassification) {
 }
 
 function addMarkers() {
-  markerData.forEach(({ marker }) => { marker.map = null })
+  markerData.forEach(({ marker }) => {
+    marker.map = null
+  })
   markerData = []
   if (!map) return
 
-  filteredZones.value.forEach(zone => {
+  filteredZones.value.forEach((zone) => {
     const pin = document.createElement('div')
     pin.style.cssText = `
       width: 22px; height: 22px; border-radius: 50%;
@@ -131,37 +137,42 @@ async function initPlacesAutocomplete() {
 
 async function fetchSuggestions(input: string) {
   if (!placesLib || input.trim().length < 2) {
-    suggestions.value     = []
+    suggestions.value = []
     showSuggestions.value = false
     return
   }
   if (!sessionToken) sessionToken = new placesLib.AutocompleteSessionToken()
   try {
-    const result = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-      input,
-      sessionToken,
-      includedRegionCodes: ['pe'],
-    })
+    const result =
+      await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input,
+        sessionToken,
+        includedRegionCodes: ['pe'],
+      })
     suggestions.value = (result.suggestions ?? []).map((s: any) => {
       const pred = s.placePrediction
       return {
-        mainText:      pred.mainText?.toString()      ?? pred.text?.toString() ?? '',
+        mainText: pred.mainText?.toString() ?? pred.text?.toString() ?? '',
         secondaryText: pred.secondaryText?.toString() ?? '',
-        _raw:          markRaw(pred),
+        _raw: markRaw(pred),
       }
     })
     showSuggestions.value = suggestions.value.length > 0
   } catch (err) {
     console.error('[Places] error:', err)
-    suggestions.value     = []
+    suggestions.value = []
     showSuggestions.value = false
   }
 }
 
-async function selectSuggestion(item: { mainText: string; secondaryText: string; _raw: any }) {
+async function selectSuggestion(item: {
+  mainText: string
+  secondaryText: string
+  _raw: any
+}) {
   showSuggestions.value = false
-  suggestions.value     = []
-  sessionToken          = null
+  suggestions.value = []
+  sessionToken = null
   const place = item._raw.toPlace()
   await place.fetchFields({ fields: ['location'] })
   if (place.location) {
@@ -177,7 +188,9 @@ function onSearchInput() {
 }
 
 function hideSuggestions() {
-  setTimeout(() => { showSuggestions.value = false }, 150)
+  setTimeout(() => {
+    showSuggestions.value = false
+  }, 150)
 }
 
 watch(filteredZones, () => addMarkers())
@@ -202,8 +215,18 @@ onUnmounted(() => clearInterval(refreshTimer))
       <div class="panel-header">
         <h1 class="page-title">Zonas</h1>
         <div class="search-box">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#aaa"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
             ref="searchInputRef"
@@ -222,12 +245,25 @@ onUnmounted(() => clearInterval(refreshTimer))
               class="suggestion-item"
               @mousedown.prevent="selectSuggestion(pred)"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="suggestion-icon">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="suggestion-icon"
+              >
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
               </svg>
               <div class="suggestion-texts">
                 <span class="suggestion-main">{{ pred.mainText }}</span>
-                <span class="suggestion-secondary">{{ pred.secondaryText }}</span>
+                <span class="suggestion-secondary">{{
+                  pred.secondaryText
+                }}</span>
               </div>
             </button>
           </div>
@@ -235,8 +271,10 @@ onUnmounted(() => clearInterval(refreshTimer))
 
         <div class="filters">
           <button
-            v-for="f in filters" :key="f.value"
-            class="filter-chip" :class="{ active: activeFilter === f.value }"
+            v-for="f in filters"
+            :key="f.value"
+            class="filter-chip"
+            :class="{ active: activeFilter === f.value }"
             @click="activeFilter = f.value"
           >
             {{ f.label }}
@@ -256,8 +294,10 @@ onUnmounted(() => clearInterval(refreshTimer))
         </div>
 
         <div
-          v-for="zone in filteredZones" :key="zone.id"
-          class="zone-card" :class="{ selected: selectedZone?.id === zone.id }"
+          v-for="zone in filteredZones"
+          :key="zone.id"
+          class="zone-card"
+          :class="{ selected: selectedZone?.id === zone.id }"
           @click="focusZone(zone)"
         >
           <div class="card-top">
@@ -266,17 +306,39 @@ onUnmounted(() => clearInterval(refreshTimer))
               <p class="zone-address">{{ zone.street }}, {{ zone.district }}</p>
             </div>
             <div class="card-top-right">
-              <span class="badge" :style="{ background: classificationColor(zone.classification) }">
+              <span
+                class="badge"
+                :style="{
+                  background: classificationColor(zone.classification),
+                }"
+              >
                 {{ classificationLabel(zone.classification) }}
               </span>
               <button
                 class="fav-icon-btn"
                 :class="{ active: favoriteStore.isFavorite(zone.id) }"
-                :title="favoriteStore.isFavorite(zone.id) ? 'Quitar de favoritos' : 'Guardar en favoritos'"
+                :title="
+                  favoriteStore.isFavorite(zone.id)
+                    ? 'Quitar de favoritos'
+                    : 'Guardar en favoritos'
+                "
                 @click.stop="toggleFavorite(zone)"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" :fill="favoriteStore.isFavorite(zone.id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  :fill="
+                    favoriteStore.isFavorite(zone.id) ? 'currentColor' : 'none'
+                  "
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  />
                 </svg>
               </button>
             </div>
@@ -285,13 +347,23 @@ onUnmounted(() => clearInterval(refreshTimer))
           <div class="card-bottom">
             <div class="bar-wrap">
               <div class="bar">
-                <div class="bar-fill" :style="{ width: zone.occupancyPercentage + '%', background: classificationColor(zone.classification) }" />
+                <div
+                  class="bar-fill"
+                  :style="{
+                    width: zone.occupancyPercentage + '%',
+                    background: classificationColor(zone.classification),
+                  }"
+                />
               </div>
-              <span class="bar-pct">{{ Math.round(zone.occupancyPercentage) }}%</span>
+              <span class="bar-pct"
+                >{{ Math.round(zone.occupancyPercentage) }}%</span
+              >
             </div>
             <div class="spaces-row">
               <span class="space-stat free">{{ zone.freeCount }} libres</span>
-              <span class="space-stat occupied">{{ zone.occupiedCount }} ocupados</span>
+              <span class="space-stat occupied"
+                >{{ zone.occupiedCount }} ocupados</span
+              >
               <span class="space-stat total">/ {{ zone.totalSpaces }}</span>
             </div>
             <button
@@ -317,8 +389,15 @@ onUnmounted(() => clearInterval(refreshTimer))
           :style="{ left: popupPos.x + 'px', top: popupPos.y + 'px' }"
         >
           <p class="popup-name">{{ popupZone.name }}</p>
-          <p class="popup-address">{{ popupZone.street }}, {{ popupZone.district }}</p>
-          <span class="popup-badge" :style="{ background: classificationColor(popupZone.classification) }">
+          <p class="popup-address">
+            {{ popupZone.street }}, {{ popupZone.district }}
+          </p>
+          <span
+            class="popup-badge"
+            :style="{
+              background: classificationColor(popupZone.classification),
+            }"
+          >
             {{ classificationLabel(popupZone.classification) }}
           </span>
           <div class="popup-stats">
@@ -350,7 +429,7 @@ onUnmounted(() => clearInterval(refreshTimer))
   border-radius: 12px;
   border: 1px solid #e8e8e8;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .panel-header {
@@ -387,7 +466,9 @@ onUnmounted(() => clearInterval(refreshTimer))
   width: 100%;
 }
 
-.search-input::placeholder { color: #bbb; }
+.search-input::placeholder {
+  color: #bbb;
+}
 
 .filters {
   display: flex;
@@ -406,8 +487,15 @@ onUnmounted(() => clearInterval(refreshTimer))
   transition: all 0.2s;
 }
 
-.filter-chip:hover  { border-color: #092c4c; color: #092c4c; }
-.filter-chip.active { background: #092c4c; border-color: #092c4c; color: white; }
+.filter-chip:hover {
+  border-color: #092c4c;
+  color: #092c4c;
+}
+.filter-chip.active {
+  background: #092c4c;
+  border-color: #092c4c;
+  color: white;
+}
 
 .zone-list {
   flex: 1;
@@ -419,9 +507,16 @@ onUnmounted(() => clearInterval(refreshTimer))
   background: #fafafa;
 }
 
-.zone-list::-webkit-scrollbar { width: 4px; }
-.zone-list::-webkit-scrollbar-track { background: transparent; }
-.zone-list::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+.zone-list::-webkit-scrollbar {
+  width: 4px;
+}
+.zone-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.zone-list::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 4px;
+}
 
 .state-box {
   display: flex;
@@ -430,24 +525,35 @@ onUnmounted(() => clearInterval(refreshTimer))
   padding: 40px 0;
 }
 
-.state-text       { font-size: 13px; color: #aaa; }
-.state-text.error { color: #e53e3e; }
+.state-text {
+  font-size: 13px;
+  color: #aaa;
+}
+.state-text.error {
+  color: #e53e3e;
+}
 
 .zone-card {
   background: white;
   border-radius: 10px;
   padding: 14px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   cursor: pointer;
   border: 2px solid transparent;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.zone-card:hover   { box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
-.zone-card.selected { border-color: #f2894a; }
+.zone-card:hover {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+.zone-card.selected {
+  border-color: #f2894a;
+}
 
 .card-top {
   display: flex;
@@ -497,8 +603,12 @@ onUnmounted(() => clearInterval(refreshTimer))
   border-radius: 4px;
   transition: color 0.2s;
 }
-.fav-icon-btn:hover  { color: #f2894a; }
-.fav-icon-btn.active { color: #f2894a; }
+.fav-icon-btn:hover {
+  color: #f2894a;
+}
+.fav-icon-btn.active {
+  color: #f2894a;
+}
 
 .bar-wrap {
   display: flex;
@@ -534,10 +644,20 @@ onUnmounted(() => clearInterval(refreshTimer))
   align-items: center;
 }
 
-.space-stat { font-size: 11px; }
-.space-stat.free     { color: #38a169; font-weight: 600; }
-.space-stat.occupied { color: #e53e3e; font-weight: 600; }
-.space-stat.total    { color: #bbb; }
+.space-stat {
+  font-size: 11px;
+}
+.space-stat.free {
+  color: #38a169;
+  font-weight: 600;
+}
+.space-stat.occupied {
+  color: #e53e3e;
+  font-weight: 600;
+}
+.space-stat.total {
+  color: #bbb;
+}
 
 .detail-link {
   margin-top: 6px;
@@ -551,7 +671,9 @@ onUnmounted(() => clearInterval(refreshTimer))
   text-align: left;
   transition: color 0.2s;
 }
-.detail-link:hover { color: #e07a3a; }
+.detail-link:hover {
+  color: #e07a3a;
+}
 
 .map-panel {
   flex: 1;
@@ -564,7 +686,7 @@ onUnmounted(() => clearInterval(refreshTimer))
   flex: 1;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
   border: 1px solid #e8e8e8;
 }
 
@@ -580,7 +702,7 @@ onUnmounted(() => clearInterval(refreshTimer))
   border-radius: 10px;
   padding: 12px 14px;
   min-width: 200px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
   z-index: 10;
   pointer-events: all;
 }
@@ -628,19 +750,37 @@ onUnmounted(() => clearInterval(refreshTimer))
   font-size: 12px;
 }
 
-.stat-free  { color: #38a169; font-weight: 600; }
-.stat-occ   { color: #e53e3e; font-weight: 600; }
-.stat-total { color: #aaa; }
-.sep        { color: #ddd; }
+.stat-free {
+  color: #38a169;
+  font-weight: 600;
+}
+.stat-occ {
+  color: #e53e3e;
+  font-weight: 600;
+}
+.stat-total {
+  color: #aaa;
+}
+.sep {
+  color: #ddd;
+}
 
-.popup-enter-active, .popup-leave-active { transition: opacity 0.15s, transform 0.15s; }
-.popup-enter-from, .popup-leave-to {
+.popup-enter-active,
+.popup-leave-active {
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.popup-enter-from,
+.popup-leave-to {
   opacity: 0;
   transform: translate(-50%, calc(-100% - 10px));
 }
 
 /* Places suggestions dropdown */
-.search-box { position: relative; }
+.search-box {
+  position: relative;
+}
 
 .suggestions-dropdown {
   position: absolute;
@@ -650,7 +790,7 @@ onUnmounted(() => clearInterval(refreshTimer))
   background: white;
   border: 1px solid #e8e8e8;
   border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
   z-index: 100;
   overflow: hidden;
 }
@@ -670,10 +810,17 @@ onUnmounted(() => clearInterval(refreshTimer))
   border-bottom: 1px solid #f5f5f5;
 }
 
-.suggestion-item:last-child { border-bottom: none; }
-.suggestion-item:hover { background: #f8f8f8; }
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+.suggestion-item:hover {
+  background: #f8f8f8;
+}
 
-.suggestion-icon { color: #aaa; flex-shrink: 0; }
+.suggestion-icon {
+  color: #aaa;
+  flex-shrink: 0;
+}
 
 .suggestion-texts {
   display: flex;
