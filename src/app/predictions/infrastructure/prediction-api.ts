@@ -1,15 +1,24 @@
 import { httpClient } from '../../shared/infrastructure/http-client'
-import type { PredictionResponse, PredictionModelResponse } from './prediction-response'
+import type {
+  OccupancyForecastResponse,
+  ZoneForecastComparisonResponse,
+} from './prediction-response'
 
-const BASE = '/prediction'
+const BASE = '/prediction/forecasts'
+const ZONES_BASE = '/prediction/zones'
 
 export class PredictionApi {
-  async getPredictions(zoneId: string): Promise<PredictionResponse[]> {
-    return httpClient.get<PredictionResponse[]>(`${BASE}/zones/${zoneId}`)
+  getBySpot(spotId: number): Promise<OccupancyForecastResponse[]> {
+    return httpClient.get<OccupancyForecastResponse[]>(`${BASE}/spots/${spotId}`)
   }
 
-  async getActiveModel(): Promise<PredictionModelResponse> {
-    return httpClient.get<PredictionModelResponse>(`${BASE}/models/active`)
+  getCurrentForSpot(spotId: number): Promise<OccupancyForecastResponse> {
+    return httpClient.get<OccupancyForecastResponse>(`${BASE}/spots/${spotId}/current`)
+  }
+
+  /** Comparación predicción IA vs detección real de cámaras para la ventana vigente de la zona. */
+  getZoneComparison(zoneId: number): Promise<ZoneForecastComparisonResponse> {
+    return httpClient.get<ZoneForecastComparisonResponse>(`${ZONES_BASE}/${zoneId}/forecast/comparison`)
   }
 }
 

@@ -1,26 +1,43 @@
-export interface PredictionModelResponse {
-  id: string
-  version: string
-  algorithm: string
-  accuracy: number
-  deployedAt: string
-}
+import type { DayOfWeek } from '../domain/model/prediction.model'
 
-export interface PredictionResponse {
-  id: string
-  zoneId: string
-  zoneName: string
-  modelId: string
-  predictedOccupancy: number
-  targetDatetime: string
-  confidenceScore: number
+export interface OccupancyForecastResponse {
+  id: number
+  parkingSpotId: number
+  dayOfWeek: DayOfWeek
+  startMinuteOfDay: number
+  windowSizeMinutes: number
+  availabilityProbability: number
+  modelVersion: string
   createdAt: string
+  updatedAt: string
 }
 
-export interface PredictionRequest {
-  zoneId: string
-  features: {
-    hour: number
-    dayOfWeek: number
-  }
+export interface PredictedSideResponse {
+  availabilityProbability: number
+  totalSpots: number
+  availableSpots: number
+  occupiedSpots: number
+  modelVersion: string
+}
+
+export interface ActualSideResponse {
+  totalSpots: number
+  availableSpots: number
+  occupiedSpots: number
+  occurredAt: string
+}
+
+export interface ComparisonDeltaResponse {
+  availableDiff: number
+  occupiedDiff: number
+}
+
+export interface ZoneForecastComparisonResponse {
+  zoneId: number
+  dayOfWeek: DayOfWeek
+  startMinuteOfDay: number
+  windowSizeMinutes: number
+  predicted: PredictedSideResponse
+  actual: ActualSideResponse | null
+  delta: ComparisonDeltaResponse | null
 }

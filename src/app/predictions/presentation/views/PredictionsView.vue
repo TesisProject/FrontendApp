@@ -1,69 +1,79 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted } from 'vue'
 import { usePredictionStore } from '../../application/prediction.store'
+import type { DayOfWeek } from '../../domain/model/prediction.model'
+import ZoneComparisonPanel from '../components/ZoneComparisonPanel.vue'
 
 const store = usePredictionStore()
 
-const maxOccupancy = computed(() =>
-  Math.max(...store.predictions.map(p => p.predictedOccupancy), 0.01)
-)
+const DAYS: { value: DayOfWeek; label: string }[] = [
+  { value: 'MONDAY',    label: 'Lunes'     },
+  { value: 'TUESDAY',   label: 'Martes'    },
+  { value: 'WEDNESDAY', label: 'Miércoles' },
+  { value: 'THURSDAY',  label: 'Jueves'    },
+  { value: 'FRIDAY',    label: 'Viernes'   },
+  { value: 'SATURDAY',  label: 'Sábado'    },
+  { value: 'SUNDAY',    label: 'Domingo'   },
+]
 
-function barHeight(occ: number): number {
-  return Math.round((occ / maxOccupancy.value) * 100)
+function formatWindow(startMinute: number, windowSize: number): string {
+  const hStart = Math.floor(startMinute / 60)
+  const mStart = startMinute % 60
+  const end = startMinute + windowSize
+  const hEnd = Math.floor(end / 60)
+  const mEnd = end % 60
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${pad(hStart)}:${pad(mStart)} – ${pad(hEnd)}:${pad(mEnd)}`
 }
 
-function barColor(occ: number): string {
-  if (occ < 0.3)  return '#38a169'
-  if (occ < 0.7)  return '#f2894a'
+function barColor(prob: number): string {
+  if (prob >= 0.7) return '#38a169'
+  if (prob >= 0.3) return '#f2894a'
   return '#e53e3e'
 }
 
-function classLabel(occ: number): string {
-  if (occ < 0.3)  return 'Libre'
-  if (occ < 0.7)  return 'Moderado'
+function classLabel(prob: number): string {
+  if (prob >= 0.7) return 'Libre'
+  if (prob >= 0.3) return 'Moderado'
   return 'Ocupado'
 }
 
-function formatHour(iso: string): string {
-  return new Date(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
-}
-
-function formatAccuracy(val: number): string {
+function formatPct(val: number): string {
   return `${Math.round(val * 100)}%`
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
+const maxProb = computed(() =>
+  Math.max(...store.filteredForecasts.map(f => f.availabilityProbability), 0.01)
+)
+
+function barHeight(prob: number): number {
+  return Math.round((prob / maxProb.value) * 100)
 }
 
-const peakPrediction = computed(() =>
-  store.predictions.reduce((max, p) =>
-    p.predictedOccupancy > (max?.predictedOccupancy ?? 0) ? p : max,
-    store.predictions[0]
+const avgAvailability = computed(() => {
+  const list = store.filteredForecasts
+  if (!list.length) return 0
+  return list.reduce((s, f) => s + f.availabilityProbability, 0) / list.length
+})
+
+const peakForecast = computed(() =>
+  store.filteredForecasts.reduce(
+    (best, f) => f.availabilityProbability > (best?.availabilityProbability ?? -1) ? f : best,
+    store.filteredForecasts[0],
   )
 )
 
-const avgOccupancy = computed(() => {
-  if (!store.predictions.length) return 0
-  const sum = store.predictions.reduce((s, p) => s + p.predictedOccupancy, 0)
-  return sum / store.predictions.length
-})
-
-const avgConfidence = computed(() => {
-  if (!store.predictions.length) return 0
-  const sum = store.predictions.reduce((s, p) => s + p.confidenceScore, 0)
-  return sum / store.predictions.length
-})
-
-function onZoneChange(e: Event) {
-  const zoneId = (e.target as HTMLSelectElement).value
-  store.selectZone(zoneId)
-  store.fetchPredictions(zoneId)
+async function onZoneChange(e: Event) {
+  const zoneId = Number((e.target as HTMLSelectElement).value)
+  await store.selectZone(zoneId)
 }
 
-watch(() => store.selectedZone.id, (id) => store.fetchPredictions(id))
+async function onSpotChange(e: Event) {
+  const spotId = Number((e.target as HTMLSelectElement).value)
+  await store.fetchForecasts(spotId)
+}
 
-onMounted(() => store.fetchPredictions(store.selectedZone.id))
+onMounted(() => store.loadZones())
 </script>
 
 <template>
@@ -73,29 +83,59 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
     <div class="page-header">
       <div>
         <h1 class="page-title">Predicciones de ocupación</h1>
-        <p class="page-subtitle">Estimaciones de disponibilidad para las próximas horas</p>
+        <p class="page-subtitle">Disponibilidad estimada por ventana horaria según el modelo de IA</p>
       </div>
       <div class="badge-beta">Beta</div>
     </div>
 
     <!-- Controls -->
     <div class="controls-row">
+      <!-- Zone selector -->
       <div class="select-wrap">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="select-icon">
-          <circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/>
-          <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" class="select-icon">
+          <path d="M21 10c0 6-9 13-9 13S3 16 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
         </svg>
-        <select class="zone-select" :value="store.selectedZone.id" @change="onZoneChange">
+        <select class="ctrl-select" @change="onZoneChange" :disabled="!store.zones.length">
+          <option value="" disabled selected>Seleccionar zona…</option>
           <option v-for="z in store.zones" :key="z.id" :value="z.id">{{ z.name }}</option>
         </select>
       </div>
-      <span class="zone-label">{{ store.selectedZone.name }}</span>
+
+      <!-- Spot selector -->
+      <div class="select-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" class="select-icon">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
+        </svg>
+        <select class="ctrl-select" @change="onSpotChange" :disabled="!store.spots.length">
+          <option value="" disabled selected>Seleccionar espacio…</option>
+          <option v-for="s in store.spots" :key="s.id" :value="s.id">
+            Espacio {{ s.spaceNumber }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Day filter -->
+      <div class="select-wrap" v-if="store.forecasts.length">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" class="select-icon">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <select class="ctrl-select" :value="store.selectedDay" @change="store.selectDay(($event.target as HTMLSelectElement).value as any)">
+          <option v-for="d in DAYS" :key="d.value" :value="d.value">{{ d.label }}</option>
+        </select>
+      </div>
     </div>
+
+    <!-- Comparación predicción IA vs cámaras (a nivel zona, ventana vigente) -->
+    <ZoneComparisonPanel v-if="store.selectedZoneId" />
 
     <!-- Loading -->
     <div v-if="store.loading" class="center-state">
       <div class="spinner" />
-      <span class="state-text">Calculando predicciones...</span>
+      <span class="state-text">Cargando predicciones…</span>
     </div>
 
     <!-- Error -->
@@ -103,52 +143,63 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
       <span class="state-text error">{{ store.error }}</span>
     </div>
 
-    <template v-else-if="store.predictions.length">
+    <!-- Empty: no spot selected yet -->
+    <div v-else-if="!store.selectedSpotId" class="center-state">
+      <span class="state-text">Selecciona una zona y un espacio para ver sus predicciones.</span>
+    </div>
+
+    <!-- Empty: spot has no forecasts for selected day -->
+    <div v-else-if="!store.filteredForecasts.length" class="center-state">
+      <span class="state-text">No hay predicciones disponibles para este espacio en el día seleccionado.</span>
+    </div>
+
+    <template v-else>
 
       <!-- Summary cards -->
       <div class="summary-grid">
         <div class="summary-card">
-          <span class="summary-label">Ocupación promedio</span>
-          <span class="summary-value" :style="{ color: barColor(avgOccupancy) }">
-            {{ formatAccuracy(avgOccupancy) }}
+          <span class="summary-label">Disponibilidad promedio</span>
+          <span class="summary-value" :style="{ color: barColor(avgAvailability) }">
+            {{ formatPct(avgAvailability) }}
           </span>
-          <span class="summary-sub">próximas 12 horas</span>
+          <span class="summary-sub">{{ DAYS.find(d => d.value === store.selectedDay)?.label }}</span>
         </div>
 
         <div class="summary-card">
-          <span class="summary-label">Pico más alto</span>
-          <span class="summary-value" :style="{ color: barColor(peakPrediction?.predictedOccupancy ?? 0) }">
-            {{ formatAccuracy(peakPrediction?.predictedOccupancy ?? 0) }}
+          <span class="summary-label">Pico de disponibilidad</span>
+          <span class="summary-value" :style="{ color: barColor(peakForecast?.availabilityProbability ?? 0) }">
+            {{ formatPct(peakForecast?.availabilityProbability ?? 0) }}
           </span>
-          <span class="summary-sub">{{ peakPrediction ? formatHour(peakPrediction.targetDatetime) : '--' }}</span>
+          <span class="summary-sub">
+            {{ peakForecast ? formatWindow(peakForecast.startMinuteOfDay, peakForecast.windowSizeMinutes) : '--' }}
+          </span>
         </div>
 
         <div class="summary-card">
-          <span class="summary-label">Confianza del modelo</span>
-          <span class="summary-value confidence">{{ formatAccuracy(avgConfidence) }}</span>
-          <span class="summary-sub">Random Forest v{{ store.activeModel?.version }}</span>
+          <span class="summary-label">Ventanas analizadas</span>
+          <span class="summary-value info">{{ store.filteredForecasts.length }}</span>
+          <span class="summary-sub">de {{ store.forecasts.length }} en total</span>
         </div>
 
         <div class="summary-card">
-          <span class="summary-label">Precisión del modelo</span>
-          <span class="summary-value confidence">{{ formatAccuracy(store.activeModel?.accuracy ?? 0) }}</span>
-          <span class="summary-sub">Desplegado {{ store.activeModel ? formatDate(store.activeModel.deployedAt) : '--' }}</span>
+          <span class="summary-label">Versión del modelo</span>
+          <span class="summary-value info" style="font-size: 18px;">v{{ store.modelVersion ?? '—' }}</span>
+          <span class="summary-sub">Random Forest</span>
         </div>
       </div>
 
       <!-- Chart -->
       <div class="chart-card">
         <div class="chart-header">
-          <span class="chart-title">Ocupación estimada por hora</span>
+          <span class="chart-title">Disponibilidad estimada por ventana horaria</span>
           <div class="chart-legend">
-            <span class="legend-dot" style="background: #38a169" /> Libre
-            <span class="legend-dot" style="background: #f2894a" /> Moderado
-            <span class="legend-dot" style="background: #e53e3e" /> Ocupado
+            <span class="legend-dot" style="background: #38a169" /> Libre (&ge;70%)
+            <span class="legend-dot" style="background: #f2894a" /> Moderado (30–70%)
+            <span class="legend-dot" style="background: #e53e3e" /> Ocupado (&lt;30%)
           </div>
         </div>
 
         <div class="chart">
-          <!-- Y axis labels -->
           <div class="y-axis">
             <span>100%</span>
             <span>75%</span>
@@ -156,90 +207,88 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
             <span>25%</span>
             <span>0%</span>
           </div>
-
-          <!-- Grid + bars -->
           <div class="chart-body">
             <div class="grid-lines">
               <span v-for="n in 4" :key="n" class="grid-line" />
             </div>
             <div class="bars">
-              <div
-                v-for="p in store.predictions"
-                :key="p.id"
-                class="bar-col"
-              >
-                <span class="bar-pct-label" :style="{ color: barColor(p.predictedOccupancy) }">
-                  {{ Math.round(p.predictedOccupancy * 100) }}%
+              <div v-for="f in store.filteredForecasts" :key="f.id" class="bar-col">
+                <span class="bar-pct-label" :style="{ color: barColor(f.availabilityProbability) }">
+                  {{ Math.round(f.availabilityProbability * 100) }}%
                 </span>
                 <div class="bar-track">
                   <div
                     class="bar-fill"
                     :style="{
-                      height: barHeight(p.predictedOccupancy) + '%',
-                      background: barColor(p.predictedOccupancy),
+                      height: barHeight(f.availabilityProbability) + '%',
+                      background: barColor(f.availabilityProbability),
                     }"
                   />
                 </div>
-                <span class="bar-hour">{{ formatHour(p.targetDatetime) }}</span>
+                <span class="bar-hour">{{ String(Math.floor(f.startMinuteOfDay / 60)).padStart(2, '0') }}:{{ String(f.startMinuteOfDay % 60).padStart(2, '0') }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Hourly table -->
+      <!-- Detail table -->
       <div class="table-card">
-        <h3 class="table-title">Detalle por hora</h3>
+        <h3 class="table-title">Detalle por ventana horaria</h3>
         <div class="table-wrap">
           <table class="pred-table">
             <thead>
               <tr>
-                <th>Hora</th>
-                <th>Ocupación estimada</th>
+                <th>Ventana</th>
+                <th>Disponibilidad estimada</th>
                 <th>Clasificación</th>
-                <th>Confianza</th>
+                <th>Modelo</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="p in store.predictions" :key="p.id">
-                <td class="td-hour">{{ formatHour(p.targetDatetime) }}</td>
+              <tr v-for="f in store.filteredForecasts" :key="f.id">
+                <td class="td-hour">{{ formatWindow(f.startMinuteOfDay, f.windowSizeMinutes) }}</td>
                 <td>
                   <div class="inline-bar-wrap">
                     <div class="inline-bar">
                       <div
                         class="inline-bar-fill"
-                        :style="{ width: (p.predictedOccupancy * 100) + '%', background: barColor(p.predictedOccupancy) }"
+                        :style="{ width: (f.availabilityProbability * 100) + '%', background: barColor(f.availabilityProbability) }"
                       />
                     </div>
-                    <span class="inline-pct">{{ Math.round(p.predictedOccupancy * 100) }}%</span>
+                    <span class="inline-pct">{{ formatPct(f.availabilityProbability) }}</span>
                   </div>
                 </td>
                 <td>
-                  <span class="class-badge" :style="{ background: barColor(p.predictedOccupancy) + '20', color: barColor(p.predictedOccupancy) }">
-                    {{ classLabel(p.predictedOccupancy) }}
+                  <span
+                    class="class-badge"
+                    :style="{ background: barColor(f.availabilityProbability) + '20', color: barColor(f.availabilityProbability) }"
+                  >
+                    {{ classLabel(f.availabilityProbability) }}
                   </span>
                 </td>
-                <td class="td-confidence">{{ formatAccuracy(p.confidenceScore) }}</td>
+                <td class="td-model">v{{ f.modelVersion }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- Model info -->
+      <!-- Model info footer -->
       <div class="model-card">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-faint); flex-shrink:0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-faint); flex-shrink:0">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
         <span class="model-info-text">
-          Predicciones generadas por el modelo <strong>Random Forest v{{ store.activeModel?.version }}</strong>
-          con una precisión del <strong>{{ formatAccuracy(store.activeModel?.accuracy ?? 0) }}</strong>
-          sobre datos históricos de ocupación.
+          Predicciones generadas por el modelo
+          <strong>Random Forest v{{ store.modelVersion }}</strong>.
+          Cada barra representa la probabilidad de que el espacio esté
+          <strong>disponible</strong> durante esa ventana de {{ store.filteredForecasts[0]?.windowSizeMinutes ?? 30 }} minutos.
         </span>
       </div>
 
     </template>
-
   </div>
 </template>
 
@@ -253,7 +302,6 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   margin: 0 auto;
 }
 
-/* Header */
 .page-header {
   display: flex;
   align-items: flex-start;
@@ -285,11 +333,11 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   margin-top: 4px;
 }
 
-/* Controls */
 .controls-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .select-wrap {
@@ -305,7 +353,7 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   pointer-events: none;
 }
 
-.zone-select {
+.ctrl-select {
   padding: 8px 14px 8px 32px;
   border: 1.5px solid var(--color-border);
   border-radius: 8px;
@@ -317,16 +365,12 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   outline: none;
   appearance: none;
   transition: border-color 0.2s;
+  min-width: 180px;
 }
 
-.zone-select:focus { border-color: var(--color-title); }
+.ctrl-select:focus { border-color: var(--color-title); }
+.ctrl-select:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.zone-label {
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
-/* States */
 .center-state {
   display: flex;
   flex-direction: column;
@@ -335,7 +379,7 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   padding: 60px 0;
 }
 
-.state-text       { font-size: 14px; color: var(--color-faint); }
+.state-text       { font-size: 14px; color: var(--color-faint); text-align: center; }
 .state-text.error { color: #e53e3e; }
 
 .spinner {
@@ -349,7 +393,6 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Summary grid */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -381,14 +424,13 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   line-height: 1.1;
 }
 
-.summary-value.confidence { color: #3182ce; }
+.summary-value.info { color: #3182ce; }
 
 .summary-sub {
   font-size: 11px;
   color: var(--color-faint);
 }
 
-/* Chart card */
 .chart-card {
   background: var(--color-card);
   border: 1px solid var(--color-border);
@@ -402,6 +444,8 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .chart-title {
@@ -426,7 +470,6 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   margin-right: 4px;
 }
 
-/* Chart body */
 .chart {
   display: flex;
   gap: 8px;
@@ -449,6 +492,7 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow-x: auto;
 }
 
 .grid-lines {
@@ -472,13 +516,14 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   flex: 1;
   display: flex;
   align-items: flex-end;
-  gap: 6px;
+  gap: 4px;
   padding-bottom: 22px;
   position: relative;
+  min-width: max-content;
 }
 
 .bar-col {
-  flex: 1;
+  flex: 0 0 28px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -517,7 +562,6 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   bottom: 0;
 }
 
-/* Table */
 .table-card {
   background: var(--color-card);
   border: 1px solid var(--color-border);
@@ -560,9 +604,8 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
 
 .pred-table tr:last-child td { border-bottom: none; }
 
-.td-hour { font-weight: 600; color: var(--color-title); }
-
-.td-confidence { color: #3182ce; font-weight: 600; }
+.td-hour  { font-weight: 600; color: var(--color-title); font-variant-numeric: tabular-nums; }
+.td-model { color: var(--color-muted); font-size: 12px; }
 
 .inline-bar-wrap {
   display: flex;
@@ -589,7 +632,7 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   font-size: 12px;
   font-weight: 600;
   color: var(--color-sub);
-  min-width: 34px;
+  min-width: 38px;
 }
 
 .class-badge {
@@ -599,7 +642,6 @@ onMounted(() => store.fetchPredictions(store.selectedZone.id))
   font-weight: 700;
 }
 
-/* Model info */
 .model-card {
   display: flex;
   align-items: flex-start;
