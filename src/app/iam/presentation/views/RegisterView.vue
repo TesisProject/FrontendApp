@@ -1,32 +1,58 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { z } from 'zod'
 import { useAuthStore } from '../../application/auth.store'
 
 const router    = useRouter()
 const authStore = useAuthStore()
 
-const firstName       = ref('')
-const lastName        = ref('')
-const email           = ref('')
-const phone           = ref('')
-const password        = ref('')
-const confirmPassword = ref('')
-const localError      = ref('')
+// coerce undefined/null to '' so Zod min() shows the right message (not "invalid_type")
+const req = (msg: string, min = 1) =>
+  z.preprocess(val => val ?? '', z.string().min(min, msg))
 
-async function handleRegister() {
-  localError.value = ''
-  if (password.value !== confirmPassword.value) {
-    localError.value = 'Las contraseñas no coinciden'
-    return
-  }
-  if (password.value.length < 8) {
-    localError.value = 'La contraseña debe tener al menos 8 caracteres'
-    return
-  }
-  const ok = await authStore.register(email.value, password.value, firstName.value, lastName.value, phone.value)
+const schema = toTypedSchema(z.object({
+  firstName:       req('Mínimo 2 caracteres', 2),
+  lastName:        req('Mínimo 2 caracteres', 2),
+  email:           z.preprocess(val => val ?? '', z.string().min(1, 'El correo es requerido').email('Ingresa un correo válido')),
+  phone:           req('Ingresa un teléfono válido', 7),
+  password:        req('Mínimo 8 caracteres', 8),
+  confirmPassword: req('Confirma tu contraseña', 1),
+}).refine(data => data.password === data.confirmPassword, {
+  message: 'Las contraseñas no coinciden',
+  path: ['confirmPassword'],
+}))
+
+const { errors, handleSubmit, defineField } = useForm({
+  validationSchema: schema,
+  validateOnMount:  false,
+})
+
+// onTouched: validate on blur first time, then re-validate on every change
+const fieldOpts = (state: { touched: boolean }) => ({
+  validateOnBlur:        true,
+  validateOnModelUpdate: state.touched,
+})
+
+const [firstName,       firstNameAttrs]       = defineField('firstName',       fieldOpts)
+const [lastName,        lastNameAttrs]        = defineField('lastName',        fieldOpts)
+const [email,           emailAttrs]           = defineField('email',           fieldOpts)
+const [phone,           phoneAttrs]           = defineField('phone',           fieldOpts)
+const [password,        passwordAttrs]        = defineField('password',        fieldOpts)
+const [confirmPassword, confirmPasswordAttrs] = defineField('confirmPassword', fieldOpts)
+
+// track which fields the user has interacted with (for green valid border)
+const touched = reactive({
+  firstName: false, lastName: false, email: false,
+  phone: false, password: false, confirmPassword: false,
+})
+
+const onSubmit = handleSubmit(async (values) => {
+  const ok = await authStore.register(values.email, values.password, values.firstName, values.lastName, values.phone)
   if (ok) router.push('/login')
-}
+})
 </script>
 
 <template>
@@ -41,47 +67,137 @@ async function handleRegister() {
       <p class="subtitle">Regístrate para encontrar estacionamiento</p>
     </div>
 
-    <div class="form">
+    <form class="form" @submit.prevent="onSubmit" novalidate>
       <div class="row-two">
         <div class="field">
           <label class="label">Nombre</label>
-          <input v-model="firstName" type="text" class="input" autocomplete="given-name" />
+          <input
+            v-model="firstName"
+            v-bind="firstNameAttrs"
+            type="text"
+            class="input"
+            :class="{
+              'input--error': errors.firstName,
+              'input--valid': touched.firstName && !errors.firstName,
+            }"
+            autocomplete="given-name"
+            @blur="touched.firstName = true"
+          />
+          <Transition name="field-msg">
+            <span v-if="errors.firstName" class="field-error">{{ errors.firstName }}</span>
+          </Transition>
         </div>
         <div class="field">
           <label class="label">Apellido</label>
-          <input v-model="lastName" type="text" class="input" autocomplete="family-name" />
+          <input
+            v-model="lastName"
+            v-bind="lastNameAttrs"
+            type="text"
+            class="input"
+            :class="{
+              'input--error': errors.lastName,
+              'input--valid': touched.lastName && !errors.lastName,
+            }"
+            autocomplete="family-name"
+            @blur="touched.lastName = true"
+          />
+          <Transition name="field-msg">
+            <span v-if="errors.lastName" class="field-error">{{ errors.lastName }}</span>
+          </Transition>
         </div>
       </div>
 
       <div class="field">
         <label class="label">Correo electrónico</label>
-        <input v-model="email" type="email" class="input" autocomplete="email" />
+        <input
+          v-model="email"
+          v-bind="emailAttrs"
+          type="email"
+          class="input"
+          :class="{
+            'input--error': errors.email,
+            'input--valid': touched.email && !errors.email,
+          }"
+          autocomplete="email"
+          @blur="touched.email = true"
+        />
+        <Transition name="field-msg">
+          <span v-if="errors.email" class="field-error">{{ errors.email }}</span>
+        </Transition>
       </div>
 
       <div class="field">
         <label class="label">Teléfono</label>
-        <input v-model="phone" type="tel" class="input" autocomplete="tel" />
+        <input
+          v-model="phone"
+          v-bind="phoneAttrs"
+          type="tel"
+          class="input"
+          :class="{
+            'input--error': errors.phone,
+            'input--valid': touched.phone && !errors.phone,
+          }"
+          autocomplete="tel"
+          @blur="touched.phone = true"
+        />
+        <Transition name="field-msg">
+          <span v-if="errors.phone" class="field-error">{{ errors.phone }}</span>
+        </Transition>
       </div>
 
       <div class="field">
         <label class="label">Contraseña</label>
-        <input v-model="password" type="password" class="input" autocomplete="new-password" />
-        <span class="hint">Mínimo 8 caracteres con letras, números y símbolos</span>
+        <input
+          v-model="password"
+          v-bind="passwordAttrs"
+          type="password"
+          class="input"
+          :class="{
+            'input--error': errors.password,
+            'input--valid': touched.password && !errors.password,
+          }"
+          autocomplete="new-password"
+          @blur="touched.password = true"
+        />
+        <Transition name="field-msg">
+          <span v-if="errors.password" class="field-error">{{ errors.password }}</span>
+          <span v-else-if="!touched.password" class="hint">Mínimo 8 caracteres</span>
+        </Transition>
       </div>
 
       <div class="field">
         <label class="label">Confirmar contraseña</label>
-        <input v-model="confirmPassword" type="password" class="input" autocomplete="new-password" @keyup.enter="handleRegister" />
+        <input
+          v-model="confirmPassword"
+          v-bind="confirmPasswordAttrs"
+          type="password"
+          class="input"
+          :class="{
+            'input--error': errors.confirmPassword,
+            'input--valid': touched.confirmPassword && !errors.confirmPassword,
+          }"
+          autocomplete="new-password"
+          @blur="touched.confirmPassword = true"
+        />
+        <Transition name="field-msg">
+          <span v-if="errors.confirmPassword" class="field-error">{{ errors.confirmPassword }}</span>
+        </Transition>
       </div>
 
-      <p v-if="localError || authStore.registerError" class="error-msg">
-        {{ localError || authStore.registerError }}
-      </p>
+      <Transition name="field-msg">
+        <p v-if="authStore.registerError" class="error-msg">{{ authStore.registerError }}</p>
+      </Transition>
 
-      <button class="btn-primary" :disabled="authStore.registerLoading" @click="handleRegister">
-        {{ authStore.registerLoading ? 'Creando cuenta...' : 'Crear cuenta' }}
+      <button class="btn-primary" type="submit" :disabled="authStore.registerLoading">
+        <span v-if="authStore.registerLoading" class="btn-spinner-wrap">
+          <svg class="spinner" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+          </svg>
+          Creando cuenta...
+        </span>
+        <span v-else>Crear cuenta</span>
       </button>
-    </div>
+    </form>
 
     <p class="terms-text">
       Al registrarte aceptas nuestros
@@ -92,12 +208,13 @@ async function handleRegister() {
 
 <style scoped>
 .card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0px 4px 20px 0px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
   width: 400px;
   padding: 28px 32px 24px;
   position: relative;
+  backdrop-filter: blur(12px);
 }
 
 .back-btn {
@@ -156,6 +273,8 @@ async function handleRegister() {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  /* reserve minimum height to avoid layout jumps on error appear/disappear */
+  min-height: 64px;
 }
 
 .label {
@@ -183,9 +302,51 @@ async function handleRegister() {
   box-shadow: 0 0 0 3px rgba(242, 137, 74, 0.12);
 }
 
+.input--error {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
+}
+
+.input--error:focus {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.15);
+}
+
+.input--valid {
+  border-color: #38a169;
+  box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.08);
+}
+
+.input--valid:focus {
+  border-color: #38a169;
+  box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.14);
+}
+
+.field-error {
+  font-size: 12px;
+  color: #e53e3e;
+  margin-top: 1px;
+}
+
 .hint {
   font-size: 11px;
   color: #888;
+}
+
+/* slide-down transition for error/success messages */
+.field-msg-enter-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.field-msg-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.field-msg-enter-from {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+.field-msg-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 .error-msg {
@@ -204,6 +365,9 @@ async function handleRegister() {
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -213,6 +377,22 @@ async function handleRegister() {
 .btn-primary:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.btn-spinner-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .terms-text {
