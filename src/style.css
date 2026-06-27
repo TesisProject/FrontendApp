@@ -6,20 +6,32 @@
 
 :root {
   --color-primary:     #f2894a;
+  /* darker amber for orange text/links on light surfaces — meets WCAG AA (≈5.9:1 on white) */
+  --color-accent-text: #c2410c;
+  --color-accent-text-hover: #9a3412;
   --color-bg:          #f5f5f5;
   --color-card:        #ffffff;
   --color-input-bg:    #f8f8f8;
   --color-text:        #333333;
-  --color-muted:       #888888;
+  /* slate-500: ≈4.7:1 on white, passes AA for secondary text (was #888888 ≈3.5:1) */
+  --color-muted:       #64748b;
   --color-error:       #e53e3e;
   --shadow-card:       0px 4px 20px 0px rgba(0, 0, 0, 0.08);
 
   --color-title:       #092c4c;
   --color-sub:         #555555;
-  --color-faint:       #aaaaaa;
+  --color-faint:       #98a0ab;
   --color-border:      #e8e8e8;
   --color-border-soft: #f0f0f0;
   --color-toggle-off:  #d1d5db;
+
+  /* Clasificación de zonas (espejo de parking/domain/zone-classification.ts) */
+  --zone-libre:        #38a169;
+  --zone-moderado:     #f2894a;
+  --zone-ocupado:      #e53e3e;
+
+  /* Tipografía de display (titulares / números destacados) */
+  --font-display:      'Space Grotesk', 'Inter', sans-serif;
 
   font-family: 'Inter', 'Source Sans 3', system-ui, sans-serif;
   font-size: 14px;
@@ -37,11 +49,14 @@ html.dark {
   --color-muted:       #94a3b8;
   --color-title:       #e2e8f0;
   --color-sub:         #94a3b8;
-  --color-faint:       #64748b;
+  --color-faint:       #7c879a;
   --color-border:      #334155;
   --color-border-soft: #1e2d3d;
   --color-toggle-off:  #475569;
   --shadow-card:       0px 4px 20px 0px rgba(0, 0, 0, 0.4);
+  /* lighter amber so links stay legible on dark surfaces */
+  --color-accent-text: #fb923c;
+  --color-accent-text-hover: #fdba74;
 }
 
 body {

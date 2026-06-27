@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { RouterView, useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../../iam/application/auth.store'
 
 const router    = useRouter()
+const route     = useRoute()
 const authStore = useAuthStore()
 const collapsed = ref(false)
+const mobileOpen = ref(false)
+
+// close the mobile drawer whenever the route changes
+watch(() => route.fullPath, () => { mobileOpen.value = false })
 
 function handleLogout() {
   authStore.logout()
@@ -15,7 +20,32 @@ function handleLogout() {
 
 <template>
   <div class="user-layout">
-    <aside class="sidebar" :class="{ collapsed }">
+    <!-- Mobile top bar: only shown on small screens -->
+    <header class="mobile-bar">
+      <button
+        class="mobile-menu-btn"
+        @click="mobileOpen = true"
+        aria-label="Abrir menú de navegación"
+        :aria-expanded="mobileOpen"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <span class="mobile-brand">ParkVision</span>
+    </header>
+
+    <!-- Backdrop behind the drawer on mobile -->
+    <div
+      v-if="mobileOpen"
+      class="sidebar-backdrop"
+      @click="mobileOpen = false"
+      aria-hidden="true"
+    />
+
+    <aside class="sidebar" :class="{ collapsed, open: mobileOpen }">
 
       <div class="sidebar-top">
         <button class="toggle-btn" @click="collapsed = !collapsed" :title="collapsed ? 'Expandir' : 'Contraer'">
@@ -281,5 +311,84 @@ function handleLogout() {
 
 .content.collapsed {
   margin-left: 64px;
+}
+
+/* ── Mobile top bar + drawer (hidden on desktop) ── */
+.mobile-bar { display: none; }
+.sidebar-backdrop { display: none; }
+
+@media (max-width: 768px) {
+  .mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding: 0 14px;
+    background: #092c4c;
+    z-index: 30;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .mobile-menu-btn:hover { background: rgba(255, 255, 255, 0.2); }
+  .mobile-menu-btn:focus-visible {
+    outline: 2px solid #f2894a;
+    outline-offset: 2px;
+  }
+
+  .mobile-brand {
+    font-weight: 700;
+    font-size: 16px;
+    color: #fff;
+  }
+
+  /* Sidebar becomes an off-canvas drawer */
+  .sidebar,
+  .sidebar.collapsed {
+    width: 230px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 40;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  /* Hide the desktop collapse control inside the drawer */
+  .toggle-btn { display: none; }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(9, 44, 76, 0.45);
+    z-index: 35;
+  }
+
+  /* Content sits below the top bar, full width */
+  .content,
+  .content.collapsed {
+    margin-left: 0;
+    padding: 72px 16px 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar.collapsed { transition: none; }
 }
 </style>

@@ -36,16 +36,29 @@ const sortedZones = computed(() =>
 
 const recentNotifications = computed(() => notifStore.notifications.slice(0, 5))
 
-const classifMeta: Record<ZoneClassification, { color: string; label: string }> = {
-  LIBRE:    { color: '#38a169', label: 'Libre' },
-  MODERADO: { color: '#f2894a', label: 'Moderado' },
-  OCUPADO:  { color: '#e53e3e', label: 'Ocupado' },
+// Signature element: an occupancy ring gauge per zone. Geometry shared by all rings.
+const RING_R = 22
+const RING_C = 2 * Math.PI * RING_R
+function ringOffset(pct: number): number {
+  const clamped = Math.min(100, Math.max(0, pct))
+  return RING_C * (1 - clamped / 100)
+}
+
+// `color` drives bars/dots/rings; `badgeBg`/`badgeText` give status pills an AA-compliant
+// tint + dark-text combo (solid color + white text failed contrast for small bold text)
+const classifMeta: Record<
+  ZoneClassification,
+  { color: string; label: string; badgeBg: string; badgeText: string }
+> = {
+  LIBRE:    { color: '#38a169', label: 'Libre',    badgeBg: '#e7f6ee', badgeText: '#1c7c4a' },
+  MODERADO: { color: '#f2894a', label: 'Moderado', badgeBg: '#fbeada', badgeText: '#b3540f' },
+  OCUPADO:  { color: '#e53e3e', label: 'Ocupado',  badgeBg: '#fdeaea', badgeText: '#c12c2c' },
 }
 
 const notifMeta: Record<NotificationType, { color: string; label: string }> = {
   AVAILABILITY: { color: '#38a169', label: 'Disponibilidad' },
   PREDICTION:   { color: '#3182ce', label: 'Predicción' },
-  SYSTEM:       { color: '#888888', label: 'Sistema' },
+  SYSTEM:       { color: '#64748b', label: 'Sistema' },
   ALERT:        { color: '#e53e3e', label: 'Alerta' },
 }
 
@@ -68,18 +81,28 @@ onMounted(() => {
 
 <template>
   <div class="dashboard">
-    <div class="welcome">
-      <h1 class="welcome-title">Bienvenido, {{ authStore.user?.email?.split('@')[0] }}</h1>
-      <p class="welcome-sub">Aquí tienes un resumen del estado actual de los estacionamientos</p>
-    </div>
+    <header class="welcome">
+      <div class="welcome-text">
+        <span class="welcome-eyebrow">
+          <span class="live-dot" aria-hidden="true"></span>
+          Panel en vivo
+        </span>
+        <h1 class="welcome-title">Hola, {{ authStore.user?.email?.split('@')[0] }}</h1>
+        <p class="welcome-sub">El estado de los estacionamientos, en tiempo real</p>
+      </div>
+      <div class="welcome-meter" aria-hidden="true">
+        <span class="welcome-meter-pct">{{ globalOccupancy }}<span class="welcome-meter-unit">%</span></span>
+        <span class="welcome-meter-label">ocupación ahora</span>
+      </div>
+    </header>
 
     <div v-if="zoneStore.zonesLoading" class="loading">Cargando métricas...</div>
 
     <template v-else>
       <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-icon" style="background: #ebf8ff; color: #3182ce;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="metric-card" style="--accent: #3182ce; --accent-tint: #ebf8ff;">
+          <div class="metric-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
             </svg>
           </div>
@@ -89,9 +112,9 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="metric-card">
-          <div class="metric-icon" style="background: #f0fff4; color: #38a169;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="metric-card" style="--accent: #38a169; --accent-tint: #f0fff4;">
+          <div class="metric-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           </div>
@@ -101,9 +124,9 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="metric-card">
-          <div class="metric-icon" style="background: #fff5f5; color: #e53e3e;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="metric-card" style="--accent: #e53e3e; --accent-tint: #fff5f5;">
+          <div class="metric-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
             </svg>
           </div>
@@ -113,14 +136,14 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="metric-card">
-          <div class="metric-icon" style="background: #fffbeb; color: #f2894a;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="metric-card" style="--accent: #f2894a; --accent-tint: #fffbeb;">
+          <div class="metric-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
             </svg>
           </div>
           <div class="metric-info">
-            <span class="metric-value">{{ globalOccupancy }}%</span>
+            <span class="metric-value">{{ globalOccupancy }}<span class="metric-unit">%</span></span>
             <span class="metric-label">Ocupación global</span>
           </div>
         </div>
@@ -146,10 +169,34 @@ onMounted(() => {
                 class="zone-row"
                 @click="router.push(`/dashboard/zones/${zone.id}`)"
               >
+                <div class="zone-gauge">
+                  <svg class="gauge-svg" viewBox="0 0 52 52" aria-hidden="true">
+                    <circle class="gauge-track" cx="26" cy="26" :r="RING_R" />
+                    <circle
+                      class="gauge-fill"
+                      cx="26"
+                      cy="26"
+                      :r="RING_R"
+                      :style="{
+                        stroke: classifMeta[zone.classification].color,
+                        strokeDasharray: RING_C,
+                        strokeDashoffset: ringOffset(zone.occupancyPercentage),
+                      }"
+                    />
+                  </svg>
+                  <span class="gauge-pct">{{ Math.round(zone.occupancyPercentage) }}<span class="gauge-unit">%</span></span>
+                </div>
+
                 <div class="zone-row-main">
                   <div class="zone-row-head">
                     <span class="zone-name">{{ zone.name }}</span>
-                    <span class="zone-badge" :style="{ background: classifMeta[zone.classification].color }">
+                    <span
+                      class="zone-badge"
+                      :style="{
+                        background: classifMeta[zone.classification].badgeBg,
+                        color: classifMeta[zone.classification].badgeText,
+                      }"
+                    >
                       {{ classifMeta[zone.classification].label }}
                     </span>
                   </div>
@@ -167,10 +214,12 @@ onMounted(() => {
                     <span class="stat-total">/ {{ zone.totalSpaces }}</span>
                   </div>
                 </div>
-                <div class="zone-row-pct">
-                  <span class="pct-value">{{ Math.round(zone.occupancyPercentage) }}%</span>
-                  <span class="pct-label">ocupado</span>
-                </div>
+
+                <span class="zone-go" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </span>
               </button>
             </div>
           </div>
@@ -205,7 +254,7 @@ onMounted(() => {
               <div class="global-bar">
                 <div class="global-bar-fill" :style="{ width: globalOccupancy + '%' }" />
               </div>
-              <span class="global-pct">{{ globalOccupancy }}%</span>
+              <span class="global-pct">{{ globalOccupancy }}<span class="global-pct-unit">%</span></span>
             </div>
             <div class="global-legend">
               <span class="legend-item">
@@ -246,15 +295,54 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.dashboard { max-width: 1340px; margin: 0 auto; }
+.dashboard {
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  max-width: 1340px;
+  margin: 0 auto;
+}
 
-.welcome { margin-bottom: 28px; }
+/* ── Welcome header ── */
+.welcome {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.welcome-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent-text);
+  margin-bottom: 8px;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16b178;
+  box-shadow: 0 0 0 0 rgba(22, 177, 120, 0.5);
+  animation: live-pulse 2s ease-out infinite;
+}
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0.45); }
+  70%  { box-shadow: 0 0 0 7px rgba(22, 177, 120, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0); }
+}
 
 .welcome-title {
-  font-size: 22px;
+  font-family: var(--font-display);
+  font-size: 27px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--color-title);
-  margin: 0 0 6px;
+  margin: 0 0 5px;
   text-transform: capitalize;
 }
 
@@ -264,12 +352,37 @@ onMounted(() => {
   margin: 0;
 }
 
+.welcome-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.welcome-meter-pct {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-title);
+  font-feature-settings: 'tnum' 1;
+}
+.welcome-meter-unit { font-size: 18px; color: var(--color-muted); margin-left: 1px; }
+.welcome-meter-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+  margin-top: 6px;
+}
+
 .loading {
   color: var(--color-muted);
   font-size: 14px;
   padding: 40px 0;
 }
 
+/* ── Metric cards ── */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -278,37 +391,63 @@ onMounted(() => {
 }
 
 .metric-card {
+  position: relative;
   background: var(--color-card);
-  border-radius: 12px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 16px;
   padding: 20px;
   box-shadow: var(--shadow-card);
   display: flex;
   align-items: center;
   gap: 16px;
+  overflow: hidden;
+  transition: transform 0.22s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.22s;
+}
+/* signature accent: a soft vertical seam in the card's own color */
+.metric-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--accent);
+  opacity: 0.85;
+}
+.metric-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
 }
 
 .metric-icon {
   width: 48px;
   height: 48px;
-  border-radius: 12px;
+  border-radius: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+html.dark .metric-icon {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .metric-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .metric-value {
-  font-size: 26px;
+  font-family: var(--font-display);
+  font-size: 28px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--color-title);
   line-height: 1;
+  font-feature-settings: 'tnum' 1;
 }
+.metric-unit { font-size: 18px; color: var(--color-muted); margin-left: 1px; }
 
 .metric-label {
   font-size: 12px;
@@ -337,6 +476,7 @@ onMounted(() => {
   font-weight: 600;
   color: var(--color-title);
   margin: 0 0 14px;
+  letter-spacing: -0.01em;
 }
 
 .section-head .section-title { margin: 0; }
@@ -344,19 +484,26 @@ onMounted(() => {
 .link-btn {
   background: none;
   border: none;
-  padding: 0;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #f2894a;
+  color: var(--color-accent-text);
   cursor: pointer;
   font-family: inherit;
   transition: color 0.2s;
 }
-.link-btn:hover { color: #e07a3a; }
+.link-btn:hover { color: var(--color-accent-text-hover); }
+.link-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
 
 .card-section {
   background: var(--color-card);
-  border-radius: 12px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 16px;
   padding: 20px;
   box-shadow: var(--shadow-card);
 }
@@ -365,7 +512,8 @@ onMounted(() => {
 
 .empty-card {
   background: var(--color-card);
-  border-radius: 12px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 16px;
   padding: 32px 20px;
   box-shadow: var(--shadow-card);
   text-align: center;
@@ -383,10 +531,10 @@ onMounted(() => {
 .zone-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   background: var(--color-card);
-  border: 1px solid transparent;
-  border-radius: 12px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 16px;
   padding: 16px 18px;
   box-shadow: var(--shadow-card);
   cursor: pointer;
@@ -395,10 +543,51 @@ onMounted(() => {
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 .zone-row:hover {
-  border-color: #f2894a;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
+  border-color: var(--color-primary);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
+  transform: translateY(-2px);
 }
+.zone-row:hover .zone-go { color: var(--color-primary); transform: translateX(2px); }
+.zone-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-color: var(--color-primary);
+}
+
+/* signature: occupancy ring gauge */
+.zone-gauge {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+.gauge-svg {
+  width: 54px;
+  height: 54px;
+  transform: rotate(-90deg);
+}
+.gauge-track {
+  fill: none;
+  stroke: var(--color-border-soft);
+  stroke-width: 5;
+}
+.gauge-fill {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.gauge-pct {
+  position: absolute;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-title);
+  font-feature-settings: 'tnum' 1;
+}
+.gauge-unit { font-size: 8px; color: var(--color-muted); }
 
 .zone-row-main { flex: 1; min-width: 0; }
 
@@ -416,11 +605,10 @@ onMounted(() => {
 }
 
 .zone-badge {
-  padding: 2px 9px;
-  border-radius: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
   font-size: 10px;
   font-weight: 700;
-  color: white;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -443,7 +631,7 @@ onMounted(() => {
 .zone-bar-fill {
   height: 100%;
   border-radius: 4px;
-  transition: width 0.5s;
+  transition: width 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .zone-stats {
@@ -452,30 +640,17 @@ onMounted(() => {
   gap: 6px;
   font-size: 12px;
 }
-.stat-free { color: #38a169; font-weight: 600; }
-.stat-occ  { color: #e53e3e; font-weight: 600; }
+.stat-free { color: #2f855a; font-weight: 600; }
+.stat-occ  { color: #c53030; font-weight: 600; }
 .stat-sep  { color: var(--color-faint); }
-.stat-total { color: var(--color-faint); }
+.stat-total { color: var(--color-muted); }
 
-.zone-row-pct {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.zone-go {
   flex-shrink: 0;
-  min-width: 56px;
-}
-.pct-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--color-title);
-  line-height: 1;
-}
-.pct-label {
-  font-size: 10px;
+  display: flex;
+  align-items: center;
   color: var(--color-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  margin-top: 3px;
+  transition: color 0.2s, transform 0.2s;
 }
 
 /* ── Classification rows ── */
@@ -505,9 +680,11 @@ onMounted(() => {
 }
 
 .classif-count {
+  font-family: var(--font-display);
   font-size: 20px;
   font-weight: 700;
   color: var(--color-title);
+  font-feature-settings: 'tnum' 1;
 }
 
 /* ── Global occupancy ── */
@@ -530,15 +707,18 @@ onMounted(() => {
   height: 100%;
   background: linear-gradient(90deg, #f2894a, #e53e3e);
   border-radius: 8px;
-  transition: width 0.5s;
+  transition: width 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .global-pct {
-  font-size: 16px;
+  font-family: var(--font-display);
+  font-size: 18px;
   font-weight: 700;
   color: var(--color-title);
   min-width: 40px;
+  font-feature-settings: 'tnum' 1;
 }
+.global-pct-unit { font-size: 12px; color: var(--color-muted); }
 
 .global-legend { display: flex; gap: 20px; }
 
@@ -598,7 +778,7 @@ onMounted(() => {
 
 .notif-time {
   font-size: 11px;
-  color: var(--color-faint);
+  color: var(--color-muted);
 }
 
 .empty-inline {
@@ -607,11 +787,40 @@ onMounted(() => {
   padding: 8px 0;
 }
 
+/* ── Entrance: a single restrained page-load stagger ── */
+.metric-card,
+.zone-row {
+  animation: card-rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.metric-card:nth-child(1) { animation-delay: 0.02s; }
+.metric-card:nth-child(2) { animation-delay: 0.08s; }
+.metric-card:nth-child(3) { animation-delay: 0.14s; }
+.metric-card:nth-child(4) { animation-delay: 0.20s; }
+.zone-row:nth-child(1) { animation-delay: 0.10s; }
+.zone-row:nth-child(2) { animation-delay: 0.16s; }
+.zone-row:nth-child(3) { animation-delay: 0.22s; }
+.zone-row:nth-child(4) { animation-delay: 0.28s; }
+.zone-row:nth-child(n+5) { animation-delay: 0.34s; }
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
 @media (max-width: 1024px) {
   .layout-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .welcome { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .welcome-meter { align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metric-card,
+  .zone-row { animation: none; }
+  .live-dot { animation: none; }
+  .gauge-fill,
+  .zone-bar-fill,
+  .global-bar-fill { transition: none; }
 }
 </style>
