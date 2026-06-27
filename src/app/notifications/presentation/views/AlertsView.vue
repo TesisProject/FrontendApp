@@ -3,34 +3,50 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../../../app/iam/application/auth.store'
 import { useNotificationStore } from '../../application/notification.store'
-import type { Notification, NotificationType } from '../../domain/model/notification.model'
+import type {
+  Notification,
+  NotificationType,
+} from '../../domain/model/notification.model'
 
-const router            = useRouter()
-const authStore         = useAuthStore()
+const router = useRouter()
+const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 
 const activeTab = ref<'all' | 'unread'>('all')
-const userId    = computed(() => authStore.user?.id ?? 0)
+const userId = computed(() => authStore.user?.id ?? 0)
 
 const displayed = computed(() =>
   activeTab.value === 'unread'
-    ? (notificationStore.notifications as Notification[]).filter(n => !n.isRead)
-    : (notificationStore.notifications as Notification[])
+    ? (notificationStore.notifications as Notification[]).filter(
+        (n) => !n.isRead,
+      )
+    : (notificationStore.notifications as Notification[]),
 )
 
 const typeIconPaths: Record<NotificationType, string> = {
   AVAILABILITY: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10',
-  PREDICTION:   'M18 20V10 M12 20V4 M6 20v-6',
-  SYSTEM:       'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 8v4 M12 16h.01',
-  ALERT:        'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01',
+  PREDICTION: 'M18 20V10 M12 20V4 M6 20v-6',
+  SYSTEM: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 8v4 M12 16h.01',
+  ALERT:
+    'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01',
 }
 
 function typeLabel(type: NotificationType): string {
-  return { AVAILABILITY: 'Disponibilidad', PREDICTION: 'Predicción', SYSTEM: 'Sistema', ALERT: 'Alerta' }[type]
+  return {
+    AVAILABILITY: 'Disponibilidad',
+    PREDICTION: 'Predicción',
+    SYSTEM: 'Sistema',
+    ALERT: 'Alerta',
+  }[type]
 }
 
 function typeColor(type: NotificationType): string {
-  return { AVAILABILITY: '#38a169', PREDICTION: '#3182ce', SYSTEM: '#888', ALERT: '#e53e3e' }[type]
+  return {
+    AVAILABILITY: '#38a169',
+    PREDICTION: '#3182ce',
+    SYSTEM: '#888',
+    ALERT: '#e53e3e',
+  }[type]
 }
 
 function formatDate(iso: string): string {
@@ -38,10 +54,14 @@ function formatDate(iso: string): string {
   const now = new Date()
   const diff = now.getTime() - d.getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 60)  return `Hace ${mins} min`
+  if (mins < 60) return `Hace ${mins} min`
   const hrs = Math.floor(mins / 60)
-  if (hrs  < 24)  return `Hace ${hrs} h`
-  return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
+  if (hrs < 24) return `Hace ${hrs} h`
+  return d.toLocaleDateString('es-PE', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 async function handleMarkAsRead(n: Notification) {
@@ -50,7 +70,7 @@ async function handleMarkAsRead(n: Notification) {
 }
 
 async function handleMarkAllAsRead() {
-  await notificationStore.markAllAsRead(userId.value)
+  await notificationStore.markAllAsRead()
 }
 
 onMounted(() => notificationStore.fetchAll(userId.value))
@@ -58,7 +78,6 @@ onMounted(() => notificationStore.fetchAll(userId.value))
 
 <template>
   <div class="alerts-page">
-
     <!-- Header -->
     <div class="page-header">
       <div>
@@ -76,11 +95,21 @@ onMounted(() => notificationStore.fetchAll(userId.value))
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab" :class="{ active: activeTab === 'all' }" @click="activeTab = 'all'">
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'all' }"
+        @click="activeTab = 'all'"
+      >
         Todas
-        <span class="tab-count">{{ notificationStore.notifications.length }}</span>
+        <span class="tab-count">{{
+          notificationStore.notifications.length
+        }}</span>
       </button>
-      <button class="tab" :class="{ active: activeTab === 'unread' }" @click="activeTab = 'unread'">
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'unread' }"
+        @click="activeTab = 'unread'"
+      >
         No leídas
         <span class="tab-count unread" v-if="notificationStore.unreadCount > 0">
           {{ notificationStore.unreadCount }}
@@ -101,11 +130,27 @@ onMounted(() => notificationStore.fetchAll(userId.value))
     <!-- Empty -->
     <div v-else-if="displayed.length === 0" class="empty-state">
       <div class="empty-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ccc"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
       </div>
-      <p class="empty-title">{{ activeTab === 'unread' ? 'No tienes notificaciones sin leer' : 'Sin notificaciones' }}</p>
+      <p class="empty-title">
+        {{
+          activeTab === 'unread'
+            ? 'No tienes notificaciones sin leer'
+            : 'Sin notificaciones'
+        }}
+      </p>
     </div>
 
     <!-- List -->
@@ -118,8 +163,23 @@ onMounted(() => notificationStore.fetchAll(userId.value))
         @click="handleMarkAsRead(n)"
       >
         <div class="notif-left">
-          <div class="type-icon" :style="{ background: typeColor(n.type) + '18', color: typeColor(n.type) }">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div
+            class="type-icon"
+            :style="{
+              background: typeColor(n.type) + '18',
+              color: typeColor(n.type),
+            }"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path :d="typeIconPaths[n.type]" />
             </svg>
           </div>
@@ -128,10 +188,18 @@ onMounted(() => notificationStore.fetchAll(userId.value))
 
         <div class="notif-body">
           <div class="notif-top">
-            <span class="type-badge" :style="{ background: typeColor(n.type) + '18', color: typeColor(n.type) }">
+            <span
+              class="type-badge"
+              :style="{
+                background: typeColor(n.type) + '18',
+                color: typeColor(n.type),
+              }"
+            >
               {{ typeLabel(n.type) }}
             </span>
-            <span class="notif-date">{{ formatDate(n.sentAt ?? n.createdAt) }}</span>
+            <span class="notif-date">{{
+              formatDate(n.sentAt ?? n.createdAt)
+            }}</span>
           </div>
           <p class="notif-message">{{ n.message }}</p>
           <button
@@ -146,15 +214,31 @@ onMounted(() => notificationStore.fetchAll(userId.value))
         <div class="notif-right">
           <span v-if="!n.isRead" class="unread-label">Nueva</span>
           <span v-else class="read-label">Leída</span>
-          <button class="delete-btn" title="Eliminar" @click.stop="notificationStore.deleteNotification(n.id)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+          <button
+            class="delete-btn"
+            title="Eliminar"
+            @click.stop="notificationStore.deleteNotification(n.id)"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+              <path d="M9 6V4h6v2" />
             </svg>
           </button>
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -196,7 +280,10 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   transition: all 0.2s;
   margin-top: 4px;
 }
-.mark-all-btn:hover { border-color: var(--color-title); color: var(--color-title); }
+.mark-all-btn:hover {
+  border-color: var(--color-title);
+  color: var(--color-title);
+}
 
 /* Tabs */
 .tabs {
@@ -222,7 +309,11 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   cursor: pointer;
   transition: all 0.2s;
 }
-.tab.active { background: var(--color-card); color: var(--color-title); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.tab.active {
+  background: var(--color-card);
+  color: var(--color-title);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
 
 .tab-count {
   background: var(--color-border);
@@ -232,7 +323,10 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   padding: 1px 7px;
   border-radius: 10px;
 }
-.tab-count.unread { background: #e53e3e; color: white; }
+.tab-count.unread {
+  background: #e53e3e;
+  color: white;
+}
 
 /* States */
 .center-state {
@@ -240,8 +334,13 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   justify-content: center;
   padding: 60px 0;
 }
-.state-text       { font-size: 14px; color: var(--color-faint); }
-.state-text.error { color: #e53e3e; }
+.state-text {
+  font-size: 14px;
+  color: var(--color-faint);
+}
+.state-text.error {
+  color: #e53e3e;
+}
 
 .empty-state {
   display: flex;
@@ -250,8 +349,15 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   padding: 60px 0;
   gap: 10px;
 }
-.empty-icon  { margin-bottom: 8px; }
-.empty-title { font-size: 15px; font-weight: 600; color: var(--color-muted); margin: 0; }
+.empty-icon {
+  margin-bottom: 8px;
+}
+.empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin: 0;
+}
 
 /* Notifications */
 .notifications-list {
@@ -269,11 +375,18 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   border: 1px solid var(--color-border);
   padding: 14px 16px;
   cursor: pointer;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
   position: relative;
 }
-.notification-card:hover    { box-shadow: 0 3px 10px rgba(0,0,0,0.07); }
-.notification-card.unread   { border-color: #f2894a44; background: #fffbf8; }
+.notification-card:hover {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.07);
+}
+.notification-card.unread {
+  border-color: #f2894a44;
+  background: #fffbf8;
+}
 
 .notif-left {
   display: flex;
@@ -344,7 +457,9 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   cursor: pointer;
   transition: color 0.2s;
 }
-.zone-link:hover { color: #e07a3a; }
+.zone-link:hover {
+  color: #e07a3a;
+}
 
 .notif-right {
   flex-shrink: 0;
@@ -375,7 +490,12 @@ onMounted(() => notificationStore.fetchAll(userId.value))
   display: flex;
   align-items: center;
   margin-top: 4px;
-  transition: color 0.2s, background 0.2s;
+  transition:
+    color 0.2s,
+    background 0.2s;
 }
-.delete-btn:hover { color: #e53e3e; background: #fde8e8; }
+.delete-btn:hover {
+  color: #e53e3e;
+  background: #fde8e8;
+}
 </style>

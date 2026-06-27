@@ -4,6 +4,7 @@
 <template>
   <footer class="auth-footer">
     <span class="brand">ParkVision</span>
+    <span class="copyright">© {{ new Date().getFullYear() }} ParkVision. Todos los derechos reservados.</span>
     <div class="links">
       <a href="#">Términos y condiciones</a>
       <a href="#">Bases legales</a>
@@ -26,11 +27,15 @@
 <style scoped>
 .auth-footer {
   height: 56px;
-  background: #092c4c;
+  background: rgba(7, 22, 42, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   padding: 0 24px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .brand {
@@ -38,6 +43,12 @@
   font-weight: 700;
   font-size: 16px;
   color: white;
+  margin-right: 16px;
+}
+
+.copyright {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
   flex: 1;
 }
 

@@ -1,18 +1,40 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { z } from 'zod'
 import { useAuthStore } from '../../application/auth.store'
 
 const router    = useRouter()
 const authStore = useAuthStore()
 
-const email    = ref('')
-const password = ref('')
+const schema = toTypedSchema(z.object({
+  email:    z.preprocess(val => val ?? '', z.string().min(1, 'El correo es requerido').email('Ingresa un correo válido')),
+  password: z.preprocess(val => val ?? '', z.string().min(1, 'La contraseña es requerida')),
+}))
 
-async function handleLogin() {
-  const ok = await authStore.login(email.value, password.value)
+const { errors, handleSubmit, defineField } = useForm({
+  validationSchema: schema,
+  validateOnMount:  false,
+})
+
+// onTouched: validate on blur first time, then re-validate on every change
+const fieldOpts = (state: { touched: boolean }) => ({
+  validateOnBlur:        true,
+  validateOnModelUpdate: state.touched,
+})
+
+const [email, emailAttrs]       = defineField('email',    fieldOpts)
+const [password, passwordAttrs] = defineField('password', fieldOpts)
+
+// track which fields the user has interacted with (for green valid border)
+const touched = reactive({ email: false, password: false })
+
+const onSubmit = handleSubmit(async (values) => {
+  const ok = await authStore.login(values.email, values.password)
   if (ok) router.push('/dashboard')
-}
+})
 </script>
 
 <template>
@@ -20,25 +42,63 @@ async function handleLogin() {
     <h1 class="title">Bienvenido de vuelta</h1>
     <p class="subtitle">Ingresa tus credenciales para continuar</p>
 
-    <div class="field">
-      <label class="label">Correo electrónico</label>
-      <input v-model="email" type="email" class="input" autocomplete="email" />
-    </div>
+    <form @submit.prevent="onSubmit" novalidate>
+      <div class="field">
+        <label class="label">Correo electrónico</label>
+        <input
+          v-model="email"
+          v-bind="emailAttrs"
+          type="email"
+          class="input"
+          :class="{
+            'input--error': errors.email,
+            'input--valid': touched.email && !errors.email,
+          }"
+          autocomplete="email"
+          @blur="touched.email = true"
+        />
+        <Transition name="field-msg">
+          <span v-if="errors.email" class="field-error">{{ errors.email }}</span>
+        </Transition>
+      </div>
 
-    <div class="field">
-      <label class="label">Contraseña</label>
-      <input v-model="password" type="password" class="input" autocomplete="current-password" @keyup.enter="handleLogin" />
-    </div>
+      <div class="field">
+        <label class="label">Contraseña</label>
+        <input
+          v-model="password"
+          v-bind="passwordAttrs"
+          type="password"
+          class="input"
+          :class="{
+            'input--error': errors.password,
+            'input--valid': touched.password && !errors.password,
+          }"
+          autocomplete="current-password"
+          @blur="touched.password = true"
+        />
+        <Transition name="field-msg">
+          <span v-if="errors.password" class="field-error">{{ errors.password }}</span>
+        </Transition>
+      </div>
 
-    <div class="forgot-row">
-      <router-link to="/forgot-password" class="link-primary">¿Olvidaste tu contraseña?</router-link>
-    </div>
+      <div class="forgot-row">
+        <router-link to="/forgot-password" class="link-primary">¿Olvidaste tu contraseña?</router-link>
+      </div>
 
-    <p v-if="authStore.loginError" class="error-msg">{{ authStore.loginError }}</p>
+      <Transition name="field-msg">
+        <p v-if="authStore.loginError" class="error-msg">{{ authStore.loginError }}</p>
+      </Transition>
 
-    <button class="btn-primary" :disabled="authStore.loginLoading" @click="handleLogin">
-      {{ authStore.loginLoading ? 'Iniciando sesión...' : 'Iniciar sesión' }}
-    </button>
+      <button class="btn-primary" type="submit" :disabled="authStore.loginLoading">
+        <span v-if="authStore.loginLoading" class="btn-spinner-wrap">
+          <svg class="spinner" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+          </svg>
+          Iniciando sesión...
+        </span>
+        <span v-else>Iniciar sesión</span>
+      </button>
+    </form>
 
     <p class="register-text">
       ¿No tienes cuenta?
@@ -49,11 +109,12 @@ async function handleLogin() {
 
 <style scoped>
 .card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0px 4px 20px 0px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
   width: 380px;
-  padding: 32px;
+  padding: 36px 32px;
+  backdrop-filter: blur(12px);
 }
 
 .title {
@@ -77,6 +138,8 @@ async function handleLogin() {
   flex-direction: column;
   gap: 2px;
   margin-bottom: 14px;
+  /* reserve space so layout doesn't jump when error appears */
+  min-height: 68px;
 }
 
 .label {
@@ -102,6 +165,48 @@ async function handleLogin() {
 .input:focus {
   border-color: #f2894a;
   box-shadow: 0 0 0 3px rgba(242, 137, 74, 0.12);
+}
+
+.input--error {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
+}
+
+.input--error:focus {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.15);
+}
+
+.input--valid {
+  border-color: #38a169;
+  box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.08);
+}
+
+.input--valid:focus {
+  border-color: #38a169;
+  box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.14);
+}
+
+.field-error {
+  font-size: 12px;
+  color: #e53e3e;
+  margin-top: 2px;
+}
+
+/* slide-down transition for error/success messages */
+.field-msg-enter-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.field-msg-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.field-msg-enter-from {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+.field-msg-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 .forgot-row {
@@ -138,6 +243,9 @@ async function handleLogin() {
   cursor: pointer;
   margin-bottom: 16px;
   transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -147,6 +255,22 @@ async function handleLogin() {
 .btn-primary:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.btn-spinner-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .register-text {

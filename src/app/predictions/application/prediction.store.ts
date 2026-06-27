@@ -1,68 +1,123 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { Prediction, PredictionModel } from '../domain/model/prediction.model'
+import { ref, computed } from 'vue'
+import type {
+  OccupancyForecast,
+  DayOfWeek,
+  ZoneForecastComparison,
+} from '../domain/model/prediction.model'
+import { predictionApi } from '../infrastructure/prediction-api'
+import { toForecast, toZoneComparison } from '../infrastructure/prediction-assembler'
+import { ZoneApi } from '../../parking/infrastructure/zone-api'
+import { SpaceApi } from '../../parking/infrastructure/space-api'
+import type { ParkingSpace } from '../../parking/domain/model/space.model'
 
-// Mock data — reemplazar por predictionApi cuando el backend esté listo
-function generateMockPredictions(zoneId: string, zoneName: string): Prediction[] {
-  const now = new Date()
-  const pattern = [0.25, 0.30, 0.55, 0.72, 0.80, 0.78, 0.65, 0.50, 0.60, 0.74, 0.45, 0.28]
-  return pattern.map((occ, i) => {
-    const target = new Date(now)
-    target.setHours(now.getHours() + i + 1, 0, 0, 0)
-    return {
-      id:                  `mock-${zoneId}-${i}`,
-      zoneId,
-      zoneName,
-      modelId:             'mock-model-1',
-      predictedOccupancy:  occ,
-      targetDatetime:      target.toISOString(),
-      confidenceScore:     0.85 + Math.random() * 0.1,
-      createdAt:           now.toISOString(),
-    }
-  })
-}
+const zoneApi = new ZoneApi()
+const spaceApi = new SpaceApi()
 
-const MOCK_MODEL: PredictionModel = {
-  id:          'mock-model-1',
-  version:     '1.3.0',
-  algorithm:   'RANDOM_FOREST',
-  accuracy:    0.91,
-  deployedAt:  '2025-05-10T00:00:00Z',
-}
-
-const MOCK_ZONES = [
-  { id: 'zone-1', name: 'Zona Norte' },
-  { id: 'zone-2', name: 'Zona Centro' },
-  { id: 'zone-3', name: 'Zona Sur' },
+const JS_TO_BACKEND_DAY: DayOfWeek[] = [
+  'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
 ]
 
+function todayDayOfWeek(): DayOfWeek {
+  return JS_TO_BACKEND_DAY[new Date().getDay()]
+}
+
 export const usePredictionStore = defineStore('predictions', () => {
-  const predictions  = ref<Prediction[]>([])
-  const activeModel  = ref<PredictionModel | null>(MOCK_MODEL)
-  const zones        = ref(MOCK_ZONES)
-  const selectedZone = ref(MOCK_ZONES[0])
+  const zones        = ref<{ id: number; name: string }[]>([])
+  const spots        = ref<ParkingSpace[]>([])
+  const selectedZoneId = ref<number | null>(null)
+  const selectedSpotId = ref<number | null>(null)
+  const selectedDay  = ref<DayOfWeek>(todayDayOfWeek())
+  const forecasts    = ref<OccupancyForecast[]>([])
   const loading      = ref(false)
   const error        = ref<string | null>(null)
 
-  async function fetchPredictions(zoneId: string) {
+  // Comparación predicción IA vs detección real de cámaras (nivel zona, ventana vigente)
+  const comparison          = ref<ZoneForecastComparison | null>(null)
+  const comparisonLoading   = ref(false)
+  const comparisonUnavailable = ref<string | null>(null)
+
+  const filteredForecasts = computed(() =>
+    forecasts.value
+      .filter(f => f.dayOfWeek === selectedDay.value)
+      .sort((a, b) => a.startMinuteOfDay - b.startMinuteOfDay)
+  )
+
+  const modelVersion = computed(() => forecasts.value[0]?.modelVersion ?? null)
+
+  async function loadZones() {
+    try {
+      const res = await zoneApi.getAll()
+      zones.value = res.map(z => ({ id: z.id, name: z.name }))
+    } catch {
+      error.value = 'No se pudieron cargar las zonas'
+    }
+  }
+
+  async function selectZone(zoneId: number) {
+    selectedZoneId.value = zoneId
+    selectedSpotId.value = null
+    forecasts.value = []
+    spots.value = []
+    try {
+      spots.value = (await spaceApi.getByZone(zoneId)).map(s => ({
+        id:          s.id,
+        zoneId:      s.zoneId,
+        spaceNumber: s.spaceNumber,
+        occupied:    s.currentStatus === 'OCCUPIED',
+        lastUpdated: s.updatedAt,
+      }))
+    } catch {
+      error.value = 'No se pudieron cargar los espacios'
+    }
+    await fetchComparison(zoneId)
+  }
+
+  /**
+   * Carga la comparación predicción vs cámaras de la zona para la ventana vigente.
+   * Un 404 (sin predicción de la IA para este bloque horario) no es un error: se trata como
+   * "no disponible" para que la vista muestre un estado vacío amable.
+   */
+  async function fetchComparison(zoneId: number) {
+    comparison.value = null
+    comparisonUnavailable.value = null
+    comparisonLoading.value = true
+    try {
+      const res = await predictionApi.getZoneComparison(zoneId)
+      comparison.value = toZoneComparison(res)
+    } catch (e) {
+      const status = (e as { status?: number })?.status
+      comparisonUnavailable.value = status === 404
+        ? 'La IA aún no generó una predicción para la ventana horaria actual de esta zona.'
+        : 'No se pudo cargar la comparación predicción vs cámaras.'
+    } finally {
+      comparisonLoading.value = false
+    }
+  }
+
+  async function fetchForecasts(spotId: number) {
+    selectedSpotId.value = spotId
     loading.value = true
     error.value   = null
     try {
-      // TODO: reemplazar con predictionApi.getPredictions(zoneId) cuando el backend esté listo
-      await new Promise(r => setTimeout(r, 600))
-      const zone = zones.value.find(z => z.id === zoneId) ?? zones.value[0]
-      predictions.value = generateMockPredictions(zone.id, zone.name)
+      const res = await predictionApi.getBySpot(spotId)
+      forecasts.value = res.map(toForecast)
     } catch {
-      error.value = 'No se pudo cargar las predicciones'
+      error.value = 'No se pudieron cargar las predicciones para este espacio'
     } finally {
       loading.value = false
     }
   }
 
-  function selectZone(zoneId: string) {
-    const zone = zones.value.find(z => z.id === zoneId)
-    if (zone) selectedZone.value = zone
+  function selectDay(day: DayOfWeek) {
+    selectedDay.value = day
   }
 
-  return { predictions, activeModel, zones, selectedZone, loading, error, fetchPredictions, selectZone }
+  return {
+    zones, spots, selectedZoneId, selectedSpotId, selectedDay,
+    forecasts, filteredForecasts, modelVersion,
+    loading, error,
+    comparison, comparisonLoading, comparisonUnavailable,
+    loadZones, selectZone, fetchForecasts, fetchComparison, selectDay,
+  }
 })
