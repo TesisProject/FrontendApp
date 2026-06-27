@@ -33,14 +33,17 @@ export const useAuthStore = defineStore('auth', () => {
     registerState.setLoading()
     try {
       const { id } = await authApi.register({ email, password, roleName: 'USER' })
-      const signIn  = await authApi.signIn({ email, password })
-      tokenRepository.save(signIn.token)
+      const signIn    = await authApi.signIn({ email, password })
+      const authToken = toAuthToken(signIn)
+      tokenRepository.save(authToken.token)
       try {
         await authApi.updateProfile(id, { firstName, lastName, phone })
       } catch {
         // no crítico — el usuario puede completar el perfil desde la vista de perfil
       }
-      tokenRepository.clear()
+      // mantener la sesión iniciada para entrar directo al dashboard
+      tokenRepository.saveUser(authToken.user)
+      loginState.setData(authToken.user)
       registerState.setData(null)
       return true
     } catch (err: any) {
