@@ -4,36 +4,117 @@
   padding: 0;
 }
 
+/* =============================================================================
+   ParkVision · Design tokens (single source of truth)
+   -----------------------------------------------------------------------------
+   --pv-*     canonical light palette + scales. Consumed by:
+                • auth surface  (.auth-* classes below)
+                • admin panel   (admin-shared.css aliases --c-* → --pv-*)
+                • user pages    (--color-* aliases below, theme-aware)
+   --color-*  user-app theme layer (light + dark via html.dark), derived from
+              --pv-* where the value is shared.
+   The admin + auth surfaces are intentionally light: they build on --pv-* only,
+   so they are unaffected by html.dark (mirrors the previous behaviour).
+   ============================================================================= */
 :root {
-  --color-primary:     #f2894a;
-  /* darker amber for orange text/links on light surfaces — meets WCAG AA (≈5.9:1 on white) */
-  --color-accent-text: #c2410c;
-  --color-accent-text-hover: #9a3412;
-  --color-bg:          #f5f5f5;
-  --color-card:        #ffffff;
-  --color-input-bg:    #f8f8f8;
-  --color-text:        #333333;
-  /* slate-500: ≈4.7:1 on white, passes AA for secondary text (was #888888 ≈3.5:1) */
-  --color-muted:       #64748b;
-  --color-error:       #e53e3e;
-  --shadow-card:       0px 4px 20px 0px rgba(0, 0, 0, 0.08);
+  /* ── Brand · amber (primary action) ─────────────────────────────────────── */
+  --pv-amber:            #f2894a;
+  --pv-amber-hover:      #e87b3a;
+  --pv-amber-press:      #d76f2f;
+  --pv-amber-ring:       rgba(242, 137, 74, 0.13);
+  --pv-amber-glow:       rgba(242, 137, 74, 0.28);
+  /* accessible amber text/links on light surfaces — WCAG AA (~5.9:1 on white) */
+  --pv-amber-text:       #c2410c;
+  --pv-amber-text-hover: #9a3412;
 
-  --color-title:       #092c4c;
-  --color-sub:         #555555;
-  --color-faint:       #98a0ab;
-  --color-border:      #e8e8e8;
-  --color-border-soft: #f0f0f0;
-  --color-toggle-off:  #d1d5db;
+  /* ── Brand · navy (titles / admin primary) ──────────────────────────────── */
+  --pv-navy:             #092c4c;
+  --pv-navy-hover:       #0e3d68;
+  --pv-navy-soft:        #e8f0fb;
+  --pv-ink:              #0a1e38;   /* near-black navy for display text */
 
-  /* Clasificación de zonas (espejo de parking/domain/zone-classification.ts) */
-  --zone-libre:        #38a169;
-  --zone-moderado:     #f2894a;
-  --zone-ocupado:      #e53e3e;
+  /* ── Surfaces / neutrals ────────────────────────────────────────────────── */
+  --pv-bg:               #f5f5f5;
+  --pv-surface:          #ffffff;
+  --pv-surface-alt:      #f8fafc;
+  --pv-input-bg:         #f8f8f8;
 
-  /* Tipografía de display (titulares / números destacados) */
-  --font-display:      'Space Grotesk', 'Inter', sans-serif;
+  /* ── Text ────────────────────────────────────────────────────────────────── */
+  --pv-text:             #24303c;
+  --pv-text-2:           #5b6b7b;   /* secondary */
+  --pv-text-muted:       #8a94a0;
+  --pv-text-faint:       #98a0ab;
+  --pv-label:            #2b3a4d;
+  --pv-placeholder:      #aebac8;
 
-  font-family: 'Inter', 'Source Sans 3', system-ui, sans-serif;
+  /* ── Borders ─────────────────────────────────────────────────────────────── */
+  --pv-border:           #e3e8ef;
+  --pv-border-soft:      #f0f0f0;
+  --pv-border-strong:    #cbd5e1;
+
+  /* ── Semantic status ─────────────────────────────────────────────────────── */
+  --pv-success:          #16b178;
+  --pv-success-strong:   #2e7d52;
+  --pv-success-soft:     #e6f9ef;
+  --pv-success-ring:     rgba(22, 177, 120, 0.1);
+  --pv-warning:          #b26a00;
+  --pv-warning-soft:     #fff4e5;
+  --pv-danger:           #e53e3e;
+  --pv-danger-strong:    #c53030;
+  --pv-danger-soft:      #fdecea;
+  --pv-danger-ring:      rgba(229, 62, 62, 0.1);
+
+  /* ── Zone classification (mirror parking/domain/zone-classification.ts) ──── */
+  --zone-libre:          #38a169;
+  --zone-moderado:       #f2894a;
+  --zone-ocupado:        #e53e3e;
+
+  /* ── Radii ───────────────────────────────────────────────────────────────── */
+  --pv-radius-sm:        6px;
+  --pv-radius-md:        10px;
+  --pv-radius-lg:        12px;
+  --pv-radius-xl:        16px;
+  --pv-radius-pill:      999px;
+
+  /* ── Elevation ───────────────────────────────────────────────────────────── */
+  --pv-shadow-sm:        0 1px 3px rgba(9, 44, 76, 0.08);
+  --pv-shadow-md:        0 4px 14px rgba(9, 44, 76, 0.10);
+  --pv-shadow-lg:        0 12px 36px rgba(9, 44, 76, 0.18);
+  --pv-shadow-card:      0 4px 20px rgba(0, 0, 0, 0.08);
+
+  /* ── Motion ──────────────────────────────────────────────────────────────── */
+  --pv-t-fast:           150ms ease-out;
+  --pv-t-med:            220ms ease-out;
+
+  /* ── Typography ──────────────────────────────────────────────────────────── */
+  --pv-font-ui:          'Inter', 'Source Sans 3', system-ui, sans-serif;
+  --pv-font-display:     'Space Grotesk', 'Inter', sans-serif;   /* auth / user headings */
+  --pv-font-signage:     'Barlow Condensed', 'Inter', sans-serif;/* admin panel headings */
+  --pv-font-mono:        'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
+
+  /* ── User-app theme layer (derived from --pv-*, overridden in html.dark) ─── */
+  --color-primary:           var(--pv-amber);
+  --color-accent-text:       var(--pv-amber-text);
+  --color-accent-text-hover: var(--pv-amber-text-hover);
+  --color-bg:                var(--pv-bg);
+  --color-card:              var(--pv-surface);
+  --color-input-bg:          var(--pv-input-bg);
+  --color-text:              #333333;
+  --color-muted:             #64748b;  /* slate-500 ≈4.7:1 on white (AA) */
+  --color-error:             var(--pv-danger);
+  --shadow-card:             var(--pv-shadow-card);
+
+  --color-title:             var(--pv-navy);
+  --color-sub:               #555555;
+  --color-faint:             var(--pv-text-faint);
+  --color-border:            #e8e8e8;
+  --color-border-soft:       var(--pv-border-soft);
+  --color-toggle-off:        #d1d5db;
+
+  /* legacy alias kept for existing consumers */
+  --font-display:            var(--pv-font-display);
+
+  font-family: var(--pv-font-ui);
   font-size: 14px;
   line-height: 1.5;
   color: var(--color-text);
@@ -42,20 +123,20 @@
 }
 
 html.dark {
-  --color-bg:          #0f172a;
-  --color-card:        #1e293b;
-  --color-input-bg:    #273549;
-  --color-text:        #e2e8f0;
-  --color-muted:       #94a3b8;
-  --color-title:       #e2e8f0;
-  --color-sub:         #94a3b8;
-  --color-faint:       #7c879a;
-  --color-border:      #334155;
-  --color-border-soft: #1e2d3d;
-  --color-toggle-off:  #475569;
-  --shadow-card:       0px 4px 20px 0px rgba(0, 0, 0, 0.4);
+  --color-bg:                #0f172a;
+  --color-card:              #1e293b;
+  --color-input-bg:          #273549;
+  --color-text:              #e2e8f0;
+  --color-muted:             #94a3b8;
+  --color-title:             #e2e8f0;
+  --color-sub:               #94a3b8;
+  --color-faint:             #7c879a;
+  --color-border:            #334155;
+  --color-border-soft:       #1e2d3d;
+  --color-toggle-off:        #475569;
+  --shadow-card:             0px 4px 20px 0px rgba(0, 0, 0, 0.4);
   /* lighter amber so links stay legible on dark surfaces */
-  --color-accent-text: #fb923c;
+  --color-accent-text:       #fb923c;
   --color-accent-text-hover: #fdba74;
 }
 
@@ -82,10 +163,11 @@ input {
   font-family: inherit;
 }
 
-/* =========================================================
-   Auth design system (login / register / recuperación)
-   Display: Space Grotesk · UI: Inter · Accent: amber #f2894a
-   ========================================================= */
+/* =============================================================================
+   Auth design system  (login · register · recuperación · admin login)
+   Display: Space Grotesk · UI: Inter · Accent: amber (--pv-amber)
+   Structure is provided by the ui/ component kit; these classes are the skin.
+   ============================================================================= */
 .auth-card {
   width: 100%;
   max-width: 410px;
@@ -102,31 +184,31 @@ input {
   width: 38px;
   height: 38px;
   margin-bottom: 20px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--pv-border);
   border-radius: 11px;
-  background: #fff;
-  color: #0a1e38;
+  background: var(--pv-surface);
+  color: var(--pv-ink);
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+  transition: border-color var(--pv-t-med), background var(--pv-t-med), transform var(--pv-t-med);
 }
-.auth-back:hover { border-color: #0a1e38; background: #f6f8fb; transform: translateX(-2px); }
+.auth-back:hover { border-color: var(--pv-ink); background: #f6f8fb; transform: translateX(-2px); }
 
 .auth-eyebrow {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--color-primary);
+  color: var(--pv-amber);
   margin: 0 0 10px;
 }
 
 .auth-title {
-  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  font-family: var(--pv-font-display);
   font-weight: 700;
   font-size: 29px;
   line-height: 1.08;
   letter-spacing: -0.02em;
-  color: #0a1e38;
+  color: var(--pv-ink);
   margin: 0 0 8px;
 }
 
@@ -155,7 +237,7 @@ input {
   min-height: 74px;
 }
 
-.auth-label { font-size: 13px; font-weight: 500; color: #2b3a4d; }
+.auth-label { font-size: 13px; font-weight: 500; color: var(--pv-label); }
 
 .auth-input-wrap { position: relative; display: flex; }
 
@@ -163,22 +245,22 @@ input {
   width: 100%;
   height: 46px;
   box-sizing: border-box;
-  background: #fff;
-  border: 1.5px solid #e3e8ef;
-  border-radius: 10px;
+  background: var(--pv-surface);
+  border: 1.5px solid var(--pv-border);
+  border-radius: var(--pv-radius-md);
   padding: 0 14px;
   font-size: 14px;
   color: #1f2d3d;
   outline: none;
   transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
 }
-.auth-input::placeholder { color: #aebac8; }
-.auth-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 4px rgba(242, 137, 74, 0.13); }
+.auth-input::placeholder { color: var(--pv-placeholder); }
+.auth-input:focus { border-color: var(--pv-amber); box-shadow: 0 0 0 4px var(--pv-amber-ring); }
 .auth-input--pwd { padding-right: 44px; }
-.auth-input--error { border-color: #e53e3e; box-shadow: 0 0 0 4px rgba(229, 62, 62, 0.1); }
-.auth-input--error:focus { border-color: #e53e3e; box-shadow: 0 0 0 4px rgba(229, 62, 62, 0.16); }
-.auth-input--valid { border-color: #16b178; box-shadow: 0 0 0 4px rgba(22, 177, 120, 0.1); }
-.auth-input--valid:focus { border-color: #16b178; box-shadow: 0 0 0 4px rgba(22, 177, 120, 0.16); }
+.auth-input--error { border-color: var(--pv-danger); box-shadow: 0 0 0 4px var(--pv-danger-ring); }
+.auth-input--error:focus { border-color: var(--pv-danger); box-shadow: 0 0 0 4px rgba(229, 62, 62, 0.16); }
+.auth-input--valid { border-color: var(--pv-success); box-shadow: 0 0 0 4px var(--pv-success-ring); }
+.auth-input--valid:focus { border-color: var(--pv-success); box-shadow: 0 0 0 4px rgba(22, 177, 120, 0.16); }
 
 .auth-eye {
   position: absolute;
@@ -199,13 +281,13 @@ input {
 }
 .auth-eye:hover { color: #5a6b80; background: #f1f4f8; }
 
-.auth-field-error { font-size: 12px; color: #e53e3e; }
+.auth-field-error { font-size: 12px; color: var(--pv-danger); }
 .auth-field-hint { font-size: 12px; color: #90a0b0; }
 
 .auth-forgot { display: flex; justify-content: flex-end; margin: -2px 0 2px; }
 
 .auth-link {
-  color: var(--color-primary);
+  color: var(--pv-amber);
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
@@ -226,9 +308,9 @@ input {
   width: 100%;
   height: 48px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--pv-radius-md);
   cursor: pointer;
-  background: var(--color-primary);
+  background: var(--pv-amber);
   color: #fff;
   font-size: 15px;
   font-weight: 600;
@@ -236,10 +318,10 @@ input {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 6px 16px rgba(242, 137, 74, 0.28);
+  box-shadow: 0 6px 16px var(--pv-amber-glow);
   transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
 }
-.auth-btn:hover:not(:disabled) { background: #e87b3a; transform: translateY(-1px); box-shadow: 0 8px 22px rgba(242, 137, 74, 0.34); }
+.auth-btn:hover:not(:disabled) { background: var(--pv-amber-hover); transform: translateY(-1px); box-shadow: 0 8px 22px rgba(242, 137, 74, 0.34); }
 .auth-btn:active:not(:disabled) { transform: translateY(0); }
 .auth-btn:disabled { opacity: 0.65; cursor: not-allowed; box-shadow: none; }
 
@@ -247,6 +329,26 @@ input {
 @keyframes auth-spin { to { transform: rotate(360deg); } }
 
 .auth-alt { font-size: 13px; color: #6b7a8d; text-align: center; }
+
+/* ── OTP code inputs (recuperación) ──────────────────────────────────────── */
+.auth-otp-row { display: flex; gap: 12px; margin-bottom: 6px; }
+.auth-otp-input {
+  flex: 1;
+  min-width: 0;
+  height: 56px;
+  background: var(--pv-surface);
+  border: 1.5px solid var(--pv-border);
+  border-radius: var(--pv-radius-md);
+  text-align: center;
+  font-family: var(--pv-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--pv-ink);
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.auth-otp-input:focus { border-color: var(--pv-amber); box-shadow: 0 0 0 4px var(--pv-amber-ring); }
+.auth-otp-input.auth-otp-input--error { border-color: var(--pv-danger); box-shadow: 0 0 0 4px var(--pv-danger-ring); }
 
 /* field message slide/fade transition (use with <Transition name="auth-msg">) */
 .auth-msg-enter-active { transition: opacity 0.18s ease, transform 0.18s ease; }

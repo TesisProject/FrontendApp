@@ -2,6 +2,11 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../application/auth.store'
+import AuthCard from '../../../shared/presentation/components/ui/AuthCard.vue'
+import AuthField from '../../../shared/presentation/components/ui/AuthField.vue'
+import AuthInput from '../../../shared/presentation/components/ui/AuthInput.vue'
+import AuthAlert from '../../../shared/presentation/components/ui/AuthAlert.vue'
+import SubmitButton from '../../../shared/presentation/components/ui/SubmitButton.vue'
 
 const router    = useRouter()
 const route     = useRoute()
@@ -29,151 +34,39 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="card">
-    <button class="back-btn" @click="router.back()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-    </button>
-    <div class="header">
-      <h1 class="title">Recuperar contraseña</h1>
-      <p class="subtitle">Actualiza tu contraseña</p>
-    </div>
+  <AuthCard
+    back
+    eyebrow="Recuperación"
+    title="Nueva contraseña"
+    sub="Crea una contraseña segura para volver a acceder a tu cuenta."
+    @back="router.back()"
+  >
+    <form class="auth-form" @submit.prevent="handleSubmit" novalidate>
+      <AuthField label="Contraseña" hint="Mínimo 8 caracteres con letras, números y símbolos">
+        <AuthInput
+          v-model="password"
+          type="password"
+          autocomplete="new-password"
+          placeholder="••••••••"
+        />
+      </AuthField>
 
-    <div class="form">
-      <div class="field">
-        <label class="label">Contraseña</label>
-        <input v-model="password" type="password" class="input" autocomplete="new-password" />
-        <span class="hint">Mínimo 8 caracteres con letras, números y símbolos</span>
-      </div>
+      <AuthField label="Confirmar contraseña">
+        <AuthInput
+          v-model="confirmPw"
+          type="password"
+          autocomplete="new-password"
+          placeholder="••••••••"
+        />
+      </AuthField>
 
-      <div class="field">
-        <label class="label">Confirmar contraseña</label>
-        <input v-model="confirmPw" type="password" class="input" autocomplete="new-password" @keyup.enter="handleSubmit" />
-      </div>
+      <AuthAlert :message="localError || authStore.recoveryError" />
 
-      <p v-if="localError || authStore.recoveryError" class="error-msg">
-        {{ localError || authStore.recoveryError }}
-      </p>
-
-      <button class="btn-primary" :disabled="authStore.recoveryLoading" @click="handleSubmit">
-        {{ authStore.recoveryLoading ? 'Actualizando...' : 'Actualizar contraseña' }}
-      </button>
-    </div>
-  </div>
+      <SubmitButton
+        :loading="authStore.recoveryLoading"
+        label="Actualizar contraseña"
+        loading-label="Actualizando..."
+      />
+    </form>
+  </AuthCard>
 </template>
-
-<style scoped>
-.card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0px 4px 20px 0px rgba(0, 0, 0, 0.08);
-  width: 400px;
-  padding: 28px 32px;
-}
-
-.back-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #092c4c;
-  padding: 4px;
-  margin-bottom: 12px;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.back-btn:hover {
-  background: #f5f5f5;
-}
-
-.header {
-  margin-bottom: 20px;
-}
-
-.title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 22px;
-  color: #092c4c;
-  margin: 0 0 4px;
-}
-
-.subtitle {
-  font-size: 13px;
-  color: #888;
-  margin: 0;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #333;
-}
-
-.input {
-  height: 42px;
-  background: white;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 14px;
-  color: #333;
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.input:focus {
-  border-color: #f2894a;
-  box-shadow: 0 0 0 3px rgba(242, 137, 74, 0.12);
-}
-
-.hint {
-  font-size: 11px;
-  color: #888;
-}
-
-.error-msg {
-  font-size: 13px;
-  color: #e53e3e;
-}
-
-.btn-primary {
-  width: 100%;
-  height: 44px;
-  background: #f2894a;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #e07a3a;
-}
-
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-</style>

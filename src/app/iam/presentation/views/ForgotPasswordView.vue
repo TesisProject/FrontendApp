@@ -2,6 +2,11 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../application/auth.store'
+import AuthCard from '../../../shared/presentation/components/ui/AuthCard.vue'
+import AuthField from '../../../shared/presentation/components/ui/AuthField.vue'
+import AuthInput from '../../../shared/presentation/components/ui/AuthInput.vue'
+import AuthAlert from '../../../shared/presentation/components/ui/AuthAlert.vue'
+import SubmitButton from '../../../shared/presentation/components/ui/SubmitButton.vue'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -15,49 +20,34 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="auth-card">
-    <button class="auth-back" @click="router.back()" aria-label="Volver">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-    </button>
-
-    <p class="auth-eyebrow">Recuperación</p>
-    <h1 class="auth-title">Recupera tu acceso</h1>
-    <p class="auth-sub">Escribe tu correo y te enviaremos un código de verificación para restablecer tu contraseña.</p>
-
+  <AuthCard
+    back
+    eyebrow="Recuperación"
+    title="Recupera tu acceso"
+    sub="Escribe tu correo y te enviaremos un código de verificación para restablecer tu contraseña."
+    @back="router.back()"
+  >
     <form class="auth-form" @submit.prevent="handleSubmit" novalidate>
-      <div class="auth-field">
-        <label class="auth-label">Correo electrónico</label>
-        <div class="auth-input-wrap">
-          <input
-            v-model="email"
-            type="email"
-            class="auth-input"
-            autocomplete="email"
-            placeholder="tucorreo@ejemplo.com"
-            @keyup.enter="handleSubmit"
-          />
-        </div>
-      </div>
+      <AuthField label="Correo electrónico">
+        <AuthInput
+          v-model="email"
+          type="email"
+          autocomplete="email"
+          placeholder="tucorreo@ejemplo.com"
+        />
+      </AuthField>
 
-      <Transition name="auth-msg">
-        <p v-if="authStore.recoveryError" class="auth-alert">{{ authStore.recoveryError }}</p>
-      </Transition>
+      <AuthAlert :message="authStore.recoveryError" />
 
-      <button class="auth-btn" type="submit" :disabled="authStore.recoveryLoading">
-        <template v-if="authStore.recoveryLoading">
-          <svg class="auth-spinner" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="31.4" stroke-dashoffset="10"/>
-          </svg>
-          Enviando...
-        </template>
-        <template v-else>Enviar código</template>
-      </button>
+      <SubmitButton
+        :loading="authStore.recoveryLoading"
+        label="Enviar código"
+        loading-label="Enviando..."
+      />
     </form>
 
     <p class="auth-alt">
       <router-link to="/login" class="auth-link">← Volver a iniciar sesión</router-link>
     </p>
-  </div>
+  </AuthCard>
 </template>
