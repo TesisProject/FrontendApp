@@ -11,6 +11,7 @@
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.0",
     "@vee-validate/zod": "^4.15.1",
+    "axios": "^1.18.1",
     "jwt-decode": "^4.0.0",
     "pinia": "^3.0.4",
     "vee-validate": "^4.15.1",
