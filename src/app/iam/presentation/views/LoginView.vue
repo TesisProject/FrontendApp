@@ -92,5 +92,10 @@ const onSubmit = handleSubmit(async (values) => {
       ¿No tienes cuenta?
       <router-link to="/register" class="auth-link">Regístrate aquí</router-link>
     </p>
+
+    <p class="auth-alt">
+      ¿Eres administrador?
+      <router-link to="/admin" class="auth-link">Accede al panel</router-link>
+    </p>
   </AuthCard>
 </template>
