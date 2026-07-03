@@ -9,10 +9,12 @@ import { predictionApi } from '../infrastructure/prediction-api'
 import { toForecast, toZoneComparison } from '../infrastructure/prediction-assembler'
 import { ZoneApi } from '../../parking/infrastructure/zone-api'
 import { SpaceApi } from '../../parking/infrastructure/space-api'
+import { AvailabilityApi } from '../../parking/infrastructure/availability-api'
 import type { ParkingSpace } from '../../parking/domain/model/space.model'
 
 const zoneApi = new ZoneApi()
 const spaceApi = new SpaceApi()
+const availabilityApi = new AvailabilityApi()
 
 const JS_TO_BACKEND_DAY: DayOfWeek[] = [
   'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
@@ -60,11 +62,19 @@ export const usePredictionStore = defineStore('predictions', () => {
     forecasts.value = []
     spots.value = []
     try {
-      spots.value = (await spaceApi.getByZone(zoneId)).map(s => ({
+      // Catálogo de parking + estado vivo de vision (si vision falla, se muestran libres).
+      const [catalog, availability] = await Promise.all([
+        spaceApi.getByZone(zoneId),
+        availabilityApi.getByZone(zoneId).catch(() => null),
+      ])
+      const occupied = new Set(
+        (availability?.spaces ?? []).filter(s => s.occupied).map(s => s.parkingSpaceId),
+      )
+      spots.value = catalog.map(s => ({
         id:          s.id,
         zoneId:      s.zoneId,
         spaceNumber: s.spaceNumber,
-        occupied:    s.currentStatus === 'OCCUPIED',
+        occupied:    occupied.has(s.id),
         lastUpdated: s.updatedAt,
       }))
     } catch {

@@ -2,13 +2,42 @@ import { defineStore } from 'pinia'
 import { useAsyncState } from '../../shared/helpers/async-state'
 import { ZoneApi } from '../infrastructure/zone-api'
 import { SpaceApi } from '../infrastructure/space-api'
+import { AvailabilityApi } from '../infrastructure/availability-api'
 import { toZone } from '../infrastructure/zone-assembler'
 import { toSpace } from '../infrastructure/space-assembler'
 import type { Zone } from '../domain/model/zone.model'
 import type { ParkingSpace } from '../domain/model/space.model'
+import type { ZoneAvailabilityResponse } from '../infrastructure/availability-response'
 
 const zoneApi = new ZoneApi()
 const spaceApi = new SpaceApi()
+const availabilityApi = new AvailabilityApi()
+
+/** Última disponibilidad conocida por zona (vision). Si vision falla, la zona se pinta sin ocupación. */
+const availabilityByZone = new Map<number, ZoneAvailabilityResponse>()
+
+async function loadAllAvailability(): Promise<void> {
+  try {
+    const all = await availabilityApi.getAll()
+    all.forEach(a => availabilityByZone.set(a.zoneId, a))
+  } catch {
+    // La disponibilidad es progresiva: sin vision se muestran solo los datos estáticos.
+  }
+}
+
+async function loadZoneAvailability(zoneId: number): Promise<ZoneAvailabilityResponse | undefined> {
+  try {
+    const availability = await availabilityApi.getByZone(zoneId)
+    availabilityByZone.set(zoneId, availability)
+    return availability
+  } catch {
+    return availabilityByZone.get(zoneId)
+  }
+}
+
+function occupiedSetOf(availability?: ZoneAvailabilityResponse): Set<number> {
+  return new Set((availability?.spaces ?? []).filter(s => s.occupied).map(s => s.parkingSpaceId))
+}
 
 export const useZoneStore = defineStore('zone', () => {
   const zonesState = useAsyncState<Zone[]>([])
@@ -18,8 +47,8 @@ export const useZoneStore = defineStore('zone', () => {
   async function fetchZones() {
     zonesState.setLoading()
     try {
-      const responses = await zoneApi.getAll()
-      zonesState.setData(responses.map(toZone))
+      const [responses] = await Promise.all([zoneApi.getAll(), loadAllAvailability()])
+      zonesState.setData(responses.map(r => toZone(r, availabilityByZone.get(r.id))))
     } catch (err: any) {
       zonesState.setError(err?.message ?? 'Error al cargar zonas')
     }
@@ -29,8 +58,11 @@ export const useZoneStore = defineStore('zone', () => {
     zoneState.reset()
     zoneState.setLoading()
     try {
-      const response = await zoneApi.getById(id)
-      zoneState.setData(toZone(response))
+      const [response, availability] = await Promise.all([
+        zoneApi.getById(id),
+        loadZoneAvailability(id),
+      ])
+      zoneState.setData(toZone(response, availability))
     } catch (err: any) {
       zoneState.setError(err?.message ?? 'Error al cargar la zona')
     }
@@ -39,11 +71,40 @@ export const useZoneStore = defineStore('zone', () => {
   async function fetchSpacesByZone(zoneId: number) {
     spacesState.setLoading()
     try {
-      const responses = await spaceApi.getByZone(zoneId)
-      spacesState.setData(responses.map(toSpace))
+      const [responses, availability] = await Promise.all([
+        spaceApi.getByZone(zoneId),
+        loadZoneAvailability(zoneId),
+      ])
+      const occupied = occupiedSetOf(availability)
+      spacesState.setData(responses.map(r => toSpace(r, occupied.has(r.id))))
     } catch (err: any) {
       spacesState.setError(err?.message ?? 'Error al cargar espacios')
     }
+  }
+
+  /**
+   * Refresco ligero para el timer del detalle: re-consulta solo la disponibilidad (vision) y
+   * actualiza la zona y el estado de los espacios ya cargados, sin volver a pedir el catálogo.
+   */
+  async function refreshAvailability(zoneId: number) {
+    const availability = await loadZoneAvailability(zoneId)
+    if (!availability) return
+    const currentZone = zoneState.data.value
+    if (currentZone && currentZone.id === zoneId) {
+      zoneState.setData({
+        ...currentZone,
+        occupiedCount:       availability.occupied,
+        freeCount:           availability.available,
+        occupancyPercentage: availability.occupancyPercentage,
+        classification:      availability.classification as Zone['classification'],
+      })
+    }
+    const occupied = occupiedSetOf(availability)
+    spacesState.setData(
+      spacesState.data.value.map(space =>
+        space.zoneId === zoneId ? { ...space, occupied: occupied.has(space.id) } : space,
+      ),
+    )
   }
 
   return {
@@ -59,5 +120,6 @@ export const useZoneStore = defineStore('zone', () => {
     fetchZones,
     fetchZone,
     fetchSpacesByZone,
+    refreshAvailability,
   }
 })
