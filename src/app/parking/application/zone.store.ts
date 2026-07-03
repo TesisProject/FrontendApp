@@ -7,7 +7,7 @@ import { toZone } from '../infrastructure/zone-assembler'
 import { toSpace } from '../infrastructure/space-assembler'
 import type { Zone } from '../domain/model/zone.model'
 import type { ParkingSpace } from '../domain/model/space.model'
-import type { ZoneAvailabilityResponse } from '../infrastructure/availability-response'
+import type { ZoneAvailabilityResponse, ZoneOccupancyHistoryPointResponse } from '../infrastructure/availability-response'
 
 const zoneApi = new ZoneApi()
 const spaceApi = new SpaceApi()
@@ -43,6 +43,7 @@ export const useZoneStore = defineStore('zone', () => {
   const zonesState = useAsyncState<Zone[]>([])
   const zoneState = useAsyncState<Zone | null>(null)
   const spacesState = useAsyncState<ParkingSpace[]>([])
+  const historyState = useAsyncState<ZoneOccupancyHistoryPointResponse[]>([])
 
   async function fetchZones() {
     zonesState.setLoading()
@@ -82,6 +83,21 @@ export const useZoneStore = defineStore('zone', () => {
     }
   }
 
+  async function fetchHistory(zoneId: number, options?: { silent?: boolean }) {
+    if (!options?.silent) historyState.setLoading()
+    try {
+      const points = await availabilityApi.getZoneHistory(zoneId)
+      // Orden cronológico garantizado para el gráfico.
+      historyState.setData(
+        [...points].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)),
+      )
+    } catch (err: any) {
+      if (!options?.silent) {
+        historyState.setError(err?.message ?? 'Error al cargar el historial')
+      }
+    }
+  }
+
   /**
    * Refresco ligero para el timer del detalle: re-consulta solo la disponibilidad (vision) y
    * actualiza la zona y el estado de los espacios ya cargados, sin volver a pedir el catálogo.
@@ -117,9 +133,13 @@ export const useZoneStore = defineStore('zone', () => {
     spaces: spacesState.data,
     spacesLoading: spacesState.loading,
     spacesError: spacesState.error,
+    history: historyState.data,
+    historyLoading: historyState.loading,
+    historyError: historyState.error,
     fetchZones,
     fetchZone,
     fetchSpacesByZone,
+    fetchHistory,
     refreshAvailability,
   }
 })

@@ -14,3 +14,11 @@ export interface SpaceAvailabilityResponse {
   spaceNumber:    string
   occupied:       boolean
 }
+
+/** Un frame del historial de ocupación (`/occupancy/zones/{id}/occupancy/history`). */
+export interface ZoneOccupancyHistoryPointResponse {
+  occupiedSpots: number
+  totalSpots:    number
+  freeSpots:     number
+  occurredAt:    string
+}

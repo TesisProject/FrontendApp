@@ -2,16 +2,15 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useZoneStore } from '../../application/zone.store'
-import { useCameraStore } from '../../../vision/application/camera.store'
 import { useFavoriteStore } from '../../../favorites/application/favorite.store'
 import { useAuthStore } from '../../../iam/application/auth.store'
 import ZoneRating from '../../../ratings/presentation/components/ZoneRating.vue'
+import OccupancyHistoryChart from '../components/OccupancyHistoryChart.vue'
 import type { ZoneClassification } from '../../domain/model/zone.model'
 
 const router = useRouter()
 const route = useRoute()
 const zoneStore = useZoneStore()
-const cameraStore = useCameraStore()
 const favoriteStore = useFavoriteStore()
 const authStore = useAuthStore()
 
@@ -33,10 +32,6 @@ const classificationColor = (c: ZoneClassification) =>
 const classificationLabel = (c: ZoneClassification) =>
   ({ LIBRE: 'Libre', MODERADO: 'Moderado', OCUPADO: 'Ocupado' })[c]
 
-const cameraStatusColor = (active: boolean) => (active ? '#38a169' : '#aaa')
-
-const cameraStatusLabel = (active: boolean) => (active ? 'Activa' : 'Inactiva')
-
 const occupancyPct = computed(() =>
   zoneStore.zone ? Math.round(zoneStore.zone.occupancyPercentage) : 0,
 )
@@ -47,12 +42,13 @@ onMounted(async () => {
   await Promise.all([
     zoneStore.fetchZone(zoneId.value),
     zoneStore.fetchSpacesByZone(zoneId.value),
-    cameraStore.fetchByZone(zoneId.value),
+    zoneStore.fetchHistory(zoneId.value),
     favoriteStore.fetchFavorites(userId.value),
   ])
-  // Solo re-consulta la disponibilidad viva (vision); el catálogo estático no cambia.
+  // Re-consulta la disponibilidad viva y el historial (vision); el catálogo estático no cambia.
   refreshTimer = setInterval(() => {
     zoneStore.refreshAvailability(zoneId.value)
+    zoneStore.fetchHistory(zoneId.value, { silent: true })
   }, 30_000)
 })
 
@@ -229,64 +225,26 @@ onUnmounted(() => clearInterval(refreshTimer))
           </div>
         </div>
 
-        <!-- Cameras -->
-        <div class="section-card cameras-section">
-          <h2 class="section-title">Cámaras</h2>
+        <!-- Occupancy history -->
+        <div class="section-card">
+          <div class="history-head">
+            <h2 class="section-title">Historial de ocupación</h2>
+            <p class="history-sub">
+              Cada punto es un frame registrado por las cámaras — pasa el cursor
+              para ver la hora y la ocupación de ese momento.
+            </p>
+          </div>
 
-          <div v-if="cameraStore.camerasLoading" class="section-state">
-            Cargando cámaras...
+          <div v-if="zoneStore.historyLoading" class="section-state">
+            Cargando historial...
           </div>
-          <div v-else-if="cameraStore.camerasError" class="section-state error">
-            {{ cameraStore.camerasError }}
+          <div v-else-if="zoneStore.historyError" class="section-state error">
+            {{ zoneStore.historyError }}
           </div>
-          <div
-            v-else-if="cameraStore.cameras.length === 0"
-            class="section-state"
-          >
-            Sin cámaras registradas.
+          <div v-else-if="zoneStore.history.length === 0" class="section-state">
+            Aún no hay historial registrado para esta zona.
           </div>
-          <div v-else class="camera-list">
-            <div
-              v-for="camera in cameraStore.cameras"
-              :key="camera.id"
-              class="camera-row"
-            >
-              <div class="camera-icon-wrap">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#092c4c"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M23 7l-7 5 7 5V7z" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
-              </div>
-              <div class="camera-info">
-                <p class="camera-ip">{{ camera.name }}</p>
-                <p class="camera-id">
-                  {{ camera.code }}<template v-if="camera.location"> · {{ camera.location }}</template>
-                </p>
-              </div>
-              <span
-                class="camera-status"
-                :style="{
-                  background: cameraStatusColor(camera.active) + '22',
-                  color: cameraStatusColor(camera.active),
-                }"
-              >
-                <span
-                  class="status-dot"
-                  :style="{ background: cameraStatusColor(camera.active) }"
-                />
-                {{ cameraStatusLabel(camera.active) }}
-              </span>
-            </div>
-          </div>
+          <OccupancyHistoryChart v-else :points="zoneStore.history" />
         </div>
 
         <!-- Rating -->
@@ -452,9 +410,19 @@ onUnmounted(() => clearInterval(refreshTimer))
 /* Main grid */
 .main-grid {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr;
   gap: 16px;
   align-items: start;
+}
+
+.history-head {
+  margin-bottom: 12px;
+}
+
+.history-sub {
+  font-size: 12px;
+  color: #8a94a0;
+  margin: 4px 0 0;
 }
 
 .section-card {
@@ -543,72 +511,6 @@ onUnmounted(() => clearInterval(refreshTimer))
 }
 .ocupado-dot {
   background: #e53e3e;
-}
-
-/* Cameras */
-.camera-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.camera-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
-  background: #fafafa;
-}
-
-.camera-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: #eef2f7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.camera-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.camera-ip {
-  font-size: 13px;
-  font-weight: 600;
-  color: #092c4c;
-  margin: 0 0 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.camera-id {
-  font-size: 11px;
-  color: #aaa;
-  margin: 0;
-}
-
-.camera-status {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
 }
 
 /* State helpers */
