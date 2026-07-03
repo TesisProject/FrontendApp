@@ -13,7 +13,7 @@ const usersStore   = useAdminUsersStore()
 const totalZones       = computed(() => zonesStore.zones.length)
 const totalUsers       = computed(() => usersStore.users.length)
 const totalCameras     = computed(() => camerasStore.cameras.length)
-const activeCameras    = computed(() => camerasStore.cameras.filter(c => c.status === 'ACTIVE').length)
+const activeCameras    = computed(() => camerasStore.cameras.filter(c => c.active).length)
 const globalOccupancy  = computed(() => {
   if (!zonesStore.zones.length) return 0
   const avg = zonesStore.zones.reduce((s, z) => s + z.occupancyPercentage, 0) / zonesStore.zones.length
@@ -39,11 +39,19 @@ onMounted(() => Promise.all([
       <p class="page-sub">Resumen general del sistema ParkVision</p>
     </div>
 
-    <div v-if="loading" class="loading">Cargando métricas...</div>
+    <div v-if="loading" class="metrics-grid" aria-hidden="true">
+      <div v-for="i in 4" :key="i" class="metric-card skeleton-card">
+        <div class="skeleton skeleton-icon" />
+        <div class="metric-info">
+          <span class="skeleton skeleton-value" />
+          <span class="skeleton skeleton-label" />
+        </div>
+      </div>
+    </div>
 
     <template v-else>
       <div class="metrics-grid">
-        <div class="metric-card" @click="router.push('/admin/zones')" style="cursor:pointer">
+        <button type="button" class="metric-card clickable" @click="router.push('/admin/zones')">
           <div class="metric-icon" style="background:#ebf8ff; color:#3182ce">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/>
@@ -54,9 +62,9 @@ onMounted(() => Promise.all([
             <span class="metric-value">{{ totalZones }}</span>
             <span class="metric-label">Zonas registradas</span>
           </div>
-        </div>
+        </button>
 
-        <div class="metric-card" @click="router.push('/admin/users')" style="cursor:pointer">
+        <button type="button" class="metric-card clickable" @click="router.push('/admin/users')">
           <div class="metric-icon" style="background:#f0fff4; color:#38a169">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -69,9 +77,9 @@ onMounted(() => Promise.all([
             <span class="metric-value">{{ totalUsers }}</span>
             <span class="metric-label">Usuarios registrados</span>
           </div>
-        </div>
+        </button>
 
-        <div class="metric-card" @click="router.push('/admin/cameras')" style="cursor:pointer">
+        <button type="button" class="metric-card clickable" @click="router.push('/admin/cameras')">
           <div class="metric-icon" style="background:#fff5eb; color:#f2894a">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 7l-7 5 7 5V7z"/>
@@ -82,7 +90,7 @@ onMounted(() => Promise.all([
             <span class="metric-value">{{ activeCameras }}<span class="metric-total">/{{ totalCameras }}</span></span>
             <span class="metric-label">Cámaras activas</span>
           </div>
-        </div>
+        </button>
 
         <div class="metric-card">
           <div class="metric-icon" style="background:#fff5f5; color:#e53e3e">
@@ -152,32 +160,83 @@ onMounted(() => Promise.all([
 </template>
 
 <style scoped>
-.admin-dash { max-width: 900px; }
+.admin-dash { max-width: 900px; margin: 0 auto; }
 
 .page-header { margin-bottom: 28px; }
-.page-title  { font-size: 22px; font-weight: 700; color: #092c4c; margin: 0 0 4px; }
-.page-sub    { font-size: 13px; color: #888; margin: 0; }
-
-.loading { font-size: 14px; color: #aaa; padding: 40px 0; }
+.page-title {
+  font-family: 'Barlow Condensed', 'Inter', sans-serif;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.05;
+  color: #092c4c;
+  margin: 0 0 4px;
+  letter-spacing: 0.3px;
+}
+.page-title::after {
+  content: '';
+  display: block;
+  width: 38px;
+  height: 7px;
+  margin-top: 7px;
+  border-radius: 1px;
+  background: repeating-linear-gradient(115deg, #f2894a 0 9px, transparent 9px 15px);
+}
+.page-sub { font-size: 13px; color: #5b6b7b; margin: 0; }
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 16px;
   margin-bottom: 32px;
 }
 
 .metric-card {
   background: white;
+  border: 1px solid #e5e9ee;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 3px rgba(9, 44, 76, 0.08);
   display: flex;
   align-items: center;
   gap: 14px;
-  transition: box-shadow 0.2s;
+  text-align: left;
+  font-family: inherit;
+  transition: box-shadow 0.2s ease-out, transform 0.2s ease-out, border-color 0.2s ease-out;
 }
-.metric-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+
+.metric-card.clickable { cursor: pointer; }
+.metric-card.clickable:hover {
+  box-shadow: 0 6px 18px rgba(9, 44, 76, 0.12);
+  transform: translateY(-2px);
+  border-color: #c3d4f5;
+}
+.metric-card.clickable:active { transform: translateY(0) scale(0.99); }
+.metric-card.clickable:focus-visible {
+  outline: 2px solid #092c4c;
+  outline-offset: 2px;
+}
+
+/* Skeleton de carga */
+.skeleton {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #eef1f4 25%, #f7f9fb 50%, #eef1f4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+.skeleton-icon  { width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; }
+.skeleton-value { width: 56px; height: 24px; margin-bottom: 6px; }
+.skeleton-label { width: 110px; height: 12px; }
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  .metric-card { transition: none; }
+}
 
 .metric-icon {
   width: 48px; height: 48px;
@@ -189,13 +248,21 @@ onMounted(() => Promise.all([
 .metric-info { display: flex; flex-direction: column; gap: 2px; }
 
 .metric-value {
-  font-size: 26px; font-weight: 700; color: #092c4c; line-height: 1;
+  font-family: 'Barlow Condensed', 'Inter', sans-serif;
+  font-size: 34px; font-weight: 600; color: #092c4c; line-height: 1;
 }
-.metric-total { font-size: 14px; color: #aaa; font-weight: 400; }
-.metric-label { font-size: 12px; color: #888; }
+.metric-total { font-size: 16px; color: #8a94a0; font-weight: 500; }
+.metric-label { font-size: 12px; color: #5b6b7b; }
 
 .section { margin-bottom: 28px; }
-.section-title { font-size: 15px; font-weight: 600; color: #092c4c; margin: 0 0 14px; }
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #5b6b7b;
+  margin: 0 0 14px;
+}
 
 .classif-grid {
   display: grid;
@@ -205,9 +272,10 @@ onMounted(() => Promise.all([
 
 .classif-card {
   background: white;
+  border: 1px solid #e5e9ee;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 3px rgba(9, 44, 76, 0.08);
   display: flex;
   align-items: center;
   gap: 14px;
@@ -219,8 +287,11 @@ onMounted(() => Promise.all([
   flex-shrink: 0;
 }
 
-.classif-count { font-size: 28px; font-weight: 700; color: #092c4c; margin: 0 0 2px; line-height: 1; }
-.classif-label { font-size: 12px; color: #888; margin: 0; }
+.classif-count {
+  font-family: 'Barlow Condensed', 'Inter', sans-serif;
+  font-size: 34px; font-weight: 600; color: #092c4c; margin: 0 0 2px; line-height: 1;
+}
+.classif-label { font-size: 12px; color: #5b6b7b; margin: 0; }
 
 .shortcuts { display: flex; gap: 12px; flex-wrap: wrap; }
 
@@ -237,4 +308,6 @@ onMounted(() => Promise.all([
   transition: all 0.2s;
 }
 .shortcut-btn:hover { border-color: #092c4c; background: #f5f8fb; }
+.shortcut-btn:focus-visible { outline: 2px solid #092c4c; outline-offset: 2px; }
+.shortcut-btn:active { transform: scale(0.97); }
 </style>

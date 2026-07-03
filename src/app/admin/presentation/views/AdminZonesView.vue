@@ -875,7 +875,7 @@ onMounted(() => store.fetchZones())
   font-size: 13px;
   font-weight: 600;
   color: #333;
-  font-family: monospace;
+  font-family: var(--font-mono);
   letter-spacing: 0.5px;
 }
 

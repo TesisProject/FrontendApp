@@ -178,7 +178,7 @@ onMounted(() => store.fetchNodes())
 <style scoped>
 @import '../styles/admin-shared.css';
 
-.td-code { font-family: monospace; font-size: 12px; color: #092c4c; font-weight: 600; }
+.td-code { font-family: var(--font-mono); font-size: 12px; color: #092c4c; font-weight: 600; }
 .td-muted { color: #888; font-size: 12px; }
 .optional { font-weight: 400; text-transform: none; letter-spacing: 0; color: #bbb; }
 .check-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }

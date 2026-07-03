@@ -120,6 +120,9 @@ function handleLogout() {
   top: 0;
   left: 0;
   height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
 .brand {
@@ -155,6 +158,7 @@ function handleLogout() {
 }
 
 .nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -163,13 +167,35 @@ function handleLogout() {
   color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   font-size: 14px;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
 }
 
-.nav-item:hover,
-.nav-item.router-link-active {
-  background: rgba(255, 255, 255, 0.1);
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: white;
+}
+
+/* Sección activa: fondo + barra indicadora naranja */
+.nav-item.router-link-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  font-weight: 600;
+}
+.nav-item.router-link-active::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #f2894a;
+}
+
+.nav-item:focus-visible,
+.logout-btn:focus-visible {
+  outline: 2px solid #f2894a;
+  outline-offset: 2px;
 }
 
 .profile-link {
