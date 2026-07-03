@@ -7,7 +7,6 @@ import { useFavoriteStore } from '../../../favorites/application/favorite.store'
 import { useAuthStore } from '../../../iam/application/auth.store'
 import ZoneRating from '../../../ratings/presentation/components/ZoneRating.vue'
 import type { ZoneClassification } from '../../domain/model/zone.model'
-import type { CameraStatus } from '../../../vision/domain/model/camera.model'
 
 const router = useRouter()
 const route = useRoute()
@@ -34,11 +33,9 @@ const classificationColor = (c: ZoneClassification) =>
 const classificationLabel = (c: ZoneClassification) =>
   ({ LIBRE: 'Libre', MODERADO: 'Moderado', OCUPADO: 'Ocupado' })[c]
 
-const cameraStatusColor = (s: CameraStatus) =>
-  ({ ACTIVE: '#38a169', INACTIVE: '#aaa', ERROR: '#e53e3e' })[s]
+const cameraStatusColor = (active: boolean) => (active ? '#38a169' : '#aaa')
 
-const cameraStatusLabel = (s: CameraStatus) =>
-  ({ ACTIVE: 'Activa', INACTIVE: 'Inactiva', ERROR: 'Error' })[s]
+const cameraStatusLabel = (active: boolean) => (active ? 'Activa' : 'Inactiva')
 
 const occupancyPct = computed(() =>
   zoneStore.zone ? Math.round(zoneStore.zone.occupancyPercentage) : 0,
@@ -53,9 +50,9 @@ onMounted(async () => {
     cameraStore.fetchByZone(zoneId.value),
     favoriteStore.fetchFavorites(userId.value),
   ])
+  // Solo re-consulta la disponibilidad viva (vision); el catálogo estático no cambia.
   refreshTimer = setInterval(() => {
-    zoneStore.fetchZone(zoneId.value)
-    zoneStore.fetchSpacesByZone(zoneId.value)
+    zoneStore.refreshAvailability(zoneId.value)
   }, 30_000)
 })
 
@@ -243,14 +240,14 @@ onUnmounted(() => clearInterval(refreshTimer))
             {{ cameraStore.camerasError }}
           </div>
           <div
-            v-else-if="(cameraStore.cameras as any[]).length === 0"
+            v-else-if="cameraStore.cameras.length === 0"
             class="section-state"
           >
             Sin cámaras registradas.
           </div>
           <div v-else class="camera-list">
             <div
-              v-for="camera in cameraStore.cameras as any[]"
+              v-for="camera in cameraStore.cameras"
               :key="camera.id"
               class="camera-row"
             >
@@ -270,21 +267,23 @@ onUnmounted(() => clearInterval(refreshTimer))
                 </svg>
               </div>
               <div class="camera-info">
-                <p class="camera-ip">{{ camera.ipAddress }}</p>
-                <p class="camera-id">ID: {{ camera.id.slice(0, 8) }}...</p>
+                <p class="camera-ip">{{ camera.name }}</p>
+                <p class="camera-id">
+                  {{ camera.code }}<template v-if="camera.location"> · {{ camera.location }}</template>
+                </p>
               </div>
               <span
                 class="camera-status"
                 :style="{
-                  background: cameraStatusColor(camera.status) + '22',
-                  color: cameraStatusColor(camera.status),
+                  background: cameraStatusColor(camera.active) + '22',
+                  color: cameraStatusColor(camera.active),
                 }"
               >
                 <span
                   class="status-dot"
-                  :style="{ background: cameraStatusColor(camera.status) }"
+                  :style="{ background: cameraStatusColor(camera.active) }"
                 />
-                {{ cameraStatusLabel(camera.status) }}
+                {{ cameraStatusLabel(camera.active) }}
               </span>
             </div>
           </div>
