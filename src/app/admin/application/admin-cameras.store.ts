@@ -28,12 +28,11 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
     saving.value = true
     try {
       const body: AdminCameraCreateRequest = {
-        zoneId:          form.zoneId as number,
-        name:            form.name,
-        streamUrl:       form.streamUrl,
-        resolution:      form.resolution || undefined,
-        fps:             form.fps !== '' ? (form.fps as number) : undefined,
-        detectorVersion: form.detectorVersion || undefined,
+        code:     form.code,
+        zoneId:   form.zoneId as number,
+        nodeId:   form.nodeId !== '' ? (form.nodeId as number) : undefined,
+        name:     form.name || undefined,
+        location: form.location || undefined,
       }
       const res = await adminApi.createCamera(body)
       cameras.value.push(toAdminCamera(res))
@@ -49,11 +48,11 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
     saving.value = true
     try {
       const body: AdminCameraUpdateRequest = {
-        name:            form.name,
-        streamUrl:       form.streamUrl,
-        resolution:      form.resolution || undefined,
-        fps:             form.fps !== '' ? (form.fps as number) : undefined,
-        detectorVersion: form.detectorVersion || undefined,
+        zoneId:   form.zoneId as number,
+        nodeId:   form.nodeId !== '' ? (form.nodeId as number) : undefined,
+        name:     form.name || undefined,
+        location: form.location || undefined,
+        active:   form.active,
       }
       const res = await adminApi.updateCamera(id, body)
       const idx = cameras.value.findIndex(c => c.id === id)

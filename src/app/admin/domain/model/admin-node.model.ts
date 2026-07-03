@@ -1,17 +1,13 @@
-export interface AdminCamera {
+export interface AdminNode {
   id:       number
   code:     string
-  nodeId:   number | null
-  zoneId:   number
   name:     string
   location: string
   active:   boolean
 }
 
-export interface AdminCameraForm {
+export interface AdminNodeForm {
   code:     string
-  zoneId:   number | ''
-  nodeId:   number | ''
   name:     string
   location: string
   active:   boolean

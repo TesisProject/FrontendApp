@@ -2,22 +2,24 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAdminCamerasStore } from '../../application/admin-cameras.store'
 import { useAdminZonesStore }   from '../../application/admin-zones.store'
+import { useAdminNodesStore }   from '../../application/admin-nodes.store'
 import type { AdminCamera, AdminCameraForm } from '../../domain/model/admin-camera.model'
 
 const store      = useAdminCamerasStore()
 const zonesStore = useAdminZonesStore()
+const nodesStore = useAdminNodesStore()
 const search     = ref('')
 
 const filtered = computed(() =>
   store.cameras.filter(c =>
     c.name.toLowerCase().includes(search.value.toLowerCase()) ||
-    c.streamUrl.toLowerCase().includes(search.value.toLowerCase())
+    c.code.toLowerCase().includes(search.value.toLowerCase())
   )
 )
 
 const showModal  = ref(false)
 const editTarget = ref<AdminCamera | null>(null)
-const form       = ref<AdminCameraForm>({ zoneId: '', name: '', streamUrl: '', resolution: '', fps: '', detectorVersion: '' })
+const form       = ref<AdminCameraForm>({ code: '', zoneId: '', nodeId: '', name: '', location: '', active: true })
 const feedback   = ref<{ ok: boolean; msg: string } | null>(null)
 const confirmId  = ref<number | null>(null)
 
@@ -27,7 +29,7 @@ function zoneName(zoneId: number) {
 
 function openCreate() {
   editTarget.value = null
-  form.value = { zoneId: zonesStore.zones[0]?.id ?? '', name: '', streamUrl: '', resolution: '', fps: '', detectorVersion: '' }
+  form.value = { code: '', zoneId: zonesStore.zones[0]?.id ?? '', nodeId: '', name: '', location: '', active: true }
   feedback.value = null
   showModal.value = true
 }
@@ -35,12 +37,12 @@ function openCreate() {
 function openEdit(camera: AdminCamera) {
   editTarget.value = camera
   form.value = {
-    zoneId:          camera.zoneId,
-    name:            camera.name,
-    streamUrl:       camera.streamUrl,
-    resolution:      camera.resolution ?? '',
-    fps:             camera.fps ?? '',
-    detectorVersion: camera.detectorVersion ?? '',
+    code:     camera.code,
+    zoneId:   camera.zoneId,
+    nodeId:   camera.nodeId ?? '',
+    name:     camera.name,
+    location: camera.location,
+    active:   camera.active,
   }
   feedback.value = null
   showModal.value = true
@@ -66,15 +68,15 @@ async function handleDelete(id: number) {
   confirmId.value = null
 }
 
-function statusColor(s: string) {
-  return ({ ACTIVE: '#38a169', INACTIVE: '#888', ERROR: '#e53e3e' } as Record<string, string>)[s] ?? '#888'
+function statusColor(active: boolean) {
+  return active ? '#38a169' : '#888'
 }
 
-function statusLabel(s: string) {
-  return ({ ACTIVE: 'Activa', INACTIVE: 'Inactiva', ERROR: 'Error' } as Record<string, string>)[s] ?? s
+function statusLabel(active: boolean) {
+  return active ? 'Activa' : 'Inactiva'
 }
 
-onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones()]))
+onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones(), nodesStore.fetchNodes()]))
 </script>
 
 <template>
@@ -91,7 +93,7 @@ onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones()]))
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
-      <input v-model="search" type="text" placeholder="Buscar por nombre o stream URL..." />
+      <input v-model="search" type="text" placeholder="Buscar por nombre o código..." />
     </div>
 
     <div v-if="store.loading" class="state-box">Cargando cámaras...</div>
@@ -101,20 +103,21 @@ onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones()]))
       <table class="data-table">
         <thead>
           <tr>
-            <th>Nombre</th><th>Zona</th><th>Stream URL</th><th>Estado</th><th>Acciones</th>
+            <th>Nombre</th><th>Zona</th><th>Código</th><th>Ubicación</th><th>Estado</th><th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="filtered.length === 0">
-            <td colspan="5" class="empty-row">No se encontraron cámaras</td>
+            <td colspan="6" class="empty-row">No se encontraron cámaras</td>
           </tr>
           <tr v-for="c in filtered" :key="c.id">
             <td class="td-name">{{ c.name }}</td>
             <td>{{ zoneName(c.zoneId) }}</td>
-            <td class="td-url">{{ c.streamUrl }}</td>
+            <td class="td-url">{{ c.code }}</td>
+            <td class="td-url">{{ c.location || '—' }}</td>
             <td>
-              <span class="badge" :style="{ background: statusColor(c.status) + '20', color: statusColor(c.status) }">
-                {{ statusLabel(c.status) }}
+              <span class="badge" :style="{ background: statusColor(c.active) + '20', color: statusColor(c.active) }">
+                {{ statusLabel(c.active) }}
               </span>
             </td>
             <td>
@@ -145,6 +148,11 @@ onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones()]))
         <h2 class="modal-title">{{ editTarget ? 'Editar cámara' : 'Nueva cámara' }}</h2>
 
         <div v-if="!editTarget" class="form-group">
+          <label>Código</label>
+          <input v-model="form.code" type="text" placeholder="CAM-001" />
+        </div>
+
+        <div class="form-group">
           <label>Zona</label>
           <select v-model="form.zoneId">
             <option v-for="z in zonesStore.zones" :key="z.id" :value="z.id">{{ z.name }}</option>
@@ -152,29 +160,29 @@ onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones()]))
         </div>
 
         <div class="form-group">
-          <label>Nombre</label>
+          <label>Nombre <span class="optional">(opcional)</span></label>
           <input v-model="form.name" type="text" placeholder="Cámara entrada norte" />
-        </div>
-
-        <div class="form-group">
-          <label>Stream URL</label>
-          <input v-model="form.streamUrl" type="text" placeholder="rtsp://192.168.1.100/stream" />
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label>Resolución <span class="optional">(opcional)</span></label>
-            <input v-model="form.resolution" type="text" placeholder="1920x1080" />
+            <label>Ubicación <span class="optional">(opcional)</span></label>
+            <input v-model="form.location" type="text" placeholder="Poste central" />
           </div>
           <div class="form-group">
-            <label>FPS <span class="optional">(opcional)</span></label>
-            <input v-model.number="form.fps" type="number" min="1" max="120" placeholder="25" />
+            <label>Nodo Fog <span class="optional">(opcional)</span></label>
+            <select v-model="form.nodeId">
+              <option value="">Sin nodo</option>
+              <option v-for="n in nodesStore.nodes" :key="n.id" :value="n.id">{{ n.name }} ({{ n.code }})</option>
+            </select>
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Versión detector <span class="optional">(opcional)</span></label>
-          <input v-model="form.detectorVersion" type="text" placeholder="yolov8-1.2" />
+        <div v-if="editTarget" class="form-group">
+          <label class="check-label">
+            <input v-model="form.active" type="checkbox" />
+            Cámara activa
+          </label>
         </div>
 
         <p v-if="feedback" class="feedback" :class="feedback.ok ? 'ok' : 'err'">{{ feedback.msg }}</p>
@@ -195,4 +203,6 @@ onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones()]))
 
 .td-url { color: #888; font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .optional { font-weight: 400; text-transform: none; letter-spacing: 0; color: #bbb; }
+.check-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.check-label input { width: auto; }
 </style>

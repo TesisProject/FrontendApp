@@ -3,6 +3,9 @@ import type {
   AdminZoneResponse, AdminZoneRequest,
   AdminCameraResponse, AdminCameraCreateRequest, AdminCameraUpdateRequest,
   AdminUserResponse, AdminUserProfileResponse, AdminUserProfileRequest,
+  AdminNodeResponse, AdminNodeCreateRequest, AdminNodeUpdateRequest,
+  AdminApiKeyResponse, AdminApiKeyCreateRequest, AdminCreatedApiKeyResponse,
+  MonitoredSpaceResponse, PointResponse,
 } from './admin-response'
 import type { AdminCameraAlert } from '../domain/model/admin-camera-alert.model'
 import type { AdminSpaceResponse } from './admin-response'
@@ -61,18 +64,54 @@ export class AdminApi {
     return httpClient.patch(`/notifications/camera-alerts/${alertId}/resolve`, { resolutionNote })
   }
 
-  // Cameras — /api/v1/vision/cameras
+  // Cameras — /api/v1/occupancy/cameras (única ruta de vision que publica el gateway)
   getCameras(): Promise<AdminCameraResponse[]> {
-    return httpClient.get('/vision/cameras')
+    return httpClient.get('/occupancy/cameras')
   }
   createCamera(body: AdminCameraCreateRequest): Promise<AdminCameraResponse> {
-    return httpClient.post('/vision/cameras', body)
+    return httpClient.post('/occupancy/cameras', body)
   }
   updateCamera(id: number, body: AdminCameraUpdateRequest): Promise<AdminCameraResponse> {
-    return httpClient.put(`/vision/cameras/${id}`, body)
+    return httpClient.put(`/occupancy/cameras/${id}`, body)
   }
   deleteCamera(id: number): Promise<void> {
-    return httpClient.delete(`/vision/cameras/${id}`)
+    return httpClient.delete(`/occupancy/cameras/${id}`)
+  }
+
+  // Fog nodes — /api/v1/occupancy/nodes
+  getNodes(): Promise<AdminNodeResponse[]> {
+    return httpClient.get('/occupancy/nodes')
+  }
+  createNode(body: AdminNodeCreateRequest): Promise<AdminNodeResponse> {
+    return httpClient.post('/occupancy/nodes', body)
+  }
+  updateNode(id: number, body: AdminNodeUpdateRequest): Promise<AdminNodeResponse> {
+    return httpClient.put(`/occupancy/nodes/${id}`, body)
+  }
+  deleteNode(id: number): Promise<void> {
+    return httpClient.delete(`/occupancy/nodes/${id}`)
+  }
+
+  // API keys — /api/v1/iam/api-keys (la key completa solo se muestra al crearla)
+  getApiKeys(): Promise<AdminApiKeyResponse[]> {
+    return httpClient.get('/iam/api-keys')
+  }
+  createApiKey(body: AdminApiKeyCreateRequest): Promise<AdminCreatedApiKeyResponse> {
+    return httpClient.post('/iam/api-keys', body)
+  }
+  revokeApiKey(id: number): Promise<void> {
+    return httpClient.delete(`/iam/api-keys/${id}`)
+  }
+
+  // Monitored spaces (ROI) — /api/v1/occupancy/spaces
+  getMonitoredSpace(parkingSpaceId: number): Promise<MonitoredSpaceResponse> {
+    return httpClient.get(`/occupancy/spaces/${parkingSpaceId}`)
+  }
+  updateSpaceRoi(parkingSpaceId: number, roi: PointResponse[]): Promise<MonitoredSpaceResponse> {
+    return httpClient.put(`/occupancy/spaces/${parkingSpaceId}/roi`, { roi })
+  }
+  unmonitorSpace(parkingSpaceId: number): Promise<void> {
+    return httpClient.delete(`/occupancy/spaces/${parkingSpaceId}`)
   }
 }
 

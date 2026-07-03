@@ -1,9 +1,16 @@
 import type { AdminZone } from '../domain/model/admin-zone.model'
 import type { AdminCamera } from '../domain/model/admin-camera.model'
 import type { AdminUser, AdminRole } from '../domain/model/admin-user.model'
-import type { AdminZoneResponse, AdminCameraResponse, AdminUserResponse } from './admin-response'
+import type { AdminNode } from '../domain/model/admin-node.model'
+import type { AdminApiKey } from '../domain/model/admin-api-key.model'
+import type {
+  AdminZoneResponse, AdminCameraResponse, AdminUserResponse,
+  AdminNodeResponse, AdminApiKeyResponse,
+} from './admin-response'
+import type { ZoneAvailabilityResponse } from '../../parking/infrastructure/availability-response'
 
-export function toAdminZone(r: AdminZoneResponse): AdminZone {
+/** Fusiona la zona estática (parking) con la disponibilidad viva (vision), si existe. */
+export function toAdminZone(r: AdminZoneResponse, availability?: ZoneAvailabilityResponse): AdminZone {
   return {
     id:                  r.id,
     name:                r.name,
@@ -13,24 +20,46 @@ export function toAdminZone(r: AdminZoneResponse): AdminZone {
     latitude:            r.latitude,
     longitude:           r.longitude,
     totalSpaces:         r.totalSpaces,
-    occupiedCount:       r.occupiedCount,
-    freeCount:           r.freeCount,
-    occupancyPercentage: r.occupancyPercentage,
-    classification:      r.classification,
+    occupiedCount:       availability?.occupied ?? 0,
+    freeCount:           availability?.available ?? r.totalSpaces,
+    occupancyPercentage: availability?.occupancyPercentage ?? 0,
+    classification:      availability?.classification ?? 'LIBRE',
     active:              r.active,
   }
 }
 
 export function toAdminCamera(r: AdminCameraResponse): AdminCamera {
   return {
-    id:              r.id,
-    zoneId:          r.zoneId,
-    name:            r.name,
-    streamUrl:       r.streamUrl,
-    status:          r.status as AdminCamera['status'],
-    resolution:      r.resolution,
-    fps:             r.fps,
-    detectorVersion: r.detectorVersion,
+    id:       r.id,
+    code:     r.code,
+    nodeId:   r.nodeId,
+    zoneId:   r.zoneId,
+    name:     r.name ?? r.code,
+    location: r.location ?? '',
+    active:   r.active,
+  }
+}
+
+export function toAdminNode(r: AdminNodeResponse): AdminNode {
+  return {
+    id:       r.id,
+    code:     r.code,
+    name:     r.name ?? r.code,
+    location: r.location ?? '',
+    active:   r.active,
+  }
+}
+
+export function toAdminApiKey(r: AdminApiKeyResponse): AdminApiKey {
+  return {
+    id:         r.id,
+    keyId:      r.keyId,
+    name:       r.name,
+    nodeId:     r.nodeId,
+    active:     r.active,
+    expiresAt:  r.expiresAt,
+    lastUsedAt: r.lastUsedAt,
+    createdAt:  r.createdAt,
   }
 }
 
@@ -39,6 +68,6 @@ export function toAdminUser(r: AdminUserResponse): AdminUser {
     id:     r.id,
     email:  r.email,
     role:   r.role as AdminRole,
-    active: r.isActive ?? (r as any).active ?? false,
+    active: r.isActive ?? false,
   }
 }

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, markRaw } from 'vue'
 import { useAdminZonesStore } from '../../application/admin-zones.store'
 import { useAdminSpacesStore } from '../../application/admin-spaces.store'
+import ZoneRoiEditorModal from '../components/ZoneRoiEditorModal.vue'
 import { loadGoogleMaps } from '../../../shared/infrastructure/maps-loader'
 import type {
   AdminZone,
@@ -31,6 +32,13 @@ function closeSpaces() {
 async function submitSpace() {
   const ok = await spacesStore.addSpace(newSpaceNum.value)
   if (ok) newSpaceNum.value = ''
+}
+
+// ROI editor (por zona: todos los espacios sobre un mismo lienzo)
+const roiZone = ref<{ id: number; name: string } | null>(null)
+
+function openZoneRoi(zone: AdminZone) {
+  roiZone.value = { id: zone.id, name: zone.name }
 }
 const search = ref('')
 
@@ -334,6 +342,9 @@ onMounted(() => store.fetchZones())
                 <button class="action-btn spaces" @click="openSpaces(z)">
                   Espacios
                 </button>
+                <button class="action-btn spaces" @click="openZoneRoi(z)">
+                  ROI
+                </button>
                 <button class="action-btn edit" @click="openEdit(z)">
                   Editar
                 </button>
@@ -583,9 +594,15 @@ onMounted(() => store.fetchZones())
                 <span class="space-num">{{ s.spaceNumber }}</span>
                 <span
                   class="space-badge"
-                  :class="s.currentStatus === 'OCCUPIED' ? 'occupied' : 'free'"
+                  :class="s.occupied ? 'occupied' : 'free'"
                 >
-                  {{ s.currentStatus === 'OCCUPIED' ? 'Ocupado' : 'Libre' }}
+                  {{ s.occupied ? 'Ocupado' : 'Libre' }}
+                </span>
+                <span
+                  class="space-badge"
+                  :class="s.monitored ? 'monitored' : 'unmonitored'"
+                >
+                  {{ s.monitored ? 'Monitoreado' : 'Sin ROI' }}
                 </span>
               </div>
               <button
@@ -617,6 +634,14 @@ onMounted(() => store.fetchZones())
         </div>
       </div>
     </Transition>
+
+    <!-- ROI editor (por zona) -->
+    <ZoneRoiEditorModal
+      v-if="roiZone"
+      :zone-id="roiZone.id"
+      :zone-name="roiZone.name"
+      @close="roiZone = null"
+    />
   </div>
 </template>
 
@@ -869,6 +894,14 @@ onMounted(() => store.fetchZones())
 .space-badge.occupied {
   background: #fdecea;
   color: #c0392b;
+}
+.space-badge.monitored {
+  background: #e8f0fb;
+  color: #1a56c4;
+}
+.space-badge.unmonitored {
+  background: #f0f0f0;
+  color: #999;
 }
 
 .space-del {
