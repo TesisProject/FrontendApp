@@ -227,7 +227,8 @@ input {
 }
 
 .auth-row-two { display: flex; gap: 14px; }
-.auth-row-two .auth-field { flex: 1; }
+.auth-row-two .auth-field { flex: 1; min-width: 0; }
+.auth-row-two .auth-field--narrow { flex: 0 0 132px; }
 
 .auth-field {
   display: flex;
@@ -257,6 +258,14 @@ input {
 .auth-input::placeholder { color: var(--pv-placeholder); }
 .auth-input:focus { border-color: var(--pv-amber); box-shadow: 0 0 0 4px var(--pv-amber-ring); }
 .auth-input--pwd { padding-right: 44px; }
+.auth-select {
+  appearance: none;
+  padding-right: 34px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a8c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+}
 .auth-input--error { border-color: var(--pv-danger); box-shadow: 0 0 0 4px var(--pv-danger-ring); }
 .auth-input--error:focus { border-color: var(--pv-danger); box-shadow: 0 0 0 4px rgba(229, 62, 62, 0.16); }
 .auth-input--valid { border-color: var(--pv-success); box-shadow: 0 0 0 4px var(--pv-success-ring); }

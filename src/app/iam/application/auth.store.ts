@@ -5,6 +5,7 @@ import { toAuthToken } from '../infrastructure/auth-assembler'
 import { tokenRepository } from '../../shared/infrastructure/token-repository'
 import { Role } from '../domain/model/role.vo'
 import type { User } from '../domain/model/user.model'
+import type { SignUpRequest } from '../infrastructure/auth-response'
 import { useRatingsStore } from '../../ratings/application/ratings.store'
 
 const authApi = new AuthApi()
@@ -29,19 +30,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(email: string, password: string, firstName: string, lastName: string, phone: string): Promise<boolean> {
+  async function register(payload: SignUpRequest): Promise<boolean> {
     registerState.setLoading()
     try {
-      const { id } = await authApi.register({ email, password, roleName: 'USER' })
-      const signIn    = await authApi.signIn({ email, password })
-      const authToken = toAuthToken(signIn)
-      tokenRepository.save(authToken.token)
-      try {
-        await authApi.updateProfile(id, { firstName, lastName, phone })
-      } catch {
-        // no crítico — el usuario puede completar el perfil desde la vista de perfil
-      }
+      const response  = await authApi.signUp(payload)
+      const authToken = toAuthToken(response)
       // mantener la sesión iniciada para entrar directo al dashboard
+      tokenRepository.save(authToken.token)
       tokenRepository.saveUser(authToken.user)
       loginState.setData(authToken.user)
       registerState.setData(null)
