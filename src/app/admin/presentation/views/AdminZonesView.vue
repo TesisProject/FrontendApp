@@ -3,6 +3,7 @@ import { ref, computed, onMounted, markRaw } from 'vue'
 import { useAdminZonesStore } from '../../application/admin-zones.store'
 import { useAdminSpacesStore } from '../../application/admin-spaces.store'
 import ZoneRoiEditorModal from '../components/ZoneRoiEditorModal.vue'
+import ZoneLocationPicker from '../components/ZoneLocationPicker.vue'
 import { loadGoogleMaps } from '../../../shared/infrastructure/maps-loader'
 import type {
   AdminZone,
@@ -208,7 +209,7 @@ function validate(): string | null {
   if (!f.district.trim()) return 'El distrito es obligatorio'
   if (!f.city.trim()) return 'La ciudad es obligatoria'
   if (!f.latitude || !f.longitude)
-    return 'Selecciona una dirección del autocompletado para obtener las coordenadas'
+    return 'Ubica la zona en el mapa o selecciona una dirección del autocompletado'
   if (!f.totalSpaces || f.totalSpaces < 1)
     return 'El total de espacios debe ser al menos 1'
   if (!f.totalCapacity || f.totalCapacity < 1)
@@ -450,6 +451,11 @@ onMounted(() => store.fetchZones())
               Al seleccionar, se rellenan automáticamente los campos de abajo.
             </p>
           </div>
+
+          <ZoneLocationPicker
+            v-model:latitude="form.latitude"
+            v-model:longitude="form.longitude"
+          />
 
           <div class="form-row">
             <div class="form-group">
