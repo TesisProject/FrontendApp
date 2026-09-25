@@ -30,6 +30,9 @@ const selectedId = ref<number | null>(null)
 const rois       = reactive<Record<number, SpaceRoi>>({})
 const feedback   = ref<{ ok: boolean; msg: string } | null>(null)
 const hasImage   = ref(false)
+// Giro (grados, sentido horario) de la imagen de referencia. Solo afecta al dibujo: los ROI se
+// guardan normalizados sobre la imagen ya derecha, que es la que el Fog obtiene al girar cada foto.
+const imageRotation = ref(0)
 
 let bgImage: HTMLImageElement | null = null
 let dragIndex = -1
@@ -52,7 +55,7 @@ function draw() {
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H)
 
   if (bgImage) {
-    ctx.drawImage(bgImage, 0, 0, CANVAS_W, CANVAS_H)
+    drawBackground(ctx, bgImage)
   } else {
     ctx.fillStyle = '#f4f6f8'
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
@@ -74,6 +77,24 @@ function draw() {
     const space = spacesStore.spaces.find(s => s.id === selectedId.value)
     if (space) drawPolygon(ctx, space.id, space.spaceNumber, true)
   }
+}
+
+function drawBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement) {
+  const rot = imageRotation.value
+  // Con 90° / 270° el ancho y el alto se intercambian para que la imagen girada siga llenando el canvas.
+  const swapped = rot === 90 || rot === 270
+  const w = swapped ? CANVAS_H : CANVAS_W
+  const h = swapped ? CANVAS_W : CANVAS_H
+  ctx.save()
+  ctx.translate(CANVAS_W / 2, CANVAS_H / 2)
+  ctx.rotate((rot * Math.PI) / 180)
+  ctx.drawImage(img, -w / 2, -h / 2, w, h)
+  ctx.restore()
+}
+
+function rotateImage() {
+  imageRotation.value = (imageRotation.value + 90) % 360
+  draw()
 }
 
 function drawPolygon(ctx: CanvasRenderingContext2D, spaceId: number, label: string, selected: boolean) {
@@ -332,6 +353,14 @@ onMounted(async () => {
                 {{ hasImage ? 'Cambiar imagen' : 'Subir preview de la cámara' }}
                 <input type="file" accept="image/*" hidden @change="onImageSelected" />
               </label>
+              <button
+                class="btn-ghost"
+                :disabled="!hasImage"
+                title="Gira la imagen de referencia 90° en sentido horario"
+                @click="rotateImage"
+              >
+                Girar 90°{{ imageRotation ? ` (${imageRotation}°)` : '' }}
+              </button>
               <span class="roi-count">
                 {{ selectedRoi ? `${selectedRoi.points.length} punto${selectedRoi.points.length !== 1 ? 's' : ''}` : '' }}
               </span>
