@@ -55,7 +55,6 @@ const router = createRouter({
         { path: 'alerts',     component: () => import('../app/notifications/presentation/views/AlertsView.vue') },
         { path: 'profile',    component: () => import('../app/profile/presentation/views/ProfileView.vue') },
         { path: 'faq',         component: () => import('../app/faq/presentation/views/FaqView.vue') },
-        { path: 'predictions', component: () => import('../app/predictions/presentation/views/PredictionsView.vue') },
       ],
     },
 

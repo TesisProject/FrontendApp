@@ -6,7 +6,11 @@ import { useFavoriteStore } from '../../../favorites/application/favorite.store'
 import { useAuthStore } from '../../../iam/application/auth.store'
 import ZoneRating from '../../../ratings/presentation/components/ZoneRating.vue'
 import OccupancyHistoryChart from '../components/OccupancyHistoryChart.vue'
+import ZoneForecastCard from '../components/ZoneForecastCard.vue'
 import type { ZoneClassification } from '../../domain/model/zone.model'
+
+// Enlace de la imagen de vista previa (snapshot de cámara o foto de la zona). Vacío = sin imagen.
+const PREVIEW_IMAGE_URL = ''
 
 const router = useRouter()
 const route = useRoute()
@@ -179,6 +183,7 @@ onUnmounted(() => clearInterval(refreshTimer))
 
       <!-- Main content -->
       <div class="main-grid">
+        <div class="spaces-row">
         <!-- Spaces -->
         <div class="section-card spaces-section">
           <h2 class="section-title">Espacios</h2>
@@ -225,6 +230,37 @@ onUnmounted(() => clearInterval(refreshTimer))
           </div>
         </div>
 
+          <!-- Image preview -->
+          <div class="section-card preview-section">
+            <h2 class="section-title">Vista previa</h2>
+            <div class="preview-box">
+              <img
+                v-if="PREVIEW_IMAGE_URL"
+                :src="PREVIEW_IMAGE_URL"
+                alt="Vista previa del estacionamiento"
+                class="preview-img"
+              />
+              <div v-else class="preview-empty">
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <path d="M21 15l-5-5L5 21" />
+                </svg>
+                <span>Sin imagen disponible</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Occupancy history -->
         <div class="section-card">
           <div class="history-head">
@@ -246,6 +282,13 @@ onUnmounted(() => clearInterval(refreshTimer))
           </div>
           <OccupancyHistoryChart v-else :points="zoneStore.history" />
         </div>
+
+        <!-- Forecast -->
+        <ZoneForecastCard
+          :spot-ids="(zoneStore.spaces as any[]).map((s) => s.id)"
+          :history="zoneStore.history"
+          :history-unavailable="!!zoneStore.historyError"
+        />
 
         <!-- Rating -->
         <ZoneRating :zone-id="zoneId" />
@@ -415,6 +458,55 @@ onUnmounted(() => clearInterval(refreshTimer))
   align-items: start;
 }
 
+.spaces-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.preview-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-box {
+  flex: 1;
+  min-height: 160px;
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f7f9fb;
+}
+
+.preview-empty {
+  position: absolute;
+  inset: 0;
+  border: 1.5px dashed #d5dbe2;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #aab3bd;
+  font-size: 13px;
+}
+
+.preview-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 800px) {
+  .spaces-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .history-head {
   margin-bottom: 12px;
 }
@@ -451,10 +543,20 @@ onUnmounted(() => clearInterval(refreshTimer))
 }
 
 /* Spaces grid */
+.spaces-section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* El grid ocupa el alto libre de la card y centra los espacios; la leyenda queda abajo. */
 .spaces-grid {
+  flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, 80px);
+  grid-auto-rows: 80px;
+  justify-content: center;
+  align-content: center;
+  gap: 12px;
 }
 
 .space-box {
@@ -480,7 +582,7 @@ onUnmounted(() => clearInterval(refreshTimer))
 }
 
 .space-num {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: #092c4c;
 }
