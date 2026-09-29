@@ -9,7 +9,6 @@ export interface AdminCamera {
 }
 
 export interface AdminCameraForm {
-  code:     string
   zoneId:   number | ''
   nodeId:   number | ''
   name:     string

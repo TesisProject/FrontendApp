@@ -7,7 +7,6 @@ export interface AdminNode {
 }
 
 export interface AdminNodeForm {
-  code:     string
   name:     string
   location: string
   active:   boolean

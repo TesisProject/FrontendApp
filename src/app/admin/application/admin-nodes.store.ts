@@ -28,7 +28,6 @@ export const useAdminNodesStore = defineStore('admin-nodes', () => {
     saving.value = true
     try {
       const body: AdminNodeCreateRequest = {
-        code:     form.code,
         name:     form.name || undefined,
         location: form.location || undefined,
       }

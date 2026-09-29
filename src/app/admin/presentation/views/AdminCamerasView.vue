@@ -19,7 +19,7 @@ const filtered = computed(() =>
 
 const showModal  = ref(false)
 const editTarget = ref<AdminCamera | null>(null)
-const form       = ref<AdminCameraForm>({ code: '', zoneId: '', nodeId: '', name: '', location: '', active: true })
+const form       = ref<AdminCameraForm>({ zoneId: '', nodeId: '', name: '', location: '', active: true })
 const feedback   = ref<{ ok: boolean; msg: string } | null>(null)
 const confirmId  = ref<number | null>(null)
 
@@ -29,7 +29,7 @@ function zoneName(zoneId: number) {
 
 function openCreate() {
   editTarget.value = null
-  form.value = { code: '', zoneId: zonesStore.zones[0]?.id ?? '', nodeId: '', name: '', location: '', active: true }
+  form.value = { zoneId: zonesStore.zones[0]?.id ?? '', nodeId: '', name: '', location: '', active: true }
   feedback.value = null
   showModal.value = true
 }
@@ -37,7 +37,6 @@ function openCreate() {
 function openEdit(camera: AdminCamera) {
   editTarget.value = camera
   form.value = {
-    code:     camera.code,
     zoneId:   camera.zoneId,
     nodeId:   camera.nodeId ?? '',
     name:     camera.name,
@@ -59,13 +58,23 @@ async function handleSubmit() {
   }
   feedback.value = ok
     ? { ok: true,  msg: editTarget.value ? 'Cámara actualizada' : 'Cámara creada' }
-    : { ok: false, msg: 'Ocurrió un error, intenta de nuevo' }
+    : { ok: false, msg: store.actionError ?? 'Ocurrió un error, intenta de nuevo' }
   if (ok) setTimeout(closeModal, 1000)
 }
 
+const deleteError = ref<string | null>(null)
+
+function openDelete(id: number) {
+  deleteError.value = null
+  confirmId.value = id
+}
+
 async function handleDelete(id: number) {
-  await store.deleteCamera(id)
-  confirmId.value = null
+  if (await store.deleteCamera(id)) {
+    confirmId.value = null
+  } else {
+    deleteError.value = store.actionError
+  }
 }
 
 function statusColor(active: boolean) {
@@ -123,7 +132,7 @@ onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones(), node
             <td>
               <div class="actions">
                 <button class="action-btn edit"   @click="openEdit(c)">Editar</button>
-                <button class="action-btn delete" @click="confirmId = c.id">Eliminar</button>
+                <button class="action-btn delete" @click="openDelete(c.id)">Eliminar</button>
               </div>
             </td>
           </tr>
@@ -135,6 +144,7 @@ onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones(), node
     <div v-if="confirmId !== null" class="overlay" @click.self="confirmId = null">
       <div class="confirm-box">
         <p class="confirm-text">¿Eliminar esta cámara?</p>
+        <p v-if="deleteError" class="feedback err">{{ deleteError }}</p>
         <div class="confirm-actions">
           <button class="btn-ghost"  @click="confirmId = null">Cancelar</button>
           <button class="btn-danger" @click="handleDelete(confirmId!)">Eliminar</button>
@@ -147,10 +157,8 @@ onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones(), node
       <div class="modal">
         <h2 class="modal-title">{{ editTarget ? 'Editar cámara' : 'Nueva cámara' }}</h2>
 
-        <div v-if="!editTarget" class="form-group">
-          <label>Código</label>
-          <input v-model="form.code" type="text" placeholder="CAM-001" />
-        </div>
+        <p v-if="editTarget" class="code-hint">Código <strong>{{ editTarget.code }}</strong></p>
+        <p v-else class="code-hint">El código (CAM-001, CAM-002…) lo asigna el sistema al crearla.</p>
 
         <div class="form-group">
           <label>Zona</label>

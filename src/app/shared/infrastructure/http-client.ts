@@ -58,6 +58,12 @@ function redirectToLogin(): void {
   window.location.assign(`${loginPath}${query}`)
 }
 
+/** Código HTTP de un error rechazado por el cliente (el cuerpo `ApiError` del backend trae `status`). */
+export function errorStatus(error: unknown): number | undefined {
+  const status = (error as { status?: unknown } | null)?.status
+  return typeof status === 'number' ? status : undefined
+}
+
 async function request<T>(config: AxiosRequestConfig, options?: RequestOptions): Promise<T> {
   const response = await api.request<T>({ ...config, ...options } as AppRequestConfig)
   return response.data

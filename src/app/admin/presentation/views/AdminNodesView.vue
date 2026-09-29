@@ -15,13 +15,13 @@ const filtered = computed(() =>
 
 const showModal  = ref(false)
 const editTarget = ref<AdminNode | null>(null)
-const form       = ref<AdminNodeForm>({ code: '', name: '', location: '', active: true })
+const form       = ref<AdminNodeForm>({ name: '', location: '', active: true })
 const feedback   = ref<{ ok: boolean; msg: string } | null>(null)
 const confirmId  = ref<number | null>(null)
 
 function openCreate() {
   editTarget.value = null
-  form.value = { code: '', name: '', location: '', active: true }
+  form.value = { name: '', location: '', active: true }
   feedback.value = null
   showModal.value = true
 }
@@ -29,7 +29,6 @@ function openCreate() {
 function openEdit(node: AdminNode) {
   editTarget.value = node
   form.value = {
-    code:     node.code,
     name:     node.name,
     location: node.location,
     active:   node.active,
@@ -41,10 +40,6 @@ function openEdit(node: AdminNode) {
 function closeModal() { showModal.value = false }
 
 async function handleSubmit() {
-  if (!editTarget.value && !form.value.code.trim()) {
-    feedback.value = { ok: false, msg: 'El código del nodo es obligatorio' }
-    return
-  }
   let ok: boolean
   if (editTarget.value) {
     ok = await store.updateNode(editTarget.value.id, form.value)
@@ -140,10 +135,8 @@ onMounted(() => store.fetchNodes())
       <div class="modal">
         <h2 class="modal-title">{{ editTarget ? 'Editar nodo' : 'Nuevo nodo Fog' }}</h2>
 
-        <div v-if="!editTarget" class="form-group">
-          <label>Código</label>
-          <input v-model="form.code" type="text" placeholder="NODE-001" />
-        </div>
+        <p v-if="editTarget" class="code-hint">Código <strong>{{ editTarget.code }}</strong></p>
+        <p v-else class="code-hint">El código (FOG-001, FOG-002…) lo asigna el sistema al registrarlo.</p>
 
         <div class="form-group">
           <label>Nombre <span class="optional">(opcional)</span></label>

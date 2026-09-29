@@ -401,6 +401,10 @@
 .feedback.ok  { color: var(--c-success); }
 .feedback.err { color: var(--c-danger); }
 
+/* Código generado por el Cloud (CAM-001, FOG-001…): se muestra, no se edita. */
+.code-hint { font-size: 12px; color: var(--c-text-secondary); margin: 0 0 14px; }
+.code-hint strong { font-family: var(--font-mono); color: var(--c-text); }
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

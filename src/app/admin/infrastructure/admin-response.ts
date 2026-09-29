@@ -36,9 +36,8 @@ export interface AdminCameraResponse {
   updatedAt: string
 }
 
-/** RegisterCameraRequest — `code` y `zoneId` son obligatorios. */
+/** RegisterCameraRequest — `zoneId` es obligatorio. El `code` (CAM-001…) lo genera el Cloud. */
 export interface AdminCameraCreateRequest {
-  code:      string
   nodeId?:   number
   zoneId:    number
   name?:     string
@@ -97,9 +96,8 @@ export interface AdminNodeResponse {
   updatedAt: string
 }
 
-/** RegisterNodeRequest — `code` es obligatorio. */
+/** RegisterNodeRequest — el `code` (FOG-001…) lo genera el Cloud. */
 export interface AdminNodeCreateRequest {
-  code:      string
   name?:     string
   location?: string
 }
