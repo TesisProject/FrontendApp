@@ -3,6 +3,20 @@ import { ref, computed, onMounted } from 'vue'
 import { useAdminApiKeysStore } from '../../application/admin-api-keys.store'
 import { useAdminNodesStore } from '../../application/admin-nodes.store'
 import type { AdminApiKeyForm } from '../../domain/model/admin-api-key.model'
+import { Check, Copy, Plus, TriangleAlert } from '@lucide/vue'
+import { Button } from '@/app/shared/presentation/components/ui/button'
+import { Badge } from '@/app/shared/presentation/components/ui/badge'
+import { Input } from '@/app/shared/presentation/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/app/shared/presentation/components/ui/native-select'
+import { TableCell, TableRow } from '@/app/shared/presentation/components/ui/table'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/app/shared/presentation/components/ui/dialog'
+import ConfirmDialog from '../../../shared/presentation/components/ConfirmDialog.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import AdminPage from '../components/AdminPage.vue'
+import AdminSearch from '../components/AdminSearch.vue'
+import AdminStateBox from '../components/AdminStateBox.vue'
+import AdminTableCard from '../components/AdminTableCard.vue'
+import AdminField from '../components/AdminField.vue'
 
 const store      = useAdminApiKeysStore()
 const nodesStore = useAdminNodesStore()
@@ -17,7 +31,7 @@ const filtered = computed(() =>
 
 const showModal = ref(false)
 const form      = ref<AdminApiKeyForm>({ name: '', nodeId: '', expiresAt: '' })
-const feedback  = ref<{ ok: boolean; msg: string } | null>(null)
+const formError = ref<string | null>(null)
 const confirmId = ref<number | null>(null)
 const copied    = ref(false)
 
@@ -33,7 +47,7 @@ function formatDate(iso: string | null) {
 
 function openCreate() {
   form.value = { name: '', nodeId: '', expiresAt: '' }
-  feedback.value = null
+  formError.value = null
   showModal.value = true
 }
 
@@ -41,7 +55,7 @@ function closeModal() { showModal.value = false }
 
 async function handleSubmit() {
   if (!form.value.name.trim()) {
-    feedback.value = { ok: false, msg: 'El nombre de la key es obligatorio' }
+    formError.value = 'El nombre de la key es obligatorio'
     return
   }
   const ok = await store.createApiKey(form.value)
@@ -50,7 +64,7 @@ async function handleSubmit() {
     copied.value = false
     showModal.value = false
   } else {
-    feedback.value = { ok: false, msg: 'Ocurrió un error, intenta de nuevo' }
+    formError.value = 'Ocurrió un error, intenta de nuevo'
   }
 }
 
@@ -69,154 +83,116 @@ onMounted(() => Promise.all([store.fetchApiKeys(), nodesStore.fetchNodes()]))
 </script>
 
 <template>
-  <div class="admin-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">API Keys</h1>
-        <p class="page-sub">{{ store.apiKeys.length }} keys emitidas · credenciales de los nodos Fog</p>
-      </div>
-      <button class="btn-primary" @click="openCreate">+ Nueva API key</button>
-    </div>
+  <AdminPage title="API Keys" :sub="`${store.apiKeys.length} keys emitidas · credenciales de los nodos Fog`">
+    <template #actions>
+      <Button @click="openCreate"><Plus /> Nueva API key</Button>
+    </template>
 
-    <div class="search-bar">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input v-model="search" type="text" placeholder="Buscar por nombre o keyId..." />
-    </div>
+    <AdminSearch v-model="search" placeholder="Buscar por nombre o keyId..." />
 
-    <div v-if="store.loading" class="state-box">Cargando API keys...</div>
-    <div v-else-if="store.error" class="state-box error">{{ store.error }}</div>
+    <AdminStateBox v-if="store.loading">Cargando API keys...</AdminStateBox>
+    <AdminStateBox v-else-if="store.error" tone="error">{{ store.error }}</AdminStateBox>
 
-    <div v-else class="table-card">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Nombre</th><th>Key ID</th><th>Nodo</th><th>Último uso</th><th>Expira</th><th>Estado</th><th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="filtered.length === 0">
-            <td colspan="7" class="empty-row">No hay API keys emitidas</td>
-          </tr>
-          <tr v-for="k in filtered" :key="k.id">
-            <td class="td-name">{{ k.name }}</td>
-            <td class="td-code">{{ k.keyId }}</td>
-            <td>{{ nodeName(k.nodeId) }}</td>
-            <td class="td-muted">{{ formatDate(k.lastUsedAt) }}</td>
-            <td class="td-muted">{{ formatDate(k.expiresAt) }}</td>
-            <td>
-              <span class="badge" :style="{ background: (k.active ? '#38a169' : '#888') + '20', color: k.active ? '#38a169' : '#888' }">
-                {{ k.active ? 'Activa' : 'Revocada' }}
-              </span>
-            </td>
-            <td>
-              <div class="actions">
-                <button class="action-btn delete" @click="confirmId = k.id">Revocar</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <AdminTableCard
+      v-else
+      :columns="['Nombre', 'Key ID', 'Nodo', 'Último uso', 'Expira', 'Estado', 'Acciones']"
+      :empty="filtered.length === 0"
+      empty-text="No hay API keys emitidas"
+    >
+      <TableRow v-for="k in filtered" :key="k.id">
+        <TableCell class="font-semibold text-navy">{{ k.name }}</TableCell>
+        <TableCell class="font-mono text-xs font-semibold text-navy">{{ k.keyId }}</TableCell>
+        <TableCell>{{ nodeName(k.nodeId) }}</TableCell>
+        <TableCell class="text-xs text-muted-foreground">{{ formatDate(k.lastUsedAt) }}</TableCell>
+        <TableCell class="text-xs text-muted-foreground">{{ formatDate(k.expiresAt) }}</TableCell>
+        <TableCell>
+          <Badge :variant="k.active ? 'success' : 'neutral'" size="status">
+            {{ k.active ? 'Activa' : 'Revocada' }}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <Button size="sm" variant="outline-destructive" @click="confirmId = k.id">Revocar</Button>
+        </TableCell>
+      </TableRow>
+    </AdminTableCard>
 
-    <!-- Confirm revoke -->
-    <div v-if="confirmId !== null" class="overlay" @click.self="confirmId = null">
-      <div class="confirm-box">
-        <p class="confirm-text">¿Revocar esta API key? El nodo que la use dejará de autenticarse.</p>
-        <div class="confirm-actions">
-          <button class="btn-ghost"  @click="confirmId = null">Cancelar</button>
-          <button class="btn-danger" @click="handleRevoke(confirmId!)">Revocar</button>
+    <ConfirmDialog
+      :open="confirmId !== null"
+      title="Revocar API key"
+      confirm-label="Revocar"
+      destructive
+      @cancel="confirmId = null"
+      @confirm="handleRevoke(confirmId!)"
+    >
+      ¿Revocar esta API key? El nodo que la use dejará de autenticarse.
+    </ConfirmDialog>
+
+    <!-- Create -->
+    <Dialog v-model:open="showModal">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nueva API key</DialogTitle>
+        </DialogHeader>
+
+        <form class="grid gap-3.5" @submit.prevent="handleSubmit">
+          <AdminField v-slot="{ id }" label="Nombre" required>
+            <Input :id="id" v-model="form.name" placeholder="Key nodo central" />
+          </AdminField>
+
+          <AdminField v-slot="{ id }" label="Nodo Fog" optional>
+            <NativeSelect :id="id" v-model="form.nodeId">
+              <NativeSelectOption value="">Sin nodo asociado</NativeSelectOption>
+              <NativeSelectOption v-for="n in nodesStore.nodes" :key="n.id" :value="n.id">{{ n.name }} ({{ n.code }})</NativeSelectOption>
+            </NativeSelect>
+          </AdminField>
+
+          <AdminField v-slot="{ id }" label="Expiración" optional>
+            <Input :id="id" v-model="form.expiresAt" type="datetime-local" />
+          </AdminField>
+
+          <FormAlert :message="formError" />
+
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="closeModal">Cancelar</Button>
+            <Button type="submit" :disabled="store.saving">
+              {{ store.saving ? 'Generando...' : 'Generar key' }}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+
+    <!-- One-time key: must be acknowledged explicitly, so it can't be dismissed -->
+    <Dialog :open="!!store.createdKey">
+      <DialogContent
+        :show-close-button="false"
+        @escape-key-down.prevent
+        @interact-outside.prevent
+      >
+        <DialogHeader>
+          <DialogTitle>API key generada</DialogTitle>
+          <DialogDescription class="flex items-center gap-1.5 text-destructive">
+            <TriangleAlert class="size-4 shrink-0" />
+            <span>Copia esta key ahora. Por seguridad, <strong>no volverá a mostrarse</strong>.</span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2.5">
+          <code class="flex-1 font-mono text-xs break-all text-navy">{{ store.createdKey }}</code>
+          <Button size="sm" :variant="copied ? 'secondary' : 'default'" @click="copyKey">
+            <Check v-if="copied" /><Copy v-else />
+            {{ copied ? 'Copiada' : 'Copiar' }}
+          </Button>
         </div>
-      </div>
-    </div>
-
-    <!-- Create modal -->
-    <div v-if="showModal" class="overlay" @click.self="closeModal">
-      <div class="modal">
-        <h2 class="modal-title">Nueva API key</h2>
-
-        <div class="form-group">
-          <label>Nombre</label>
-          <input v-model="form.name" type="text" placeholder="Key nodo central" />
-        </div>
-
-        <div class="form-group">
-          <label>Nodo Fog <span class="optional">(opcional)</span></label>
-          <select v-model="form.nodeId">
-            <option value="">Sin nodo asociado</option>
-            <option v-for="n in nodesStore.nodes" :key="n.id" :value="n.id">{{ n.name }} ({{ n.code }})</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Expiración <span class="optional">(opcional)</span></label>
-          <input v-model="form.expiresAt" type="datetime-local" />
-        </div>
-
-        <p v-if="feedback" class="feedback" :class="feedback.ok ? 'ok' : 'err'">{{ feedback.msg }}</p>
-
-        <div class="modal-actions">
-          <button class="btn-ghost"  @click="closeModal">Cancelar</button>
-          <button class="btn-primary" :disabled="store.saving" @click="handleSubmit">
-            {{ store.saving ? 'Generando...' : 'Generar key' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- One-time key modal -->
-    <div v-if="store.createdKey" class="overlay">
-      <div class="modal">
-        <h2 class="modal-title">API key generada</h2>
-        <p class="key-warning">
-          Copia esta key ahora. Por seguridad, <strong>no volverá a mostrarse</strong>.
+        <p class="text-xs text-muted-foreground">
+          Configúrala en el nodo Fog como header
+          <code class="rounded bg-muted px-1.5 py-px font-mono text-[11px]">X-API-Key</code>.
         </p>
-        <div class="key-box">
-          <code class="key-value">{{ store.createdKey }}</code>
-          <button class="btn-primary copy-btn" @click="copyKey">
-            {{ copied ? '✓ Copiada' : 'Copiar' }}
-          </button>
-        </div>
-        <p class="key-hint">Configúrala en el nodo Fog como header <code>X-API-Key</code>.</p>
-        <div class="modal-actions">
-          <button class="btn-primary" @click="store.clearCreatedKey()">Entendido, ya la guardé</button>
-        </div>
-      </div>
-    </div>
-  </div>
+
+        <DialogFooter>
+          <Button @click="store.clearCreatedKey()">Entendido, ya la guardé</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </AdminPage>
 </template>
-
-<style scoped>
-@import '../styles/admin-shared.css';
-
-.td-code { font-family: var(--font-mono); font-size: 12px; color: #092c4c; font-weight: 600; }
-.td-muted { color: #888; font-size: 12px; }
-.optional { font-weight: 400; text-transform: none; letter-spacing: 0; color: #bbb; }
-
-.key-warning { font-size: 13px; color: #c0392b; margin: 0 0 12px; }
-
-.key-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-}
-
-.key-value {
-  flex: 1;
-  font-family: monospace;
-  font-size: 12px;
-  color: #092c4c;
-  word-break: break-all;
-}
-
-.copy-btn { white-space: nowrap; }
-
-.key-hint { font-size: 12px; color: #888; margin: 0 0 12px; }
-.key-hint code { background: #f0f0f0; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
-</style>

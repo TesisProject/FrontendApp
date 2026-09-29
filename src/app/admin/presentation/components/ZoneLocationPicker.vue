@@ -143,13 +143,19 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="picker">
-    <div class="picker-map-wrap">
-      <div ref="mapEl" class="picker-map" />
-      <div v-if="loading" class="picker-overlay">Cargando mapa...</div>
-      <div v-else-if="mapError" class="picker-overlay picker-error">{{ mapError }}</div>
+  <div>
+    <div class="relative h-[260px] overflow-hidden rounded-[10px] border-[1.5px] bg-[#eef2f7]">
+      <div ref="mapEl" class="size-full" />
+      <div
+        v-if="loading || mapError"
+        class="absolute inset-0 flex items-center justify-center bg-[#eef2f7] p-4 text-center text-[13px]"
+        :class="mapError ? 'text-destructive' : 'text-muted-foreground'"
+        :role="mapError ? 'alert' : 'status'"
+      >
+        {{ mapError || 'Cargando mapa...' }}
+      </div>
     </div>
-    <p class="picker-hint">
+    <p class="mt-1.5 text-xs text-muted-foreground">
       <template v-if="hasLocation">
         Arrastra el pin o haz clic en el mapa para ajustar la ubicación exacta.
       </template>
@@ -159,37 +165,3 @@ onBeforeUnmount(() => {
     </p>
   </div>
 </template>
-
-<style scoped>
-.picker { margin-bottom: 14px; }
-
-.picker-map-wrap {
-  position: relative;
-  height: 260px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1.5px solid #e2e8f0;
-  background: #eef2f7;
-}
-.picker-map { width: 100%; height: 100%; }
-
-.picker-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  text-align: center;
-  font-size: 13px;
-  color: #6b7a8c;
-  background: #eef2f7;
-}
-.picker-error { color: #c53030; }
-
-.picker-hint {
-  margin: 6px 0 0;
-  font-size: 12px;
-  color: #8a97a8;
-}
-</style>

@@ -2,22 +2,26 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../application/auth.store'
-import AuthCard from '../../../shared/presentation/components/ui/AuthCard.vue'
-import AuthAlert from '../../../shared/presentation/components/ui/AuthAlert.vue'
-import SubmitButton from '../../../shared/presentation/components/ui/SubmitButton.vue'
+import AuthCard from '../components/AuthCard.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import SubmitButton from '../components/SubmitButton.vue'
+import { PinInput, PinInputGroup, PinInputSlot } from '@/app/shared/presentation/components/ui/pin-input'
+import { Button } from '@/app/shared/presentation/components/ui/button'
+import TextLink from '../../../shared/presentation/components/TextLink.vue'
 
 const router    = useRouter()
 const route     = useRoute()
 const authStore = useAuthStore()
 
+const CODE_LENGTH = 5
+
 const email     = computed(() => route.query.email as string ?? '')
-const digits    = ref<string[]>(['', '', '', '', ''])
-const inputRefs = ref<HTMLInputElement[]>([])
+const digits    = ref<number[]>([])
 const countdown = ref(30)
 
 let timer: ReturnType<typeof setInterval> | null = null
 
-const code = computed(() => digits.value.join(''))
+const code = computed(() => digits.value.filter(d => d !== undefined).join(''))
 
 function startCountdown() {
   if (timer) clearInterval(timer)
@@ -34,31 +38,8 @@ function startCountdown() {
 onMounted(startCountdown)
 onUnmounted(() => { if (timer) clearInterval(timer) })
 
-function onInput(index: number, event: Event) {
-  const target = event.target as HTMLInputElement
-  const val = target.value.replace(/\D/g, '').slice(-1)
-  digits.value[index] = val
-  if (val && index < 4) {
-    inputRefs.value[index + 1]?.focus()
-  }
-}
-
-function onKeydown(index: number, event: KeyboardEvent) {
-  if (event.key === 'Backspace' && !digits.value[index] && index > 0) {
-    inputRefs.value[index - 1]?.focus()
-  }
-}
-
-function onPaste(event: ClipboardEvent) {
-  event.preventDefault()
-  const text = event.clipboardData?.getData('text').replace(/\D/g, '').slice(0, 5) ?? ''
-  text.split('').forEach((char, i) => { digits.value[i] = char })
-  const nextEmpty = digits.value.findIndex(d => !d)
-  inputRefs.value[nextEmpty === -1 ? 4 : nextEmpty]?.focus()
-}
-
 async function handleSubmit() {
-  if (code.value.length < 5) return
+  if (code.value.length < CODE_LENGTH) return
   const ok = await authStore.verifyOtp(email.value, code.value)
   if (ok) router.push({ path: '/reset-password', query: { email: email.value, code: code.value } })
 }
@@ -78,36 +59,39 @@ function handleResend() {
     sub="Ingresa el código de 5 dígitos que enviamos a tu correo."
     @back="router.back()"
   >
-    <form class="auth-form" @submit.prevent="handleSubmit" novalidate>
-      <div class="auth-otp-row" @paste="onPaste">
-        <input
-          v-for="(digit, i) in digits"
-          :key="i"
-          :ref="(el) => { if (el) inputRefs[i] = el as HTMLInputElement }"
-          :value="digit"
-          type="text"
-          inputmode="numeric"
-          maxlength="1"
-          class="auth-otp-input"
-          :class="{ 'auth-otp-input--error': !!authStore.recoveryError }"
-          @input="onInput(i, $event)"
-          @keydown="onKeydown(i, $event)"
-        />
-      </div>
+    <form class="mb-[18px] flex flex-col gap-3.5" @submit.prevent="handleSubmit" novalidate>
+      <PinInput
+        v-model="digits"
+        type="number"
+        otp
+        :aria-invalid="!!authStore.recoveryError || undefined"
+        class="mb-1.5"
+      >
+        <PinInputGroup class="w-full gap-3">
+          <PinInputSlot
+            v-for="(_, i) in CODE_LENGTH"
+            :key="i"
+            :index="i"
+            :aria-label="`Dígito ${i + 1} de ${CODE_LENGTH}`"
+            :aria-invalid="!!authStore.recoveryError || undefined"
+            class="h-14 w-auto min-w-0 flex-1 rounded-lg border-[1.5px] bg-card font-display text-[22px] font-bold text-ink first:rounded-l-lg last:rounded-r-lg focus:border-ring focus:ring-4 focus:ring-ring/15 aria-invalid:ring-4 aria-invalid:ring-destructive/12"
+          />
+        </PinInputGroup>
+      </PinInput>
 
-      <div class="auth-forgot">
-        <button
+      <div class="-mt-0.5 mb-0.5 flex justify-end">
+        <Button
+          variant="link"
           type="button"
-          class="auth-link auth-resend"
-          :class="{ 'auth-resend--disabled': countdown > 0 }"
+          class="h-auto p-0 text-[13px] font-medium disabled:text-muted-foreground disabled:opacity-100"
           :disabled="countdown > 0"
           @click="handleResend"
         >
           Reenviar código{{ countdown > 0 ? ` (${countdown}s)` : '' }}
-        </button>
+        </Button>
       </div>
 
-      <AuthAlert :message="authStore.recoveryError" />
+      <FormAlert :message="authStore.recoveryError" />
 
       <SubmitButton
         :loading="authStore.recoveryLoading"
@@ -116,24 +100,8 @@ function handleResend() {
       />
     </form>
 
-    <p class="auth-alt">
-      <router-link to="/login" class="auth-link">← Volver a iniciar sesión</router-link>
+    <p class="text-center text-[13px] text-muted-foreground">
+      <TextLink to="/login">← Volver a iniciar sesión</TextLink>
     </p>
   </AuthCard>
 </template>
-
-<style scoped>
-/* El botón "reenviar" reutiliza .auth-link pero necesita reset de <button> */
-.auth-resend {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-}
-.auth-resend--disabled {
-  color: var(--pv-text-muted);
-  cursor: default;
-  text-decoration: none;
-}
-</style>

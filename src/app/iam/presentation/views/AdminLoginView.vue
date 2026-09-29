@@ -2,11 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../application/auth.store'
-import AuthCard from '../../../shared/presentation/components/ui/AuthCard.vue'
-import AuthField from '../../../shared/presentation/components/ui/AuthField.vue'
-import AuthInput from '../../../shared/presentation/components/ui/AuthInput.vue'
-import AuthAlert from '../../../shared/presentation/components/ui/AuthAlert.vue'
-import SubmitButton from '../../../shared/presentation/components/ui/SubmitButton.vue'
+import AuthCard from '../components/AuthCard.vue'
+import AuthField from '../components/AuthField.vue'
+import AuthInput from '../components/AuthInput.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import SubmitButton from '../components/SubmitButton.vue'
+import TextLink from '../../../shared/presentation/components/TextLink.vue'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -26,7 +27,7 @@ async function handleLogin() {
     title="Acceso de administrador"
     sub="Ingresa tus credenciales para gestionar zonas, cámaras y usuarios."
   >
-    <form class="auth-form" @submit.prevent="handleLogin" novalidate>
+    <form class="mb-[18px] flex flex-col gap-3.5" @submit.prevent="handleLogin" novalidate>
       <AuthField label="Correo electrónico">
         <AuthInput
           v-model="email"
@@ -45,7 +46,7 @@ async function handleLogin() {
         />
       </AuthField>
 
-      <AuthAlert :message="authStore.loginError" />
+      <FormAlert :message="authStore.loginError" />
 
       <SubmitButton
         :loading="authStore.loginLoading"
@@ -54,8 +55,8 @@ async function handleLogin() {
       />
     </form>
 
-    <p class="auth-alt">
-      <router-link to="/login" class="auth-link">← Volver al acceso de usuario</router-link>
+    <p class="text-center text-[13px] text-muted-foreground">
+      <TextLink to="/login">← Volver al acceso de usuario</TextLink>
     </p>
   </AuthCard>
 </template>

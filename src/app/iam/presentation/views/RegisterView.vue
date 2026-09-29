@@ -7,12 +7,13 @@ import { z } from 'zod'
 import { useAuthStore } from '../../application/auth.store'
 import { DocumentType, DOCUMENT_TYPE_OPTIONS, DOCUMENT_NUMBER_RULES } from '../../domain/model/document-type.vo'
 import { DEFAULT_PHONE_PREFIX, PHONE_PREFIX_OPTIONS } from '../../domain/model/phone-prefix.vo'
-import AuthCard from '../../../shared/presentation/components/ui/AuthCard.vue'
-import AuthField from '../../../shared/presentation/components/ui/AuthField.vue'
-import AuthSelect from '../../../shared/presentation/components/ui/AuthSelect.vue'
-import AuthInput from '../../../shared/presentation/components/ui/AuthInput.vue'
-import AuthAlert from '../../../shared/presentation/components/ui/AuthAlert.vue'
-import SubmitButton from '../../../shared/presentation/components/ui/SubmitButton.vue'
+import AuthCard from '../components/AuthCard.vue'
+import AuthField from '../components/AuthField.vue'
+import AuthSelect from '../components/AuthSelect.vue'
+import AuthInput from '../components/AuthInput.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import SubmitButton from '../components/SubmitButton.vue'
+import TextLink from '../../../shared/presentation/components/TextLink.vue'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -87,8 +88,8 @@ const onSubmit = handleSubmit(async (values) => {
     sub="Regístrate para encontrar espacios libres en tiempo real cerca de ti."
     @back="router.back()"
   >
-    <form class="auth-form" @submit.prevent="onSubmit" novalidate>
-      <div class="auth-row-two">
+    <form class="mb-[18px] flex flex-col gap-3.5" @submit.prevent="onSubmit" novalidate>
+      <div class="grid grid-cols-2 gap-3.5">
         <AuthField label="Nombre" :error="errors.firstName">
           <AuthInput
             v-model="firstName"
@@ -124,7 +125,7 @@ const onSubmit = handleSubmit(async (values) => {
         />
       </AuthField>
 
-      <div class="auth-row-two">
+      <div class="grid grid-cols-2 gap-3.5">
         <AuthField label="Tipo de documento" :error="errors.documentType">
           <AuthSelect
             v-model="documentType"
@@ -147,8 +148,8 @@ const onSubmit = handleSubmit(async (values) => {
         </AuthField>
       </div>
 
-      <div class="auth-row-two">
-        <AuthField label="Prefijo" class="auth-field--narrow" :error="errors.phonePrefix">
+      <div class="grid grid-cols-[132px_minmax(0,1fr)] gap-3.5">
+        <AuthField label="Prefijo" :error="errors.phonePrefix">
           <AuthSelect
             v-model="phonePrefix"
             v-bind="phonePrefixAttrs"
@@ -200,7 +201,7 @@ const onSubmit = handleSubmit(async (values) => {
         />
       </AuthField>
 
-      <AuthAlert :message="authStore.registerError" />
+      <FormAlert :message="authStore.registerError" />
 
       <SubmitButton
         :loading="authStore.registerLoading"
@@ -209,9 +210,9 @@ const onSubmit = handleSubmit(async (values) => {
       />
     </form>
 
-    <p class="auth-alt">
+    <p class="text-center text-[13px] text-muted-foreground">
       Al registrarte aceptas nuestros
-      <a href="#" class="auth-link">Términos de uso</a>
+      <TextLink href="#">Términos de uso</TextLink>
     </p>
   </AuthCard>
 </template>

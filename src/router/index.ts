@@ -1,6 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authGuard }  from '../app/iam/infrastructure/auth.guard'
 import { adminGuard } from '../app/iam/infrastructure/admin.guard'
+import { useThemeStore, type Surface } from '../app/shared/application/theme.store'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** Visual surface (tokens + dark mode support); inherited by child routes. */
+    surface?: Surface
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(),
@@ -10,6 +18,7 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('../app/iam/presentation/layout/AuthLayout.vue'),
+      meta: { surface: 'auth' },
       children: [
         { path: 'login',           component: () => import('../app/iam/presentation/views/LoginView.vue') },
         { path: 'register',        component: () => import('../app/iam/presentation/views/RegisterView.vue') },
@@ -22,6 +31,7 @@ const router = createRouter({
     {
       path: '/admin',
       component: () => import('../app/iam/presentation/layout/AuthLayout.vue'),
+      meta: { surface: 'auth' },
       children: [
         { path: '', component: () => import('../app/iam/presentation/views/AdminLoginView.vue') },
       ],
@@ -30,6 +40,7 @@ const router = createRouter({
     {
       path: '/admin',
       beforeEnter: adminGuard,
+      meta: { surface: 'admin' },
       component: () => import('../app/shared/presentation/layout/AdminLayout.vue'),
       children: [
         { path: 'dashboard', component: () => import('../app/admin/presentation/views/AdminDashboardView.vue') },
@@ -46,6 +57,7 @@ const router = createRouter({
     {
       path: '/dashboard',
       beforeEnter: authGuard,
+      meta: { surface: 'user' },
       component: () => import('../app/shared/presentation/layout/UserLayout.vue'),
       children: [
         { path: '',       component: () => import('../app/shared/presentation/views/UserDashboardView.vue') },
@@ -60,6 +72,10 @@ const router = createRouter({
 
     { path: '/:pathMatch(.*)*', component: () => import('../app/shared/presentation/views/NotFoundView.vue') },
   ],
+})
+
+router.afterEach((to) => {
+  useThemeStore().setSurface(to.meta.surface ?? 'auth')
 })
 
 export default router

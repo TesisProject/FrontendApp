@@ -2,11 +2,11 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../application/auth.store'
-import AuthCard from '../../../shared/presentation/components/ui/AuthCard.vue'
-import AuthField from '../../../shared/presentation/components/ui/AuthField.vue'
-import AuthInput from '../../../shared/presentation/components/ui/AuthInput.vue'
-import AuthAlert from '../../../shared/presentation/components/ui/AuthAlert.vue'
-import SubmitButton from '../../../shared/presentation/components/ui/SubmitButton.vue'
+import AuthCard from '../components/AuthCard.vue'
+import AuthField from '../components/AuthField.vue'
+import AuthInput from '../components/AuthInput.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import SubmitButton from '../components/SubmitButton.vue'
 
 const router    = useRouter()
 const route     = useRoute()
@@ -41,7 +41,7 @@ async function handleSubmit() {
     sub="Crea una contraseña segura para volver a acceder a tu cuenta."
     @back="router.back()"
   >
-    <form class="auth-form" @submit.prevent="handleSubmit" novalidate>
+    <form class="mb-[18px] flex flex-col gap-3.5" @submit.prevent="handleSubmit" novalidate>
       <AuthField label="Contraseña" hint="Mínimo 8 caracteres con letras, números y símbolos">
         <AuthInput
           v-model="password"
@@ -60,7 +60,7 @@ async function handleSubmit() {
         />
       </AuthField>
 
-      <AuthAlert :message="localError || authStore.recoveryError" />
+      <FormAlert :message="localError || authStore.recoveryError" />
 
       <SubmitButton
         :loading="authStore.recoveryLoading"

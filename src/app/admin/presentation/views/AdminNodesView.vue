@@ -2,6 +2,22 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAdminNodesStore } from '../../application/admin-nodes.store'
 import type { AdminNode, AdminNodeForm } from '../../domain/model/admin-node.model'
+import { Plus } from '@lucide/vue'
+import { toast } from 'vue-sonner'
+import { Button } from '@/app/shared/presentation/components/ui/button'
+import { Badge } from '@/app/shared/presentation/components/ui/badge'
+import { Input } from '@/app/shared/presentation/components/ui/input'
+import { Label } from '@/app/shared/presentation/components/ui/label'
+import { Switch } from '@/app/shared/presentation/components/ui/switch'
+import { TableCell, TableRow } from '@/app/shared/presentation/components/ui/table'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/app/shared/presentation/components/ui/dialog'
+import ConfirmDialog from '../../../shared/presentation/components/ConfirmDialog.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import AdminPage from '../components/AdminPage.vue'
+import AdminSearch from '../components/AdminSearch.vue'
+import AdminStateBox from '../components/AdminStateBox.vue'
+import AdminTableCard from '../components/AdminTableCard.vue'
+import AdminField from '../components/AdminField.vue'
 
 const store  = useAdminNodesStore()
 const search = ref('')
@@ -16,13 +32,13 @@ const filtered = computed(() =>
 const showModal  = ref(false)
 const editTarget = ref<AdminNode | null>(null)
 const form       = ref<AdminNodeForm>({ name: '', location: '', active: true })
-const feedback   = ref<{ ok: boolean; msg: string } | null>(null)
+const formError  = ref<string | null>(null)
 const confirmId  = ref<number | null>(null)
 
 function openCreate() {
   editTarget.value = null
   form.value = { name: '', location: '', active: true }
-  feedback.value = null
+  formError.value = null
   showModal.value = true
 }
 
@@ -33,7 +49,7 @@ function openEdit(node: AdminNode) {
     location: node.location,
     active:   node.active,
   }
-  feedback.value = null
+  formError.value = null
   showModal.value = true
 }
 
@@ -46,10 +62,12 @@ async function handleSubmit() {
   } else {
     ok = await store.createNode(form.value)
   }
-  feedback.value = ok
-    ? { ok: true,  msg: editTarget.value ? 'Nodo actualizado' : 'Nodo registrado' }
-    : { ok: false, msg: 'Ocurrió un error, intenta de nuevo' }
-  if (ok) setTimeout(closeModal, 1000)
+  if (!ok) {
+    formError.value = 'Ocurrió un error, intenta de nuevo'
+    return
+  }
+  toast.success(editTarget.value ? 'Nodo actualizado' : 'Nodo registrado')
+  closeModal()
 }
 
 async function handleDelete(id: number) {
@@ -57,123 +75,91 @@ async function handleDelete(id: number) {
   confirmId.value = null
 }
 
-function statusColor(active: boolean) {
-  return active ? '#38a169' : '#888'
-}
-
-function statusLabel(active: boolean) {
-  return active ? 'Activo' : 'Inactivo'
-}
-
 onMounted(() => store.fetchNodes())
 </script>
 
 <template>
-  <div class="admin-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">Nodos Fog</h1>
-        <p class="page-sub">{{ store.nodes.length }} nodos registrados</p>
-      </div>
-      <button class="btn-primary" @click="openCreate">+ Nuevo nodo</button>
-    </div>
+  <AdminPage title="Nodos Fog" :sub="`${store.nodes.length} nodos registrados`">
+    <template #actions>
+      <Button @click="openCreate"><Plus /> Nuevo nodo</Button>
+    </template>
 
-    <div class="search-bar">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input v-model="search" type="text" placeholder="Buscar por nombre o código..." />
-    </div>
+    <AdminSearch v-model="search" placeholder="Buscar por nombre o código..." />
 
-    <div v-if="store.loading" class="state-box">Cargando nodos...</div>
-    <div v-else-if="store.error" class="state-box error">{{ store.error }}</div>
+    <AdminStateBox v-if="store.loading">Cargando nodos...</AdminStateBox>
+    <AdminStateBox v-else-if="store.error" tone="error">{{ store.error }}</AdminStateBox>
 
-    <div v-else class="table-card">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Código</th><th>Nombre</th><th>Ubicación</th><th>Estado</th><th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="filtered.length === 0">
-            <td colspan="5" class="empty-row">No se encontraron nodos</td>
-          </tr>
-          <tr v-for="n in filtered" :key="n.id">
-            <td class="td-code">{{ n.code }}</td>
-            <td class="td-name">{{ n.name }}</td>
-            <td class="td-muted">{{ n.location || '—' }}</td>
-            <td>
-              <span class="badge" :style="{ background: statusColor(n.active) + '20', color: statusColor(n.active) }">
-                {{ statusLabel(n.active) }}
-              </span>
-            </td>
-            <td>
-              <div class="actions">
-                <button class="action-btn edit"   @click="openEdit(n)">Editar</button>
-                <button class="action-btn delete" @click="confirmId = n.id">Eliminar</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <AdminTableCard
+      v-else
+      :columns="['Código', 'Nombre', 'Ubicación', 'Estado', 'Acciones']"
+      :empty="filtered.length === 0"
+      empty-text="No se encontraron nodos"
+    >
+      <TableRow v-for="n in filtered" :key="n.id">
+        <TableCell class="font-mono text-xs font-semibold text-navy">{{ n.code }}</TableCell>
+        <TableCell class="font-semibold text-navy">{{ n.name }}</TableCell>
+        <TableCell class="text-xs text-muted-foreground">{{ n.location || '—' }}</TableCell>
+        <TableCell>
+          <Badge :variant="n.active ? 'success' : 'neutral'" size="status">
+            {{ n.active ? 'Activo' : 'Inactivo' }}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <div class="flex flex-wrap gap-1.5">
+            <Button size="sm" variant="outline-primary" @click="openEdit(n)">Editar</Button>
+            <Button size="sm" variant="outline-destructive" @click="confirmId = n.id">Eliminar</Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    </AdminTableCard>
 
-    <!-- Confirm delete -->
-    <div v-if="confirmId !== null" class="overlay" @click.self="confirmId = null">
-      <div class="confirm-box">
-        <p class="confirm-text">¿Eliminar este nodo? Las cámaras asignadas quedarán sin nodo.</p>
-        <div class="confirm-actions">
-          <button class="btn-ghost"  @click="confirmId = null">Cancelar</button>
-          <button class="btn-danger" @click="handleDelete(confirmId!)">Eliminar</button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDialog
+      :open="confirmId !== null"
+      title="Eliminar nodo"
+      confirm-label="Eliminar"
+      destructive
+      @cancel="confirmId = null"
+      @confirm="handleDelete(confirmId!)"
+    >
+      ¿Eliminar este nodo? Las cámaras asignadas quedarán sin nodo.
+    </ConfirmDialog>
 
-    <!-- Modal -->
-    <div v-if="showModal" class="overlay" @click.self="closeModal">
-      <div class="modal">
-        <h2 class="modal-title">{{ editTarget ? 'Editar nodo' : 'Nuevo nodo Fog' }}</h2>
+    <Dialog v-model:open="showModal">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{{ editTarget ? 'Editar nodo' : 'Nuevo nodo Fog' }}</DialogTitle>
+          <DialogDescription v-if="editTarget">
+            Código <strong class="font-mono text-foreground">{{ editTarget.code }}</strong>
+          </DialogDescription>
+          <DialogDescription v-else>
+            El código (FOG-001, FOG-002…) lo asigna el sistema al registrarlo.
+          </DialogDescription>
+        </DialogHeader>
 
-        <p v-if="editTarget" class="code-hint">Código <strong>{{ editTarget.code }}</strong></p>
-        <p v-else class="code-hint">El código (FOG-001, FOG-002…) lo asigna el sistema al registrarlo.</p>
+        <form class="grid gap-3.5" @submit.prevent="handleSubmit">
+          <AdminField v-slot="{ id }" label="Nombre" optional>
+            <Input :id="id" v-model="form.name" placeholder="Nodo estacionamiento central" />
+          </AdminField>
 
-        <div class="form-group">
-          <label>Nombre <span class="optional">(opcional)</span></label>
-          <input v-model="form.name" type="text" placeholder="Nodo estacionamiento central" />
-        </div>
+          <AdminField v-slot="{ id }" label="Ubicación" optional>
+            <Input :id="id" v-model="form.location" placeholder="Caseta de control" />
+          </AdminField>
 
-        <div class="form-group">
-          <label>Ubicación <span class="optional">(opcional)</span></label>
-          <input v-model="form.location" type="text" placeholder="Caseta de control" />
-        </div>
+          <div v-if="editTarget" class="flex items-center gap-2.5">
+            <Switch id="node-active" v-model="form.active" />
+            <Label for="node-active">Nodo activo</Label>
+          </div>
 
-        <div v-if="editTarget" class="form-group">
-          <label class="check-label">
-            <input v-model="form.active" type="checkbox" />
-            Nodo activo
-          </label>
-        </div>
+          <FormAlert :message="formError" />
 
-        <p v-if="feedback" class="feedback" :class="feedback.ok ? 'ok' : 'err'">{{ feedback.msg }}</p>
-
-        <div class="modal-actions">
-          <button class="btn-ghost"  @click="closeModal">Cancelar</button>
-          <button class="btn-primary" :disabled="store.saving" @click="handleSubmit">
-            {{ store.saving ? 'Guardando...' : (editTarget ? 'Actualizar' : 'Registrar nodo') }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="closeModal">Cancelar</Button>
+            <Button type="submit" :disabled="store.saving">
+              {{ store.saving ? 'Guardando...' : (editTarget ? 'Actualizar' : 'Registrar nodo') }}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  </AdminPage>
 </template>
-
-<style scoped>
-@import '../styles/admin-shared.css';
-
-.td-code { font-family: var(--font-mono); font-size: 12px; color: #092c4c; font-weight: 600; }
-.td-muted { color: #888; font-size: 12px; }
-.optional { font-weight: 400; text-transform: none; letter-spacing: 0; color: #bbb; }
-.check-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.check-label input { width: auto; }
-</style>

@@ -2,11 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../application/auth.store'
-import AuthCard from '../../../shared/presentation/components/ui/AuthCard.vue'
-import AuthField from '../../../shared/presentation/components/ui/AuthField.vue'
-import AuthInput from '../../../shared/presentation/components/ui/AuthInput.vue'
-import AuthAlert from '../../../shared/presentation/components/ui/AuthAlert.vue'
-import SubmitButton from '../../../shared/presentation/components/ui/SubmitButton.vue'
+import AuthCard from '../components/AuthCard.vue'
+import AuthField from '../components/AuthField.vue'
+import AuthInput from '../components/AuthInput.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import SubmitButton from '../components/SubmitButton.vue'
+import TextLink from '../../../shared/presentation/components/TextLink.vue'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -27,7 +28,7 @@ async function handleSubmit() {
     sub="Escribe tu correo y te enviaremos un código de verificación para restablecer tu contraseña."
     @back="router.back()"
   >
-    <form class="auth-form" @submit.prevent="handleSubmit" novalidate>
+    <form class="mb-[18px] flex flex-col gap-3.5" @submit.prevent="handleSubmit" novalidate>
       <AuthField label="Correo electrónico">
         <AuthInput
           v-model="email"
@@ -37,7 +38,7 @@ async function handleSubmit() {
         />
       </AuthField>
 
-      <AuthAlert :message="authStore.recoveryError" />
+      <FormAlert :message="authStore.recoveryError" />
 
       <SubmitButton
         :loading="authStore.recoveryLoading"
@@ -46,8 +47,8 @@ async function handleSubmit() {
       />
     </form>
 
-    <p class="auth-alt">
-      <router-link to="/login" class="auth-link">← Volver a iniciar sesión</router-link>
+    <p class="text-center text-[13px] text-muted-foreground">
+      <TextLink to="/login">← Volver a iniciar sesión</TextLink>
     </p>
   </AuthCard>
 </template>

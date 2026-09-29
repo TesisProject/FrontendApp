@@ -3,6 +3,12 @@ import { ref, reactive, computed, shallowRef, onMounted, watch } from 'vue'
 import { useAdminSpacesStore } from '../../application/admin-spaces.store'
 import type { AdminCamera } from '../../domain/model/admin-camera.model'
 import type { PointResponse } from '../../infrastructure/admin-response'
+import { CircleAlert, CircleCheck, ImageUp, RotateCw, Undo2 } from '@lucide/vue'
+import { Alert, AlertDescription } from '@/app/shared/presentation/components/ui/alert'
+import { Badge } from '@/app/shared/presentation/components/ui/badge'
+import { Button } from '@/app/shared/presentation/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/app/shared/presentation/components/ui/dialog'
+import AdminStateBox from './AdminStateBox.vue'
 
 const props = defineProps<{
   zoneId:   number
@@ -418,6 +424,16 @@ function spaceState(id: number): { cls: string; label: string } {
     : { cls: 'other', label: `En ${cameraLabel(roi.saved.cameraId)}` }
 }
 
+// Selectable tiles (camera tabs + space list).
+const optionClass = 'flex rounded-lg border-[1.5px] border-border bg-[#fafbfc] text-left transition-colors hover:bg-[#f0f5fa] focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none'
+
+const stateClass: Record<string, string> = {
+  on:    'text-success',
+  other: 'text-[#1a56c4]',
+  off:   'text-muted-foreground',
+  dirty: 'text-warning',
+}
+
 function tryClose() {
   emit('close')
 }
@@ -452,67 +468,78 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="overlay" @click.self="tryClose">
-    <div class="modal roi-modal">
-      <div class="roi-head">
-        <div>
-          <h2 class="modal-title">ROIs de {{ zoneName }}</h2>
-          <p class="roi-sub">
+  <Dialog :open="true" @update:open="(v: boolean) => !v && tryClose()">
+    <DialogContent class="max-h-[92vh] sm:max-w-[1000px]">
+      <DialogHeader class="flex-row items-start justify-between gap-3">
+        <div class="grid gap-1">
+          <DialogTitle>ROIs de {{ zoneName }}</DialogTitle>
+          <DialogDescription class="text-xs">
             Elige la cámara que cubre el espacio, selecciona el espacio y dibuja su polígono con clics sobre la foto.
-          </p>
+          </DialogDescription>
         </div>
-        <span v-if="dirtyCount > 0" class="badge dirty-badge">{{ dirtyCount }} sin guardar</span>
-      </div>
+        <Badge v-if="dirtyCount > 0" variant="warning" size="status" class="mr-8">{{ dirtyCount }} sin guardar</Badge>
+      </DialogHeader>
 
-      <div v-if="loading" class="roi-loading">Cargando ROIs de la zona...</div>
+      <AdminStateBox v-if="loading">Cargando ROIs de la zona...</AdminStateBox>
 
-      <div v-else-if="loadError" class="roi-loading error">{{ loadError }}</div>
+      <AdminStateBox v-else-if="loadError" tone="error">{{ loadError }}</AdminStateBox>
 
-      <div v-else-if="cameras.length === 0" class="roi-loading">
+      <p v-else-if="cameras.length === 0" class="py-20 text-center text-[13px] text-muted-foreground">
         Esta zona no tiene cámaras. Registra una en <strong>Cámaras</strong> para poder dibujar sus ROIs.
-      </div>
+      </p>
 
       <template v-else>
         <!-- Cámaras de la zona -->
-        <div class="roi-cameras">
+        <div class="flex flex-wrap gap-1.5" role="group" aria-label="Cámara">
           <button
             v-for="c in cameras"
             :key="c.id"
-            class="roi-cam-tab"
-            :class="{ selected: c.id === cameraId }"
+            type="button"
+            :aria-pressed="c.id === cameraId"
+            :class="[optionClass, c.id === cameraId ? 'border-[#1a56c4] bg-[#eef3fc]' : '']"
+            class="flex-row items-baseline gap-1.5 px-3 py-1.5"
             @click="selectCamera(c.id)"
           >
-            <span class="roi-cam-code">{{ c.code }}</span>
-            <span v-if="c.name !== c.code" class="roi-cam-name">{{ c.name }}</span>
-            <span class="roi-cam-count">{{ spacesCoveredBy(c.id) }} esp.</span>
+            <span class="font-mono text-[12.5px] font-bold text-navy">{{ c.code }}</span>
+            <span v-if="c.name !== c.code" class="text-xs text-muted-foreground">{{ c.name }}</span>
+            <span class="text-[10.5px] text-muted-foreground">{{ spacesCoveredBy(c.id) }} esp.</span>
           </button>
         </div>
 
-        <div class="roi-body">
+        <div class="flex items-stretch gap-3.5">
           <!-- Lista de espacios -->
-          <aside class="roi-spaces">
+          <div
+            class="flex max-h-[480px] w-[180px] shrink-0 flex-col gap-1 overflow-y-auto [scrollbar-width:thin]"
+            role="listbox"
+            aria-label="Espacios"
+          >
             <button
               v-for="s in spacesStore.spaces"
               :key="s.id"
-              class="roi-space-item"
-              :class="{ selected: s.id === selectedId }"
+              type="button"
+              role="option"
+              :aria-selected="s.id === selectedId"
+              :class="[optionClass, s.id === selectedId ? 'border-zone-libre bg-[#f0faf4]' : '']"
+              class="flex-col items-start gap-0.5 px-2.5 py-2"
               @click="selectedId = s.id"
             >
-              <span class="roi-space-num">{{ s.spaceNumber }}</span>
-              <span class="roi-space-state" :class="spaceState(s.id).cls">{{ spaceState(s.id).label }}</span>
+              <span class="font-mono text-[13px] font-bold text-navy">{{ s.spaceNumber }}</span>
+              <span class="text-[10.5px] font-semibold" :class="stateClass[spaceState(s.id).cls]">
+                {{ spaceState(s.id).label }}
+              </span>
             </button>
-          </aside>
+          </div>
 
           <!-- Canvas -->
-          <div class="roi-canvas-col">
-            <p v-if="selectedInOtherCamera" class="roi-notice">
+          <div class="min-w-0 flex-1">
+            <p v-if="selectedInOtherCamera" class="mb-2 rounded-lg bg-[#eef3fc] px-2.5 py-1.5 text-xs text-[#1a56c4]">
               Este espacio lo cubre {{ cameraLabel(selectedRoi!.cameraId) }}. Si dibujas aquí, al guardar
               pasará a {{ cameraLabel(cameraId) }}.
             </p>
             <canvas
               ref="canvasRef"
-              class="roi-canvas"
-              :class="{ busy: bgLoading }"
+              class="mx-auto block max-h-[60vh] max-w-full cursor-crosshair rounded-[10px] border-[1.5px]"
+              :class="{ 'opacity-50': bgLoading }"
               :width="CANVAS_W"
               :height="canvasH"
               @mousedown="onMouseDown"
@@ -520,7 +547,7 @@ onMounted(async () => {
               @mouseup="onMouseUp"
               @mouseleave="onMouseUp"
             />
-            <p class="roi-bg-info">
+            <p class="mt-1.5 text-center text-[11.5px] text-muted-foreground">
               <template v-if="bgLoading">Cargando foto de la cámara...</template>
               <template v-else-if="background?.capturedAt">
                 Última foto de la cámara · {{ formatCapturedAt(background.capturedAt) }}
@@ -528,227 +555,76 @@ onMounted(async () => {
               <template v-else-if="background?.image">Imagen de referencia propia</template>
               <template v-else>La cámara aún no subió fotos: sube una imagen de referencia.</template>
             </p>
-            <div class="roi-toolbar">
-              <label class="btn-ghost file-btn">
+            <div class="mt-2.5 flex flex-wrap items-center gap-2.5">
+              <Button as="label" variant="outline" size="sm" class="cursor-pointer text-xs">
+                <ImageUp />
                 {{ background?.image ? 'Usar otra imagen' : 'Subir imagen de referencia' }}
                 <input type="file" accept="image/*" hidden @change="onImageSelected" />
-              </label>
-              <button
-                class="btn-ghost"
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                class="text-xs"
                 :disabled="!background?.image"
                 title="Gira la vista 90° en sentido horario (el ROI no cambia)"
                 @click="rotateImage"
               >
-                Girar 90°{{ rotation ? ` (${rotation}°)` : '' }}
-              </button>
-              <span class="roi-count">
+                <RotateCw /> Girar 90°{{ rotation ? ` (${rotation}°)` : '' }}
+              </Button>
+              <span class="flex-1 text-center text-xs text-muted-foreground">
                 {{ selectedRoi && !selectedInOtherCamera
                   ? `${selectedRoi.points.length} punto${selectedRoi.points.length !== 1 ? 's' : ''}`
                   : '' }}
               </span>
-              <div class="roi-tools">
-                <button
-                  class="btn-ghost"
+              <div class="flex gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="text-xs"
                   :disabled="!selectedRoi || selectedInOtherCamera || selectedRoi.points.length === 0"
                   @click="undoPoint"
-                >Deshacer</button>
-                <button
-                  class="btn-ghost"
+                ><Undo2 /> Deshacer</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="text-xs"
                   :disabled="!selectedRoi || selectedInOtherCamera || selectedRoi.points.length === 0"
                   @click="clearPoints"
-                >Limpiar</button>
-                <button class="btn-ghost" :disabled="!selectedRoi?.dirty" @click="discardSelected">Descartar</button>
-                <button
-                  class="btn-ghost danger"
+                >Limpiar</Button>
+                <Button variant="outline" size="sm" class="text-xs" :disabled="!selectedRoi?.dirty" @click="discardSelected">
+                  Descartar
+                </Button>
+                <Button
+                  variant="outline-destructive"
+                  size="sm"
+                  class="text-xs"
                   :disabled="!selectedRoi?.saved || spacesStore.saving"
                   @click="removeSelected"
                 >
                   Quitar ROI
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         </div>
 
-        <p v-if="feedback" class="feedback" :class="feedback.ok ? 'ok' : 'err'">{{ feedback.msg }}</p>
+        <Alert v-if="feedback" :variant="feedback.ok ? 'success' : 'destructive'" class="py-2">
+          <CircleCheck v-if="feedback.ok" />
+          <CircleAlert v-else />
+          <AlertDescription class="text-[13px] text-current">{{ feedback.msg }}</AlertDescription>
+        </Alert>
       </template>
 
-      <div v-if="loading || loadError || cameras.length === 0" class="modal-actions">
-        <button class="btn-ghost" @click="tryClose">Cerrar</button>
-      </div>
-      <div v-else class="modal-actions">
-        <button class="btn-ghost" @click="tryClose">Cerrar</button>
-        <button class="btn-primary" :disabled="saving || dirtyCount === 0" @click="saveAll">
+      <DialogFooter>
+        <Button variant="outline" @click="tryClose">Cerrar</Button>
+        <Button
+          v-if="!loading && !loadError && cameras.length > 0"
+          :disabled="saving || dirtyCount === 0"
+          @click="saveAll"
+        >
           {{ saving ? 'Guardando...' : `Guardar cambios${dirtyCount > 0 ? ` (${dirtyCount})` : ''}` }}
-        </button>
-      </div>
-    </div>
-  </div>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped>
-@import '../styles/admin-shared.css';
-
-.roi-modal {
-  width: 1000px;
-  max-width: 96vw;
-  max-height: 92vh;
-  overflow-y: auto;
-}
-
-.roi-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.roi-sub {
-  font-size: 12px;
-  color: #888;
-  margin: 4px 0 0;
-}
-
-.badge.dirty-badge { background: #fff4e5; color: #b26a00; }
-
-.roi-loading {
-  text-align: center;
-  color: #aaa;
-  font-size: 13px;
-  padding: 80px 0;
-}
-.roi-loading.error { color: #c0392b; }
-
-/* Pestañas de cámaras */
-.roi-cameras {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.roi-cam-tab {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1.5px solid #eee;
-  border-radius: 8px;
-  background: #fafbfc;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-.roi-cam-tab:hover { background: #f0f5fa; }
-.roi-cam-tab.selected { border-color: #1a56c4; background: #eef3fc; }
-
-.roi-cam-code { font-size: 12.5px; font-weight: 700; font-family: monospace; color: #092c4c; }
-.roi-cam-name { font-size: 12px; color: #555; }
-.roi-cam-count { font-size: 10.5px; color: #999; }
-
-.roi-body {
-  display: flex;
-  gap: 14px;
-  align-items: stretch;
-}
-
-/* Lista lateral de espacios */
-.roi-spaces {
-  width: 180px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 480px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #e0e0e0 transparent;
-}
-
-.roi-space-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 8px 10px;
-  border: 1.5px solid #eee;
-  border-radius: 8px;
-  background: #fafbfc;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-}
-.roi-space-item:hover { background: #f0f5fa; }
-.roi-space-item.selected {
-  border-color: #38a169;
-  background: #f0faf4;
-}
-
-.roi-space-num {
-  font-size: 13px;
-  font-weight: 700;
-  font-family: monospace;
-  color: #092c4c;
-}
-
-.roi-space-state { font-size: 10.5px; font-weight: 600; }
-.roi-space-state.on    { color: #2e7d52; }
-.roi-space-state.other { color: #1a56c4; }
-.roi-space-state.off   { color: #aaa; }
-.roi-space-state.dirty { color: #b26a00; }
-
-/* Canvas */
-.roi-canvas-col {
-  flex: 1;
-  min-width: 0;
-}
-
-.roi-notice {
-  font-size: 12px;
-  color: #1a56c4;
-  background: #eef3fc;
-  border-radius: 8px;
-  padding: 6px 10px;
-  margin: 0 0 8px;
-}
-
-/* Tamaño intrínseco = proporción de la foto; se escala sin deformarse. */
-.roi-canvas {
-  display: block;
-  max-width: 100%;
-  max-height: 60vh;
-  margin: 0 auto;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 10px;
-  cursor: crosshair;
-}
-.roi-canvas.busy { opacity: 0.5; }
-
-.roi-bg-info {
-  font-size: 11.5px;
-  color: #999;
-  text-align: center;
-  margin: 6px 0 0;
-}
-
-.roi-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.file-btn { cursor: pointer; font-size: 12px; }
-
-.roi-count {
-  flex: 1;
-  text-align: center;
-  font-size: 12px;
-  color: #aaa;
-}
-
-.roi-tools { display: flex; gap: 6px; }
-
-.btn-ghost.danger { color: #c0392b; border-color: #f0c7c2; }
-.btn-ghost.danger:hover:not(:disabled) { background: #fdecea; }
-</style>
