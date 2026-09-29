@@ -1,7 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { adminApi } from '../infrastructure/admin-api'
-import type { AdminSpaceResponse, PointResponse } from '../infrastructure/admin-response'
+import type {
+  AdminSpaceResponse, MonitoredSpaceResponse, PointResponse, CameraScreenshotResponse,
+} from '../infrastructure/admin-response'
+import type { AdminCamera } from '../domain/model/admin-camera.model'
+import { toAdminCamera } from '../infrastructure/admin-assembler'
 import { AvailabilityApi } from '../../parking/infrastructure/availability-api'
 
 const availabilityApi = new AvailabilityApi()
@@ -75,21 +79,35 @@ export const useAdminSpacesStore = defineStore('adminSpaces', () => {
     }
   }
 
-  /** ROI del espacio, o null si aún no está monitoreado (404). */
-  async function fetchRoi(spaceId: number): Promise<PointResponse[] | null> {
+  /** Cámaras de la zona: cada ROI se dibuja sobre la foto de una de ellas. */
+  async function fetchZoneCameras(id: number): Promise<AdminCamera[]> {
+    return (await adminApi.getCameras(id)).map(toAdminCamera)
+  }
+
+  /** Última foto de la cámara, o null si aún no subió ninguna (404). */
+  async function fetchCameraScreenshot(cameraId: number): Promise<CameraScreenshotResponse | null> {
     try {
-      const monitored = await adminApi.getMonitoredSpace(spaceId)
-      return monitored.roi ?? []
+      return await adminApi.getCameraScreenshot(cameraId)
     } catch {
       return null
     }
   }
 
-  async function saveRoi(spaceId: number, roi: PointResponse[]): Promise<boolean> {
+  /** Espacio monitoreado (cámara que lo cubre + ROI), o null si aún no está monitoreado (404). */
+  async function fetchMonitored(spaceId: number): Promise<MonitoredSpaceResponse | null> {
+    try {
+      return await adminApi.getMonitoredSpace(spaceId)
+    } catch {
+      return null
+    }
+  }
+
+  /** Asigna el espacio a la cámara con su ROI (coordenadas de la foto sin girar). */
+  async function saveRoi(spaceId: number, cameraId: number, roi: PointResponse[]): Promise<boolean> {
     saving.value = true
     error.value  = null
     try {
-      await adminApi.updateSpaceRoi(spaceId, roi)
+      await adminApi.updateSpaceRoi(spaceId, { cameraId, roi })
       setMonitored(spaceId, true)
       return true
     } catch {
@@ -129,7 +147,7 @@ export const useAdminSpacesStore = defineStore('adminSpaces', () => {
   return {
     spaces, loading, saving, error,
     fetchByZone, addSpace, removeSpace,
-    fetchRoi, saveRoi, removeMonitoring,
+    fetchZoneCameras, fetchCameraScreenshot, fetchMonitored, saveRoi, removeMonitoring,
     clear,
   }
 })

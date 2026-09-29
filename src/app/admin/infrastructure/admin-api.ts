@@ -5,7 +5,7 @@ import type {
   AdminUserResponse, AdminUserProfileResponse, AdminUserProfileRequest,
   AdminNodeResponse, AdminNodeCreateRequest, AdminNodeUpdateRequest,
   AdminApiKeyResponse, AdminApiKeyCreateRequest, AdminCreatedApiKeyResponse,
-  MonitoredSpaceResponse, PointResponse,
+  MonitoredSpaceResponse, UpdateSpaceRoiRequest, CameraScreenshotResponse,
 } from './admin-response'
 import type { AdminCameraAlert } from '../domain/model/admin-camera-alert.model'
 import type { AdminSpaceResponse } from './admin-response'
@@ -65,8 +65,8 @@ export class AdminApi {
   }
 
   // Cameras — /api/v1/occupancy/cameras (única ruta de vision que publica el gateway)
-  getCameras(): Promise<AdminCameraResponse[]> {
-    return httpClient.get('/occupancy/cameras')
+  getCameras(zoneId?: number): Promise<AdminCameraResponse[]> {
+    return httpClient.get(zoneId === undefined ? '/occupancy/cameras' : `/occupancy/cameras?zoneId=${zoneId}`)
   }
   createCamera(body: AdminCameraCreateRequest): Promise<AdminCameraResponse> {
     return httpClient.post('/occupancy/cameras', body)
@@ -76,6 +76,9 @@ export class AdminApi {
   }
   deleteCamera(id: number): Promise<void> {
     return httpClient.delete(`/occupancy/cameras/${id}`)
+  }
+  getCameraScreenshot(id: number): Promise<CameraScreenshotResponse> {
+    return httpClient.get(`/occupancy/cameras/${id}/screenshot`)
   }
 
   // Fog nodes — /api/v1/occupancy/nodes
@@ -107,8 +110,8 @@ export class AdminApi {
   getMonitoredSpace(parkingSpaceId: number): Promise<MonitoredSpaceResponse> {
     return httpClient.get(`/occupancy/spaces/${parkingSpaceId}`)
   }
-  updateSpaceRoi(parkingSpaceId: number, roi: PointResponse[]): Promise<MonitoredSpaceResponse> {
-    return httpClient.put(`/occupancy/spaces/${parkingSpaceId}/roi`, { roi })
+  updateSpaceRoi(parkingSpaceId: number, body: UpdateSpaceRoiRequest): Promise<MonitoredSpaceResponse> {
+    return httpClient.put(`/occupancy/spaces/${parkingSpaceId}/roi`, body)
   }
   unmonitorSpace(parkingSpaceId: number): Promise<void> {
     return httpClient.delete(`/occupancy/spaces/${parkingSpaceId}`)

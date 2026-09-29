@@ -140,16 +140,37 @@ export interface PointResponse {
   y: number
 }
 
-/** MonitoredSpaceResource — /occupancy/spaces/{parkingSpaceId} (ROI + estado). */
+/**
+ * MonitoredSpaceResource — /occupancy/spaces/{parkingSpaceId}. El ROI pertenece a la cámara que cubre
+ * el espacio y está en coordenadas normalizadas de su foto SIN girar.
+ */
 export interface MonitoredSpaceResponse {
   parkingSpaceId: number
   zoneId:         number
+  cameraId:       number
   spaceNumber:    string
   occupied:       boolean
   roi:            PointResponse[]
 }
 
-/** UpdateSpaceRoiRequest — crea o reemplaza el ROI de un espacio. */
+/**
+ * UpdateSpaceRoiRequest — asigna el espacio a una cámara (de su misma zona) con su ROI; si ya estaba
+ * monitoreado, reemplaza cámara y polígono.
+ */
 export interface UpdateSpaceRoiRequest {
-  roi: PointResponse[]
+  cameraId: number
+  roi:      PointResponse[]
+}
+
+/**
+ * CameraScreenshotResource — última foto de la cámara (URL presignada de R2). `rotation` son los grados
+ * (sentido horario) que hay que girarla para verla derecha.
+ */
+export interface CameraScreenshotResponse {
+  cameraId:         number
+  cameraCode:       string
+  url:              string
+  capturedAt:       string
+  rotation:         number
+  expiresInSeconds: number
 }
