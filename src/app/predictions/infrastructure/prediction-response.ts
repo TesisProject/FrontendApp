@@ -11,3 +11,17 @@ export interface OccupancyForecastResponse {
   createdAt: string
   updatedAt: string
 }
+
+export interface ZoneModelMetricsResponse {
+  zoneId: number
+  reliabilityPct: number | null
+  trainingPct: number | null
+  evaluatedHours: number
+  hits: number
+  historyDays: number | null
+  targetDays: number
+  lookbackDays: number
+  tolerancePct: number
+  modelVersion: string | null
+  computedAt: string
+}

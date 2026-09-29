@@ -285,6 +285,7 @@ onUnmounted(() => clearInterval(refreshTimer))
 
         <!-- Forecast -->
         <ZoneForecastCard
+          :zone-id="zoneId"
           :spot-ids="(zoneStore.spaces as any[]).map((s) => s.id)"
           :history="zoneStore.history"
           :history-unavailable="!!zoneStore.historyError"

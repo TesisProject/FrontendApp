@@ -108,14 +108,13 @@ async function run() {
   }
 
   // La comparación predicho-vs-real resuelve la "ventana actual" con granularidad
-  // de 15 min sobre la hora UTC del servidor: la zona se siembra a 15 min las 24 h
-  // (curva evaluada en hora local Lima = UTC-5) para que el panel siempre encuentre ventana.
+  // de 15 min en hora local de Lima (prediction.timezone del backend): la zona se
+  // siembra a 15 min las 24 h para que el panel siempre encuentre ventana.
   const zoneJobs = []
   for (const day of DAYS) {
     for (let startMinuteOfDay = 0; startMinuteOfDay < 24 * 60; startMinuteOfDay += 15) {
-      const localMinute = (startMinuteOfDay - 5 * 60 + 24 * 60) % (24 * 60)
       const avg =
-        spaces.reduce((s, sp) => s + availability(day, localMinute, sp.id), 0) / spaces.length
+        spaces.reduce((s, sp) => s + availability(day, startMinuteOfDay, sp.id), 0) / spaces.length
       zoneJobs.push({
         url: `${BASE}/prediction/zones/${ZONE_ID}/forecasts`,
         body: {

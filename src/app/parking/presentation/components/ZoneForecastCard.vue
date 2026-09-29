@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { predictionApi } from '../../../predictions/infrastructure/prediction-api'
-import { toForecast } from '../../../predictions/infrastructure/prediction-assembler'
-import type { DayOfWeek, OccupancyForecast } from '../../../predictions/domain/model/prediction.model'
+import { toForecast, toModelMetrics } from '../../../predictions/infrastructure/prediction-assembler'
+import type { DayOfWeek, OccupancyForecast, ZoneModelMetrics } from '../../../predictions/domain/model/prediction.model'
 import type { ZoneOccupancyHistoryPointResponse } from '../../infrastructure/availability-response'
 
 const props = defineProps<{
+  zoneId: number
   spotIds: number[]
   /** Frames reales de ocupación (el backend guarda los últimos 30 días). */
   history: ZoneOccupancyHistoryPointResponse[]
@@ -84,10 +85,28 @@ const actualByHour = computed(() => {
   return result
 })
 
-// VALORES DE EJEMPLO: el backend aún no expone métricas del modelo (solo su versión).
-// Reemplazar por datos reales cuando existan.
-const MODEL_TRAINING_PCT = 82
-const MODEL_RELIABILITY_PCT = 74
+// Métricas del modelo calculadas por el backend. Si la petición falla se ocultan solo estas barras.
+const metrics = ref<ZoneModelMetrics | null>(null)
+
+const modelBars = computed(() => [
+  { label: 'Entrenamiento', pct: metrics.value?.trainingPct ?? null },
+  { label: 'Confiabilidad', pct: metrics.value?.reliabilityPct ?? null },
+])
+
+watch(
+  () => props.zoneId,
+  async zoneId => {
+    metrics.value = null
+    try {
+      const result = toModelMetrics(await predictionApi.getZoneModelMetrics(zoneId))
+      // Descarta la respuesta si mientras tanto cambió la zona.
+      if (zoneId === props.zoneId) metrics.value = result
+    } catch {
+      // Sin métricas no se muestran las barras; el resto del card sigue funcionando.
+    }
+  },
+  { immediate: true },
+)
 
 const modelVersion = computed(() => forecasts.value[0]?.modelVersion ?? null)
 
@@ -261,20 +280,14 @@ watch(
         </div>
       </div>
 
-      <div class="model-info">
-        <div class="metric">
-          <span class="metric-label">Entrenamiento</span>
+      <div v-if="metrics" class="model-info">
+        <div v-for="bar in modelBars" :key="bar.label" class="metric">
+          <span class="metric-label">{{ bar.label }}</span>
           <div class="forecast-bar forecast-bar--thin">
-            <div class="forecast-fill metric-fill" :style="{ width: MODEL_TRAINING_PCT + '%' }" />
+            <div class="forecast-fill metric-fill" :style="{ width: (bar.pct ?? 0) + '%' }" />
           </div>
-          <strong>{{ MODEL_TRAINING_PCT }}%</strong>
-        </div>
-        <div class="metric">
-          <span class="metric-label">Confiabilidad</span>
-          <div class="forecast-bar forecast-bar--thin">
-            <div class="forecast-fill metric-fill" :style="{ width: MODEL_RELIABILITY_PCT + '%' }" />
-          </div>
-          <strong>{{ MODEL_RELIABILITY_PCT }}%</strong>
+          <strong v-if="bar.pct !== null">{{ bar.pct }}%</strong>
+          <span v-else class="metric-empty" title="Aún no hay datos suficientes para calcularlo">Sin datos suficientes</span>
         </div>
       </div>
 
@@ -472,6 +485,10 @@ watch(
 }
 .metric-fill {
   background: #092c4c;
+}
+.metric-empty {
+  color: #8a94a0;
+  font-size: 11.5px;
 }
 
 .disclaimer {
