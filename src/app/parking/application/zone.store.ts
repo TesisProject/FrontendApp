@@ -2,12 +2,16 @@ import { defineStore } from 'pinia'
 import { useAsyncState } from '../../shared/helpers/async-state'
 import { ZoneApi } from '../infrastructure/zone-api'
 import { SpaceApi } from '../infrastructure/space-api'
-import { AvailabilityApi } from '../infrastructure/availability-api'
+import { AvailabilityApi, type HistoryBucketQuery } from '../infrastructure/availability-api'
 import { toZone } from '../infrastructure/zone-assembler'
 import { toSpace } from '../infrastructure/space-assembler'
+import { toZoneView } from '../infrastructure/zone-view-assembler'
 import type { Zone } from '../domain/model/zone.model'
 import type { ParkingSpace } from '../domain/model/space.model'
-import type { ZoneAvailabilityResponse, ZoneOccupancyHistoryPointResponse } from '../infrastructure/availability-response'
+import type { ZoneView } from '../domain/model/zone-view.model'
+import type {
+  ZoneAvailabilityResponse, ZoneOccupancyHistoryBucketResponse, ZoneOccupancyHistoryPointResponse,
+} from '../infrastructure/availability-response'
 
 const zoneApi = new ZoneApi()
 const spaceApi = new SpaceApi()
@@ -35,6 +39,23 @@ async function loadZoneAvailability(zoneId: number): Promise<ZoneAvailabilityRes
   }
 }
 
+// Margen antes de que caduque la URL presignada de una foto para pedir una nueva.
+const IMAGE_URL_MARGIN_MS = 60_000
+
+/**
+ * Conserva la foto ya cargada si la cámara no ha tomado otra y su URL sigue vigente: cada respuesta
+ * trae una URL presignada distinta y cambiarla sin motivo haría parpadear la imagen en cada refresco.
+ */
+function keepLoadedImages(prev: ZoneView[], next: ZoneView[], now = Date.now()): ZoneView[] {
+  return next.map(view => {
+    const old = prev.find(v => v.id === view.id)
+    const stillValid = old?.expiresAt == null || old.expiresAt - IMAGE_URL_MARGIN_MS > now
+    return old && old.capturedAt === view.capturedAt && old.imageUrl && stillValid
+      ? { ...view, imageUrl: old.imageUrl, expiresAt: old.expiresAt }
+      : view
+  })
+}
+
 function occupiedSetOf(availability?: ZoneAvailabilityResponse): Set<number> {
   return new Set((availability?.spaces ?? []).filter(s => s.occupied).map(s => s.parkingSpaceId))
 }
@@ -44,6 +65,10 @@ export const useZoneStore = defineStore('zone', () => {
   const zoneState = useAsyncState<Zone | null>(null)
   const spacesState = useAsyncState<ParkingSpace[]>([])
   const historyState = useAsyncState<ZoneOccupancyHistoryPointResponse[]>([])
+  const viewsState = useAsyncState<ZoneView[]>([])
+  const historyBucketsState = useAsyncState<ZoneOccupancyHistoryBucketResponse[]>([])
+  // Solo se aplica la respuesta de la última petición: si se cambia de periodo rápido, las viejas se descartan.
+  let historyBucketsRequest = 0
 
   async function fetchZones() {
     zonesState.setLoading()
@@ -99,6 +124,49 @@ export const useZoneStore = defineStore('zone', () => {
   }
 
   /**
+   * Historial agregado por el backend para el gráfico. Mientras carga se conservan los datos previos
+   * (el gráfico se atenúa en vez de desaparecer). Devuelve si esta respuesta fue la que se aplicó.
+   */
+  async function fetchHistoryBuckets(
+    zoneId: number,
+    query: HistoryBucketQuery,
+    options?: { silent?: boolean },
+  ): Promise<boolean> {
+    const request = ++historyBucketsRequest
+    if (!options?.silent) historyBucketsState.setLoading()
+    try {
+      const buckets = await availabilityApi.getZoneHistoryBuckets(zoneId, query)
+      if (request !== historyBucketsRequest) return false
+      historyBucketsState.setData(
+        [...buckets].sort((a, b) => a.bucketStart.localeCompare(b.bucketStart)),
+      )
+      return true
+    } catch (err: any) {
+      if (request !== historyBucketsRequest) return false
+      if (options?.silent) historyBucketsState.setLoading(false)
+      else historyBucketsState.setError(err?.message ?? 'Error al cargar el historial')
+      return false
+    }
+  }
+
+  /**
+   * Vistas de cámara de la zona. Es progresivo: si vision no las ofrece (o falla), quedan vacías y
+   * los espacios se muestran sin foto.
+   */
+  async function fetchViews(zoneId: number, options?: { silent?: boolean }) {
+    if (!options?.silent) {
+      viewsState.reset()
+      viewsState.setLoading()
+    }
+    try {
+      const views = (await availabilityApi.getZoneViews(zoneId)).map(r => toZoneView(r))
+      viewsState.setData(keepLoadedImages(viewsState.data.value, views))
+    } catch (err: any) {
+      if (!options?.silent) viewsState.setError(err?.message ?? 'Error al cargar las vistas')
+    }
+  }
+
+  /**
    * Refresco ligero para el timer del detalle: re-consulta solo la disponibilidad (vision) y
    * actualiza la zona y el estado de los espacios ya cargados, sin volver a pedir el catálogo.
    */
@@ -136,10 +204,17 @@ export const useZoneStore = defineStore('zone', () => {
     history: historyState.data,
     historyLoading: historyState.loading,
     historyError: historyState.error,
+    historyBuckets: historyBucketsState.data,
+    historyBucketsLoading: historyBucketsState.loading,
+    historyBucketsError: historyBucketsState.error,
+    views: viewsState.data,
+    viewsLoading: viewsState.loading,
     fetchZones,
     fetchZone,
     fetchSpacesByZone,
     fetchHistory,
+    fetchHistoryBuckets,
+    fetchViews,
     refreshAvailability,
   }
 })

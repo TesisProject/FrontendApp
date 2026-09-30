@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { ArrowLeft, Heart, ImageOff, MapPin } from '@lucide/vue'
+import { ArrowLeft, Heart, MapPin } from '@lucide/vue'
 import { Button } from '@/app/shared/presentation/components/ui/button'
 import { useZoneStore } from '../../application/zone.store'
 import { useFavoriteStore } from '../../../favorites/application/favorite.store'
@@ -11,13 +11,15 @@ import type { ParkingSpace } from '../../domain/model/space.model'
 import ZoneRating from '../../../ratings/presentation/components/ZoneRating.vue'
 import SectionCard from '../../../shared/presentation/components/SectionCard.vue'
 import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
+import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
 import OccupancyHistoryChart from '../components/OccupancyHistoryChart.vue'
 import ZoneForecastCard from '../components/ZoneForecastCard.vue'
 import ClassificationBadge from '../components/ClassificationBadge.vue'
 import OccupancyMeter from '../components/OccupancyMeter.vue'
-
-// Enlace de la imagen de vista previa (snapshot de cámara o foto de la zona). Vacío = sin imagen.
-const PREVIEW_IMAGE_URL = ''
+import ZoneSpacesPanel from '../components/ZoneSpacesPanel.vue'
+import {
+  HISTORY_RANGE_OPTIONS, bucketLabel, buildHistorySeries, historyQuery, type HistoryRange,
+} from '../occupancy-history'
 
 const route = useRoute()
 const zoneStore = useZoneStore()
@@ -51,7 +53,37 @@ const stats = computed(() => {
   ]
 })
 
-const statCard = 'flex flex-col gap-1 rounded-xl border bg-card px-5 py-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
+const historyRange = ref<HistoryRange>('12h')
+// Periodo y "ahora" de los datos en pantalla. Solo cambian cuando llega su respuesta: mientras carga
+// otro periodo se sigue viendo el anterior (atenuado), nunca intervalos de uno con el eje de otro.
+const shownHistory = ref<{ range: HistoryRange; now: number } | null>(null)
+
+const historySeries = computed(() =>
+  shownHistory.value
+    ? buildHistorySeries(zoneStore.historyBuckets, shownHistory.value.range, shownHistory.value.now)
+    : null,
+)
+
+const historySub = computed(() =>
+  `Espacios ocupados en promedio cada ${bucketLabel(historyRange.value)}. `
+  + 'Los huecos son lapsos sin registros de las cámaras.',
+)
+
+async function loadHistoryBuckets(options?: { silent?: boolean }) {
+  const range = historyRange.value
+  const now = Date.now()
+  const applied = await zoneStore.fetchHistoryBuckets(zoneId.value, historyQuery(range, now), options)
+  if (applied) shownHistory.value = { range, now }
+}
+
+watch(historyRange, () => loadHistoryBuckets())
+
+const statCard ='flex flex-col gap-1 rounded-xl border bg-card px-5 py-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
+
+const REFRESH_MS = 30_000
+// Los frames crudos (30 días, solo para comparar el pronóstico por hora) pesan mucho más que el resto:
+// basta con refrescarlos cada 5 min.
+const RAW_HISTORY_EVERY_TICKS = 10
 
 let refreshTimer: ReturnType<typeof setInterval>
 
@@ -59,14 +91,19 @@ onMounted(async () => {
   await Promise.all([
     zoneStore.fetchZone(zoneId.value),
     zoneStore.fetchSpacesByZone(zoneId.value),
+    loadHistoryBuckets(),
     zoneStore.fetchHistory(zoneId.value),
+    zoneStore.fetchViews(zoneId.value),
     favoriteStore.fetchFavorites(userId.value),
   ])
-  // Re-consulta la disponibilidad viva y el historial (vision); el catálogo estático no cambia.
+  // Re-consulta la disponibilidad viva, las fotos y el historial (vision); el catálogo estático no cambia.
+  let ticks = 0
   refreshTimer = setInterval(() => {
     zoneStore.refreshAvailability(zoneId.value)
-    zoneStore.fetchHistory(zoneId.value, { silent: true })
-  }, 30_000)
+    zoneStore.fetchViews(zoneId.value, { silent: true })
+    loadHistoryBuckets({ silent: true })
+    if (++ticks % RAW_HISTORY_EVERY_TICKS === 0) zoneStore.fetchHistory(zoneId.value, { silent: true })
+  }, REFRESH_MS)
 })
 
 onUnmounted(() => clearInterval(refreshTimer))
@@ -128,65 +165,43 @@ onUnmounted(() => clearInterval(refreshTimer))
         </div>
       </div>
 
-      <div class="grid items-stretch gap-4 md:grid-cols-2">
-        <!-- Spaces -->
-        <SectionCard title="Espacios" class="flex flex-col">
-          <StateMessage v-if="zoneStore.spacesLoading" compact>Cargando espacios...</StateMessage>
-          <StateMessage v-else-if="zoneStore.spacesError" tone="error" compact>{{ zoneStore.spacesError }}</StateMessage>
-          <StateMessage v-else-if="spaces.length === 0" tone="empty" compact>Sin espacios registrados.</StateMessage>
-          <template v-else>
-            <ul class="grid flex-1 grid-cols-[repeat(auto-fill,80px)] auto-rows-[80px] content-center justify-center gap-3">
-              <li
-                v-for="space in spaces"
-                :key="space.id"
-                class="flex aspect-square items-center justify-center rounded-lg border-[1.5px] text-[13px] font-bold text-heading transition-transform hover:scale-105"
-                :class="space.occupied
-                  ? 'border-zone-ocupado bg-destructive-soft'
-                  : 'border-zone-libre bg-success-soft'"
-                :title="`${space.spaceNumber} · ${space.occupied ? 'Ocupado' : 'Libre'}`"
-              >
-                {{ space.spaceNumber }}
-                <span class="sr-only">{{ space.occupied ? 'ocupado' : 'libre' }}</span>
-              </li>
-            </ul>
-            <div class="mt-3.5 flex gap-4 border-t pt-3.5 text-xs text-muted-foreground">
-              <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-libre" /> Libre</span>
-              <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-ocupado" /> Ocupado</span>
-            </div>
-          </template>
-        </SectionCard>
-
-        <!-- Image preview -->
-        <SectionCard title="Vista previa" class="flex flex-col">
-          <div class="relative min-h-40 flex-1 overflow-hidden rounded-[10px] bg-muted/50">
-            <img
-              v-if="PREVIEW_IMAGE_URL"
-              :src="PREVIEW_IMAGE_URL"
-              alt="Vista previa del estacionamiento"
-              class="absolute inset-0 size-full object-cover"
-            />
-            <div
-              v-else
-              class="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-[10px] border-[1.5px] border-dashed text-[13px] text-muted-foreground"
-            >
-              <ImageOff class="size-10 stroke-[1.5] opacity-60" aria-hidden="true" />
-              Sin imagen disponible
-            </div>
+      <!-- Spaces, agrupados por lo que ve cada cámara -->
+      <SectionCard
+        title="Espacios"
+        :sub="zoneStore.views.length ? 'Pasa el cursor por un espacio para ubicarlo en la foto.' : undefined"
+      >
+        <template #actions>
+          <div class="flex shrink-0 gap-4 pt-0.5 text-xs text-muted-foreground">
+            <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-libre" /> Libre</span>
+            <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-ocupado" /> Ocupado</span>
           </div>
-        </SectionCard>
-      </div>
+        </template>
+        <StateMessage v-if="zoneStore.spacesLoading || zoneStore.viewsLoading" compact>Cargando espacios...</StateMessage>
+        <StateMessage v-else-if="zoneStore.spacesError" tone="error" compact>{{ zoneStore.spacesError }}</StateMessage>
+        <StateMessage v-else-if="spaces.length === 0" tone="empty" compact>Sin espacios registrados.</StateMessage>
+        <ZoneSpacesPanel v-else :spaces="spaces" :views="zoneStore.views" />
+      </SectionCard>
 
       <!-- Occupancy history -->
-      <SectionCard
-        title="Historial de ocupación"
-        sub="Cada punto es un frame registrado por las cámaras — pasa el cursor para ver la hora y la ocupación de ese momento."
-      >
-        <StateMessage v-if="zoneStore.historyLoading" compact>Cargando historial...</StateMessage>
-        <StateMessage v-else-if="zoneStore.historyError" tone="error" compact>{{ zoneStore.historyError }}</StateMessage>
-        <StateMessage v-else-if="zoneStore.history.length === 0" tone="empty" compact>
-          Aún no hay historial registrado para esta zona.
+      <SectionCard title="Historial de ocupación" :sub="historySub">
+        <template #actions>
+          <FilterPills v-model="historyRange" :options="HISTORY_RANGE_OPTIONS" label="Periodo del historial" size="sm" />
+        </template>
+        <StateMessage v-if="zoneStore.historyBucketsError" tone="error" compact>
+          {{ zoneStore.historyBucketsError }}
         </StateMessage>
-        <OccupancyHistoryChart v-else :points="zoneStore.history" />
+        <StateMessage v-else-if="!historySeries" compact>Cargando historial...</StateMessage>
+        <div
+          v-else
+          class="transition-opacity"
+          :class="zoneStore.historyBucketsLoading && 'opacity-50'"
+          :aria-busy="zoneStore.historyBucketsLoading"
+        >
+          <StateMessage v-if="historySeries.buckets.length === 0" tone="empty" compact>
+            Sin registros de ocupación en este periodo.
+          </StateMessage>
+          <OccupancyHistoryChart v-else :series="historySeries" :range="shownHistory!.range" />
+        </div>
       </SectionCard>
 
       <ZoneForecastCard
