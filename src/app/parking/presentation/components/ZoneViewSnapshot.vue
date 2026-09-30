@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { ImageOff } from '@lucide/vue'
+import { Skeleton } from '@/app/shared/presentation/components/ui/skeleton'
 import type { RoiPoint } from '../../domain/model/zone-view.model'
 
 export interface SnapshotSpace {
@@ -69,10 +70,13 @@ const unit = computed(() => (display.value ? Math.max(display.value.w, display.v
 </script>
 
 <template>
-  <div class="relative overflow-hidden rounded-[10px] bg-muted/50">
+  <!-- Sin bordes propios: el marco (esquinas, superposiciones) lo pone quien la contiene. -->
+  <div class="relative" :class="display && !failed && 'bg-black/85'">
+    <!-- La altura se limita para que una zona con una sola cámara no muestre una foto gigante: el SVG
+         centra la imagen dentro de su caja (preserveAspectRatio por defecto). -->
     <svg
       v-if="display && !failed"
-      class="block h-auto w-full"
+      class="block h-auto max-h-[26rem] w-full"
       :viewBox="`0 0 ${display.w} ${display.h}`"
       role="img"
       aria-label="Última foto de estos espacios con cada espacio marcado según su estado"
@@ -103,18 +107,14 @@ const unit = computed(() => (display.value ? Math.max(display.value.w, display.v
       </g>
     </svg>
 
-    <div
-      v-else-if="imageUrl && !failed"
-      class="aspect-video animate-pulse bg-muted"
-      aria-label="Cargando foto"
-    />
+    <Skeleton v-else-if="imageUrl && !failed" class="aspect-video max-h-[26rem] w-full rounded-none" />
 
     <div
       v-else
-      class="flex aspect-video flex-col items-center justify-center gap-2 rounded-[10px] border-[1.5px] border-dashed text-[13px] text-muted-foreground"
+      class="flex aspect-video max-h-[26rem] w-full flex-col items-center justify-center gap-2 bg-muted text-[13px] text-muted-foreground"
     >
-      <ImageOff class="size-9 stroke-[1.5] opacity-60" aria-hidden="true" />
-      Sin imagen disponible
+      <ImageOff class="size-8 stroke-[1.5] opacity-60" aria-hidden="true" />
+      Aún no hay foto de estos espacios
     </div>
   </div>
 </template>

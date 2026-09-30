@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { ArrowLeft, Heart, MapPin } from '@lucide/vue'
+import { ArrowLeft, Heart, Loader2, MapPin } from '@lucide/vue'
 import { Button } from '@/app/shared/presentation/components/ui/button'
+import { Skeleton } from '@/app/shared/presentation/components/ui/skeleton'
 import { useZoneStore } from '../../application/zone.store'
 import { useFavoriteStore } from '../../../favorites/application/favorite.store'
 import { useAuthStore } from '../../../iam/application/auth.store'
@@ -17,6 +18,8 @@ import ZoneForecastCard from '../components/ZoneForecastCard.vue'
 import ClassificationBadge from '../components/ClassificationBadge.vue'
 import OccupancyMeter from '../components/OccupancyMeter.vue'
 import ZoneSpacesPanel from '../components/ZoneSpacesPanel.vue'
+import ZoneSpacesSkeleton from '../components/ZoneSpacesSkeleton.vue'
+import OccupancyHistorySkeleton from '../components/OccupancyHistorySkeleton.vue'
 import {
   HISTORY_RANGE_OPTIONS, bucketLabel, buildHistorySeries, historyQuery, type HistoryRange,
 } from '../occupancy-history'
@@ -117,12 +120,22 @@ onUnmounted(() => clearInterval(refreshTimer))
       </Button>
     </div>
 
-    <StateMessage v-if="zoneStore.zoneLoading">Cargando zona...</StateMessage>
-    <StateMessage v-else-if="zoneStore.zoneError" tone="error">{{ zoneStore.zoneError }}</StateMessage>
+    <StateMessage v-if="zoneStore.zoneError" tone="error">{{ zoneStore.zoneError }}</StateMessage>
 
-    <template v-else-if="zoneStore.zone">
+    <!-- Mientras carga la zona se ve la silueta de la página; cada sección maneja además su propia carga. -->
+    <template v-else>
       <!-- Title row -->
-      <div class="flex flex-wrap items-start justify-between gap-4">
+      <div v-if="!zoneStore.zone" class="flex flex-wrap items-start justify-between gap-4" role="status" aria-label="Cargando zona">
+        <div class="flex flex-col gap-2">
+          <Skeleton class="h-8 w-64" />
+          <Skeleton class="h-4 w-80 max-w-[70vw]" />
+        </div>
+        <div class="mt-1 flex gap-2.5">
+          <Skeleton class="h-7 w-24 rounded-full" />
+          <Skeleton class="h-7 w-24 rounded-full" />
+        </div>
+      </div>
+      <div v-else class="flex flex-wrap items-start justify-between gap-4">
         <div class="min-w-0">
           <h1 class="mb-1.5 font-display text-2xl font-bold text-heading">{{ zoneStore.zone.name }}</h1>
           <p class="flex items-center gap-1 text-[13px] text-muted-foreground">
@@ -147,7 +160,13 @@ onUnmounted(() => clearInterval(refreshTimer))
       </div>
 
       <!-- Stats -->
-      <div class="grid grid-cols-2 gap-3.5 md:grid-cols-4">
+      <div v-if="!zoneStore.zone" class="grid grid-cols-2 gap-3.5 md:grid-cols-4">
+        <div v-for="i in 4" :key="i" :class="statCard">
+          <Skeleton class="h-[26px] w-14" />
+          <Skeleton class="h-3 w-16" />
+        </div>
+      </div>
+      <div v-else class="grid grid-cols-2 gap-3.5 md:grid-cols-4">
         <div v-for="s in stats" :key="s.label" :class="statCard">
           <span class="font-display text-[26px] leading-none font-bold tabular-nums" :class="s.tone">{{ s.value }}</span>
           <span class="text-xs font-medium text-muted-foreground">{{ s.label }}</span>
@@ -176,7 +195,7 @@ onUnmounted(() => clearInterval(refreshTimer))
             <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-ocupado" /> Ocupado</span>
           </div>
         </template>
-        <StateMessage v-if="zoneStore.spacesLoading || zoneStore.viewsLoading" compact>Cargando espacios...</StateMessage>
+        <ZoneSpacesSkeleton v-if="zoneStore.spacesLoading || zoneStore.viewsLoading" />
         <StateMessage v-else-if="zoneStore.spacesError" tone="error" compact>{{ zoneStore.spacesError }}</StateMessage>
         <StateMessage v-else-if="spaces.length === 0" tone="empty" compact>Sin espacios registrados.</StateMessage>
         <ZoneSpacesPanel v-else :spaces="spaces" :views="zoneStore.views" />
@@ -185,12 +204,21 @@ onUnmounted(() => clearInterval(refreshTimer))
       <!-- Occupancy history -->
       <SectionCard title="Historial de ocupación" :sub="historySub">
         <template #actions>
-          <FilterPills v-model="historyRange" :options="HISTORY_RANGE_OPTIONS" label="Periodo del historial" size="sm" />
+          <div class="flex items-center gap-2">
+            <!-- Recarga al cambiar de periodo: el gráfico actual queda atenuado; el hueco del spinner
+                 está siempre reservado para que los filtros no se muevan. -->
+            <Loader2
+              class="size-4 animate-spin text-muted-foreground"
+              :class="!(historySeries && zoneStore.historyBucketsLoading) && 'invisible'"
+              aria-hidden="true"
+            />
+            <FilterPills v-model="historyRange" :options="HISTORY_RANGE_OPTIONS" label="Periodo del historial" size="sm" />
+          </div>
         </template>
         <StateMessage v-if="zoneStore.historyBucketsError" tone="error" compact>
           {{ zoneStore.historyBucketsError }}
         </StateMessage>
-        <StateMessage v-else-if="!historySeries" compact>Cargando historial...</StateMessage>
+        <OccupancyHistorySkeleton v-else-if="!historySeries" />
         <div
           v-else
           class="transition-opacity"
@@ -204,14 +232,16 @@ onUnmounted(() => clearInterval(refreshTimer))
         </div>
       </SectionCard>
 
-      <ZoneForecastCard
-        :zone-id="zoneId"
-        :spot-ids="spaces.map((s) => s.id)"
-        :history="zoneStore.history"
-        :history-unavailable="!!zoneStore.historyError"
-      />
+      <template v-if="zoneStore.zone">
+        <ZoneForecastCard
+          :zone-id="zoneId"
+          :spot-ids="spaces.map((s) => s.id)"
+          :history="zoneStore.history"
+          :history-unavailable="!!zoneStore.historyError"
+        />
 
-      <ZoneRating :zone-id="zoneId" />
+        <ZoneRating :zone-id="zoneId" />
+      </template>
     </template>
   </div>
 </template>

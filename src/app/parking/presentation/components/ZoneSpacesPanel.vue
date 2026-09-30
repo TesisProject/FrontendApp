@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Camera, TriangleAlert } from '@lucide/vue'
+import { Camera, CameraOff, TriangleAlert } from '@lucide/vue'
 import type { ParkingSpace } from '../../domain/model/space.model'
 import type { ZoneView } from '../../domain/model/zone-view.model'
 import { formatRelative } from '../../../shared/helpers/date'
+import { cn } from '@/app/shared/helpers/utils'
+import SpaceChip from './SpaceChip.vue'
 import ZoneViewSnapshot, { type SnapshotSpace } from './ZoneViewSnapshot.vue'
 
 const props = defineProps<{
@@ -14,9 +16,8 @@ const props = defineProps<{
 // Una foto más vieja que esto sugiere que la cámara dejó de reportar: el estado puede no ser actual.
 const STALE_AFTER_MS = 15 * 60_000
 
-interface SpaceGroup {
-  key:    string
-  view:   ZoneView | null
+interface ViewCard {
+  view:   ZoneView
   spaces: SnapshotSpace[]
 }
 
@@ -24,35 +25,36 @@ const bySpaceNumber = (a: SnapshotSpace, b: SnapshotSpace) =>
   a.spaceNumber.localeCompare(b.spaceNumber, 'es', { numeric: true })
 
 /**
- * Un grupo por cámara (sin nombrarla: al usuario solo le importan sus espacios). Los espacios que
- * ninguna cámara cubre — o todos, si vision aún no ofrece vistas — van juntos al final, sin foto.
+ * Una tarjeta por cámara (sin nombrarla: al usuario solo le importan sus espacios) y, aparte, los
+ * espacios que ninguna cámara cubre — o todos, si vision aún no ofrece vistas.
  */
-const groups = computed<SpaceGroup[]>(() => {
+const layout = computed(() => {
   const byId = new Map(props.spaces.map(s => [s.id, s]))
   const covered = new Set<number>()
 
-  const withView = props.views.flatMap((view) => {
+  const cards: ViewCard[] = props.views.flatMap((view) => {
     const spaces = view.spaces.flatMap(({ spaceId, roi }) => {
       const space = byId.get(spaceId)
       if (!space || covered.has(spaceId)) return []
       covered.add(spaceId)
       return [{ id: space.id, spaceNumber: space.spaceNumber, occupied: space.occupied, roi }]
     })
-    return spaces.length ? [{ key: `view-${view.id}`, view, spaces: spaces.sort(bySpaceNumber) }] : []
+    return spaces.length ? [{ view, spaces: spaces.sort(bySpaceNumber) }] : []
   })
 
-  const rest = props.spaces
+  const uncovered: SnapshotSpace[] = props.spaces
     .filter(s => !covered.has(s.id))
     .map(s => ({ id: s.id, spaceNumber: s.spaceNumber, occupied: s.occupied, roi: [] }))
     .sort(bySpaceNumber)
 
-  return rest.length ? [...withView, { key: 'rest', view: null, spaces: rest }] : withView
+  return { cards, uncovered }
 })
 
 const activeId = ref<number | null>(null)
 
-function freeCount(spaces: SnapshotSpace[]): number {
-  return spaces.filter(s => !s.occupied).length
+function freeLabel(spaces: SnapshotSpace[]): string {
+  const free = spaces.filter(s => !s.occupied).length
+  return `${free} de ${spaces.length} libre${free !== 1 ? 's' : ''}`
 }
 
 function isStale(iso: string): boolean {
@@ -62,68 +64,81 @@ function isStale(iso: string): boolean {
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })
 }
+
+// Chip sobre la foto: siempre oscuro para leerse sobre cualquier imagen, así que sus colores son fijos
+// (no tokens de tema); el aviso de foto vieja usa un ámbar claro pensado para ese fondo.
+const overlayChip = 'inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm'
 </script>
 
 <template>
   <div class="flex flex-col gap-3.5">
-    <article
-      v-for="group in groups"
-      :key="group.key"
-      class="grid gap-4"
-      :class="[
-        (group.view || groups.length > 1) && 'rounded-[10px] border p-4',
-        group.view && 'md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] md:items-start',
-      ]"
+    <div
+      v-if="layout.cards.length"
+      class="grid gap-3.5"
+      :class="layout.cards.length > 1 && 'md:grid-cols-2'"
     >
-      <div class="flex min-w-0 flex-col gap-3">
-        <header class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span>
-            <strong class="text-[13px] font-semibold text-heading tabular-nums">{{ freeCount(group.spaces) }}</strong>
-            libre{{ freeCount(group.spaces) !== 1 ? 's' : '' }} de {{ group.spaces.length }}
-          </span>
+      <article
+        v-for="card in layout.cards"
+        :key="card.view.id"
+        class="overflow-hidden rounded-xl border bg-card"
+      >
+        <div class="relative">
+          <ZoneViewSnapshot
+            v-model:active-id="activeId"
+            :image-url="card.view.imageUrl"
+            :rotation="card.view.rotation"
+            :spaces="card.spaces"
+          />
+          <div class="pointer-events-none absolute inset-x-2.5 top-2.5 flex items-start justify-between gap-2">
+            <span :class="overlayChip" class="tabular-nums">{{ freeLabel(card.spaces) }}</span>
+            <span
+              v-if="card.view.capturedAt"
+              :class="cn(overlayChip, isStale(card.view.capturedAt) && 'text-orange-300')"
+              :title="`Foto tomada el ${formatDateTime(card.view.capturedAt)}`"
+            >
+              <component
+                :is="isStale(card.view.capturedAt) ? TriangleAlert : Camera"
+                class="size-3.5 shrink-0"
+                aria-hidden="true"
+              />
+              {{ formatRelative(card.view.capturedAt) }}
+            </span>
+          </div>
+        </div>
 
-          <span
-            v-if="group.view?.capturedAt"
-            class="flex items-center gap-1"
-            :class="isStale(group.view.capturedAt) && 'text-warning'"
-            :title="`Foto tomada el ${formatDateTime(group.view.capturedAt)}`"
-          >
-            <component
-              :is="isStale(group.view.capturedAt) ? TriangleAlert : Camera"
-              class="size-3.5 shrink-0"
-              aria-hidden="true"
-            />
-            Actualizado {{ formatRelative(group.view.capturedAt) }}
-          </span>
-          <span v-else-if="groups.length > 1 && !group.view">Sin imagen de cámara</span>
-        </header>
-
-        <ul class="grid grid-cols-[repeat(auto-fill,minmax(64px,1fr))] gap-2.5">
-          <li
-            v-for="space in group.spaces"
+        <ul class="flex flex-wrap gap-1.5 p-3" :aria-label="`Espacios de esta vista: ${freeLabel(card.spaces)}`">
+          <SpaceChip
+            v-for="space in card.spaces"
             :key="space.id"
-            class="flex aspect-square items-center justify-center rounded-lg border-[1.5px] text-[13px] font-bold text-heading transition-[transform,box-shadow] hover:scale-105"
-            :class="[
-              space.occupied ? 'border-zone-ocupado bg-destructive-soft' : 'border-zone-libre bg-success-soft',
-              activeId === space.id && 'scale-105 ring-2 ring-ring/60 ring-offset-2 ring-offset-card',
-            ]"
-            :title="`${space.spaceNumber} · ${space.occupied ? 'Ocupado' : 'Libre'}`"
+            :space-number="space.spaceNumber"
+            :occupied="space.occupied"
+            :active="activeId === space.id"
             @mouseenter="activeId = space.id"
             @mouseleave="activeId = null"
-          >
-            {{ space.spaceNumber }}
-            <span class="sr-only">{{ space.occupied ? 'ocupado' : 'libre' }}</span>
-          </li>
+          />
         </ul>
-      </div>
+      </article>
+    </div>
 
-      <ZoneViewSnapshot
-        v-if="group.view"
-        v-model:active-id="activeId"
-        :image-url="group.view.imageUrl"
-        :rotation="group.view.rotation"
-        :spaces="group.spaces"
-      />
-    </article>
+    <!-- Espacios sin foto: franja compacta (o la lista completa si vision no ofrece vistas) -->
+    <div
+      v-if="layout.uncovered.length"
+      class="flex flex-wrap items-center gap-x-3 gap-y-2"
+      :class="layout.cards.length > 0 && 'rounded-xl border border-dashed px-3.5 py-3'"
+    >
+      <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <CameraOff v-if="layout.cards.length" class="size-3.5" aria-hidden="true" />
+        <template v-if="layout.cards.length">Sin foto ·</template>
+        <strong class="font-semibold text-heading tabular-nums">{{ freeLabel(layout.uncovered) }}</strong>
+      </span>
+      <ul class="flex flex-wrap gap-1.5">
+        <SpaceChip
+          v-for="space in layout.uncovered"
+          :key="space.id"
+          :space-number="space.spaceNumber"
+          :occupied="space.occupied"
+        />
+      </ul>
+    </div>
   </div>
 </template>
