@@ -1,6 +1,12 @@
+/** CameraResource — GET /occupancy/cameras (ver API-Frontend.md). */
 export interface CameraResponse {
-  id:        string
-  zoneId:    string
-  ipAddress: string
-  status:    string
+  id:        number
+  code:      string
+  nodeId:    number | null
+  zoneId:    number
+  name:      string | null
+  location:  string | null
+  active:    boolean
+  createdAt: string
+  updatedAt: string
 }

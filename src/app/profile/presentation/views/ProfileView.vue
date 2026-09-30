@@ -3,13 +3,23 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useAuthStore }    from '../../../iam/application/auth.store'
 import { useProfileStore } from '../../application/profile.store'
 import { useThemeStore }   from '../../../shared/application/theme.store'
+import { toast } from 'vue-sonner'
+import { Avatar, AvatarFallback, AvatarImage } from '@/app/shared/presentation/components/ui/avatar'
+import { Badge } from '@/app/shared/presentation/components/ui/badge'
+import { Button } from '@/app/shared/presentation/components/ui/button'
+import { Input } from '@/app/shared/presentation/components/ui/input'
+import { Label } from '@/app/shared/presentation/components/ui/label'
+import { Switch } from '@/app/shared/presentation/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/shared/presentation/components/ui/tabs'
+import { Textarea } from '@/app/shared/presentation/components/ui/textarea'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
 
 const authStore    = useAuthStore()
 const profileStore = useProfileStore()
 const themeStore   = useThemeStore()
 
 const activeTab  = ref<'info' | 'preferences'>('info')
-const savedOk    = ref(false)
 
 const userId = computed(() => authStore.user?.id ?? 0)
 
@@ -42,6 +52,12 @@ const fullName = computed(() => {
   return authStore.user?.email ?? ''
 })
 
+const alertToggles = [
+  { key: 'alertFreeSpace',     label: 'Espacio libre disponible', description: 'Notificar cuando haya espacios libres cerca' },
+  { key: 'alertSaturated',     label: 'Zona saturada',            description: 'Notificar cuando una zona supere el 70% de ocupación' },
+  { key: 'alertCameraFailure', label: 'Fallo de cámara',          description: 'Notificar cuando una cámara quede fuera de línea' },
+] as const
+
 const roleBadge: Record<string, string> = {
   ADMIN:    'Administrador',
   OPERATOR: 'Operador',
@@ -51,21 +67,13 @@ const roleBadge: Record<string, string> = {
 watch(() => prefs.value.darkMode, (val) => themeStore.setDark(val))
 
 async function handleSaveProfile() {
-  savedOk.value = false
   const ok = await profileStore.updateProfile(userId.value, { ...form.value })
-  if (ok) {
-    savedOk.value = true
-    setTimeout(() => { savedOk.value = false }, 3000)
-  }
+  if (ok) toast.success('Cambios guardados')
 }
 
 async function handleSavePreferences() {
-  savedOk.value = false
   const ok = await profileStore.updatePreferences(userId.value, { ...prefs.value })
-  if (ok) {
-    savedOk.value = true
-    setTimeout(() => { savedOk.value = false }, 3000)
-  }
+  if (ok) toast.success('Preferencias guardadas')
 }
 
 onMounted(async () => {
@@ -97,454 +105,120 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="profile-page">
-
+  <div class="mx-auto flex w-full max-w-[860px] flex-col gap-5">
     <!-- Header card -->
-    <div class="profile-header-card">
-      <div class="avatar">
-        <img v-if="profileStore.profile?.avatarUrl" :src="profileStore.profile.avatarUrl" :alt="fullName" class="avatar-img" />
-        <span v-else class="avatar-initials">{{ initials }}</span>
+    <section class="flex items-center gap-5 rounded-[14px] border bg-card p-6">
+      <Avatar class="size-[72px]">
+        <AvatarImage v-if="profileStore.profile?.avatarUrl" :src="profileStore.profile.avatarUrl" :alt="fullName" />
+        <AvatarFallback class="bg-navy text-[26px] font-bold tracking-[1px] text-white">{{ initials }}</AvatarFallback>
+      </Avatar>
+      <div class="flex min-w-0 flex-col gap-1">
+        <h1 class="truncate text-xl font-bold text-heading">{{ fullName }}</h1>
+        <span class="truncate text-[13px] text-muted-foreground">{{ authStore.user?.email }}</span>
+        <Badge variant="warning" size="pill" class="mt-0.5 bg-primary/10 text-link">
+          {{ roleBadge[authStore.user?.role ?? ''] ?? authStore.user?.role }}
+        </Badge>
       </div>
-      <div class="header-info">
-        <h2 class="profile-name">{{ fullName }}</h2>
-        <span class="profile-email">{{ authStore.user?.email }}</span>
-        <span class="role-badge">{{ roleBadge[authStore.user?.role ?? ''] ?? authStore.user?.role }}</span>
-      </div>
-    </div>
+    </section>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab" :class="{ active: activeTab === 'info' }" @click="activeTab = 'info'">
-        Información personal
-      </button>
-      <button class="tab" :class="{ active: activeTab === 'preferences' }" @click="activeTab = 'preferences'">
-        Preferencias
-      </button>
-    </div>
+    <Tabs v-model="activeTab" class="gap-5">
+      <TabsList aria-label="Secciones del perfil">
+        <TabsTrigger value="info">Información personal</TabsTrigger>
+        <TabsTrigger value="preferences">Preferencias</TabsTrigger>
+      </TabsList>
 
-    <!-- Loading -->
-    <div v-if="profileStore.profileLoading || profileStore.prefsLoading" class="center-state">
-      <span class="state-text">Cargando...</span>
-    </div>
+      <StateMessage v-if="profileStore.profileLoading || profileStore.prefsLoading">Cargando...</StateMessage>
+      <StateMessage v-else-if="profileStore.profileError || profileStore.prefsError" tone="error">
+        {{ profileStore.profileError || profileStore.prefsError }}
+      </StateMessage>
 
-    <!-- Error -->
-    <div v-else-if="profileStore.profileError || profileStore.prefsError" class="center-state">
-      <span class="state-text error">{{ profileStore.profileError || profileStore.prefsError }}</span>
-    </div>
+      <template v-else>
+        <!-- Tab: Información personal -->
+        <TabsContent value="info">
+          <form class="flex flex-col gap-4 rounded-[14px] border bg-card p-7" @submit.prevent="handleSaveProfile">
+            <h2 class="text-[15px] font-bold text-heading">Información personal</h2>
 
-    <template v-else>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="grid gap-1.5">
+                <Label for="profile-first-name">Nombre</Label>
+                <Input id="profile-first-name" v-model="form.firstName" placeholder="Tu nombre" maxlength="100" autocomplete="given-name" />
+              </div>
+              <div class="grid gap-1.5">
+                <Label for="profile-last-name">Apellido</Label>
+                <Input id="profile-last-name" v-model="form.lastName" placeholder="Tu apellido" maxlength="100" autocomplete="family-name" />
+              </div>
+            </div>
 
-      <!-- Tab: Información personal -->
-      <div v-if="activeTab === 'info'" class="card">
-        <h3 class="section-title">Información personal</h3>
+            <div class="grid gap-1.5">
+              <Label for="profile-phone">Teléfono</Label>
+              <Input id="profile-phone" v-model="form.phone" type="tel" placeholder="+51 999 999 999" maxlength="20" autocomplete="tel" />
+            </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Nombre</label>
-            <input v-model="form.firstName" type="text" placeholder="Tu nombre" maxlength="100" />
-          </div>
-          <div class="form-group">
-            <label>Apellido</label>
-            <input v-model="form.lastName" type="text" placeholder="Tu apellido" maxlength="100" />
-          </div>
-        </div>
+            <div class="grid gap-1.5">
+              <Label for="profile-avatar">URL de foto de perfil</Label>
+              <Input id="profile-avatar" v-model="form.avatarUrl" type="url" placeholder="https://..." maxlength="500" />
+            </div>
 
-        <div class="form-group">
-          <label>Teléfono</label>
-          <input v-model="form.phone" type="tel" placeholder="+51 999 999 999" maxlength="20" />
-        </div>
+            <div class="grid gap-1.5">
+              <Label for="profile-bio">Biografía</Label>
+              <Textarea id="profile-bio" v-model="form.bio" placeholder="Cuéntanos algo sobre ti..." rows="3" />
+            </div>
 
-        <div class="form-group">
-          <label>URL de foto de perfil</label>
-          <input v-model="form.avatarUrl" type="url" placeholder="https://..." maxlength="500" />
-        </div>
+            <FormAlert :message="profileStore.saveError" />
 
-        <div class="form-group">
-          <label>Biografía</label>
-          <textarea v-model="form.bio" placeholder="Cuéntanos algo sobre ti..." rows="3" />
-        </div>
+            <div class="mt-1 flex justify-end border-t border-border/60 pt-3">
+              <Button type="submit" variant="emphasis" :disabled="profileStore.saving">
+                {{ profileStore.saving ? 'Guardando...' : 'Guardar cambios' }}
+              </Button>
+            </div>
+          </form>
+        </TabsContent>
 
-        <div class="form-actions">
-          <span v-if="savedOk" class="success-msg">Cambios guardados</span>
-          <span v-if="profileStore.saveError" class="error-msg">{{ profileStore.saveError }}</span>
-          <button class="save-btn" :disabled="profileStore.saving" @click="handleSaveProfile">
-            {{ profileStore.saving ? 'Guardando...' : 'Guardar cambios' }}
-          </button>
-        </div>
-      </div>
+        <!-- Tab: Preferencias -->
+        <TabsContent value="preferences">
+          <form class="flex flex-col gap-4 rounded-[14px] border bg-card p-7" @submit.prevent="handleSavePreferences">
+            <h2 class="text-[15px] font-bold text-heading">Preferencias</h2>
 
-      <!-- Tab: Preferencias -->
-      <div v-if="activeTab === 'preferences'" class="card">
-        <h3 class="section-title">Preferencias</h3>
+            <div class="divide-y divide-border/60">
+              <div class="flex items-center justify-between gap-4 py-2.5">
+                <Label for="pref-dark" class="flex-col items-start gap-0.5">
+                  <span class="text-sm font-medium text-foreground">Modo oscuro</span>
+                  <span class="text-xs font-normal text-muted-foreground">Cambia la apariencia de la aplicación</span>
+                </Label>
+                <Switch id="pref-dark" v-model="prefs.darkMode" />
+              </div>
+            </div>
 
-        <div class="pref-toggle">
-          <div class="pref-label">
-            <span>Modo oscuro</span>
-            <span class="pref-desc">Cambia la apariencia de la aplicación</span>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" v-model="prefs.darkMode" />
-            <span class="slider" />
-          </label>
-        </div>
+            <h3 class="border-t border-border/60 pt-3 text-[13px] font-semibold text-foreground/80">Alertas</h3>
 
-        <div class="section-subtitle">Alertas</div>
+            <div class="-mt-2 divide-y divide-border/60">
+              <div v-for="a in alertToggles" :key="a.key" class="flex items-center justify-between gap-4 py-2.5">
+                <Label :for="`pref-${a.key}`" class="flex-col items-start gap-0.5">
+                  <span class="text-sm font-medium text-foreground">{{ a.label }}</span>
+                  <span class="text-xs font-normal text-muted-foreground">{{ a.description }}</span>
+                </Label>
+                <Switch :id="`pref-${a.key}`" v-model="prefs[a.key]" />
+              </div>
+            </div>
 
-        <div class="pref-toggle">
-          <div class="pref-label">
-            <span>Espacio libre disponible</span>
-            <span class="pref-desc">Notificar cuando haya espacios libres cerca</span>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" v-model="prefs.alertFreeSpace" />
-            <span class="slider" />
-          </label>
-        </div>
+            <div class="mt-2 grid gap-1.5">
+              <Label for="pref-radius">Radio de alertas</Label>
+              <div class="flex items-center gap-2">
+                <Input id="pref-radius" v-model.number="prefs.alertRadiusM" type="number" min="0" step="50" class="w-[110px]" />
+                <span class="text-[13px] text-muted-foreground">metros</span>
+              </div>
+            </div>
 
-        <div class="pref-toggle">
-          <div class="pref-label">
-            <span>Zona saturada</span>
-            <span class="pref-desc">Notificar cuando una zona supere el 70% de ocupación</span>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" v-model="prefs.alertSaturated" />
-            <span class="slider" />
-          </label>
-        </div>
+            <FormAlert :message="profileStore.saveError" />
 
-        <div class="pref-toggle">
-          <div class="pref-label">
-            <span>Fallo de cámara</span>
-            <span class="pref-desc">Notificar cuando una cámara quede fuera de línea</span>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" v-model="prefs.alertCameraFailure" />
-            <span class="slider" />
-          </label>
-        </div>
-
-        <div class="form-group mt-16">
-          <label>Radio de alertas</label>
-          <div class="radius-row">
-            <input v-model.number="prefs.alertRadiusM" type="number" min="0" step="50" class="radius-input" />
-            <span class="radius-unit">metros</span>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <span v-if="savedOk" class="success-msg">Preferencias guardadas</span>
-          <span v-if="profileStore.saveError" class="error-msg">{{ profileStore.saveError }}</span>
-          <button class="save-btn" :disabled="profileStore.saving" @click="handleSavePreferences">
-            {{ profileStore.saving ? 'Guardando...' : 'Guardar preferencias' }}
-          </button>
-        </div>
-      </div>
-
-    </template>
-
+            <div class="mt-1 flex justify-end border-t border-border/60 pt-3">
+              <Button type="submit" variant="emphasis" :disabled="profileStore.saving">
+                {{ profileStore.saving ? 'Guardando...' : 'Guardar preferencias' }}
+              </Button>
+            </div>
+          </form>
+        </TabsContent>
+      </template>
+    </Tabs>
   </div>
 </template>
-
-<style scoped>
-.profile-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 860px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-/* Header card */
-.profile-header-card {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: var(--color-card);
-  border-radius: 14px;
-  border: 1px solid var(--color-border);
-  padding: 24px;
-}
-
-.avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: #092c4c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-initials {
-  font-size: 26px;
-  font-weight: 700;
-  color: white;
-  letter-spacing: 1px;
-}
-
-.header-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.profile-name {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-title);
-  margin: 0;
-}
-
-.profile-email {
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
-.role-badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  background: #f2894a18;
-  color: #f2894a;
-  width: fit-content;
-  margin-top: 2px;
-}
-
-/* Tabs */
-.tabs {
-  display: flex;
-  gap: 4px;
-  background: var(--color-border-soft);
-  padding: 4px;
-  border-radius: 10px;
-  width: fit-content;
-}
-
-.tab {
-  padding: 7px 18px;
-  border: none;
-  background: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab.active {
-  background: var(--color-card);
-  color: var(--color-title);
-  box-shadow: var(--shadow-card);
-}
-
-/* Card */
-.card {
-  background: var(--color-card);
-  border-radius: 14px;
-  border: 1px solid var(--color-border);
-  padding: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-title);
-  margin: 0 0 4px;
-}
-
-.section-subtitle {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-sub);
-  padding-top: 4px;
-  border-top: 1px solid #f0f0f0;
-  margin-top: 4px;
-}
-
-/* Form */
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group.mt-16 { margin-top: 4px; }
-
-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-sub);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-input[type="text"],
-input[type="tel"],
-input[type="url"],
-input[type="number"],
-select,
-textarea {
-  padding: 9px 12px;
-  border: 1.5px solid var(--color-border);
-  border-radius: 8px;
-  font-size: 14px;
-  color: var(--color-text);
-  background: var(--color-input-bg);
-  transition: border-color 0.2s;
-  outline: none;
-  font-family: inherit;
-  resize: none;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--color-title);
-}
-
-/* Radius row */
-.radius-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.radius-input {
-  width: 110px;
-}
-
-.radius-unit {
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
-/* Toggle switch */
-.pref-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--color-border-soft);
-}
-
-.pref-label {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.pref-label span:first-child {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.pref-desc {
-  font-size: 12px;
-  color: var(--color-faint);
-}
-
-.toggle {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 22px;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.toggle input { display: none; }
-
-.slider {
-  position: absolute;
-  inset: 0;
-  background: var(--color-toggle-off);
-  border-radius: 22px;
-  transition: background 0.2s;
-}
-
-.slider::before {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  left: 3px;
-  top: 3px;
-  background: #ffffff;
-  border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-}
-
-.toggle input:checked + .slider { background: #f2894a; }
-.toggle input:checked + .slider::before { transform: translateX(18px); }
-
-/* Actions */
-.form-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border-soft);
-  margin-top: 4px;
-}
-
-.save-btn {
-  padding: 9px 24px;
-  background: #092c4c;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, opacity 0.2s;
-}
-
-.save-btn:hover    { background: #0b3a64; }
-.save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.success-msg {
-  font-size: 13px;
-  color: #38a169;
-  font-weight: 500;
-}
-
-.error-msg {
-  font-size: 13px;
-  color: #e53e3e;
-}
-
-/* Center state */
-.center-state {
-  display: flex;
-  justify-content: center;
-  padding: 60px 0;
-}
-
-.state-text { font-size: 14px; color: var(--color-faint); }
-</style>

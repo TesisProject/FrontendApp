@@ -1,68 +1,314 @@
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Dark mode is class-based (html.dark). theme.store only sets it on the user
+   surface, so auth + admin always render light. */
+@custom-variant dark (&:is(.dark *));
+
+/* =============================================================================
+   ParkVision · Design tokens (single source of truth)
+   -----------------------------------------------------------------------------
+   --pv-*     canonical palette + scales (light). The shadcn semantic tokens
+              below (--primary, --card, …) are built from them and are what
+              components consume; html.dark and html[data-surface] re-map them.
+   The active surface (auth · admin · user) lives on <html data-surface>, set
+   by the router; the admin surface re-skins the semantic tokens with navy.
+   ============================================================================= */
+:root {
+  /* ── Brand · amber (primary action) ─────────────────────────────────────── */
+  --pv-amber:            #f2894a;
+  --pv-amber-hover:      #e87b3a;
+  --pv-amber-press:      #d76f2f;
+  --pv-amber-ring:       rgba(242, 137, 74, 0.13);
+  --pv-amber-glow:       rgba(242, 137, 74, 0.28);
+  /* accessible amber text/links on light surfaces — WCAG AA (~5.9:1 on white) */
+  --pv-amber-text:       #c2410c;
+  --pv-amber-text-hover: #9a3412;
+
+  /* ── Brand · navy (titles / admin primary) ──────────────────────────────── */
+  --pv-navy:             #092c4c;
+  --pv-navy-hover:       #0e3d68;
+  --pv-navy-soft:        #e8f0fb;
+  --pv-ink:              #0a1e38;   /* near-black navy for display text */
+
+  /* ── Surfaces / neutrals ────────────────────────────────────────────────── */
+  --pv-bg:               #f5f5f5;
+  --pv-surface:          #ffffff;
+  --pv-surface-alt:      #f8fafc;
+  --pv-input-bg:         #f8f8f8;
+
+  /* ── Text ────────────────────────────────────────────────────────────────── */
+  --pv-text:             #24303c;
+  --pv-text-2:           #5b6b7b;   /* secondary */
+  --pv-text-muted:       #8a94a0;
+  --pv-text-faint:       #98a0ab;
+  --pv-label:            #2b3a4d;
+  --pv-placeholder:      #aebac8;
+
+  /* ── Borders ─────────────────────────────────────────────────────────────── */
+  --pv-border:           #e3e8ef;
+  --pv-border-soft:      #f0f0f0;
+  --pv-border-strong:    #cbd5e1;
+
+  /* ── Semantic status ─────────────────────────────────────────────────────── */
+  --pv-success:          #16b178;
+  --pv-success-strong:   #2e7d52;
+  --pv-success-soft:     #e6f9ef;
+  --pv-success-ring:     rgba(22, 177, 120, 0.1);
+  --pv-warning:          #b26a00;
+  --pv-warning-soft:     #fff4e5;
+  --pv-danger:           #e53e3e;
+  --pv-danger-strong:    #c53030;
+  --pv-danger-soft:      #fdecea;
+  --pv-danger-ring:      rgba(229, 62, 62, 0.1);
+
+  /* ── Zone classification (mirror parking/domain/zone-classification.ts) ──── */
+  --zone-libre:          #38a169;
+  --zone-moderado:       #f2894a;
+  --zone-ocupado:        #e53e3e;
+
+  /* ── Radii ───────────────────────────────────────────────────────────────── */
+  --pv-radius-sm:        6px;
+  --pv-radius-md:        10px;
+  --pv-radius-lg:        12px;
+  --pv-radius-xl:        16px;
+  --pv-radius-pill:      999px;
+
+  /* ── Elevation ───────────────────────────────────────────────────────────── */
+  --pv-shadow-sm:        0 1px 3px rgba(9, 44, 76, 0.08);
+  --pv-shadow-md:        0 4px 14px rgba(9, 44, 76, 0.10);
+  --pv-shadow-lg:        0 12px 36px rgba(9, 44, 76, 0.18);
+  --pv-shadow-card:      0 4px 20px rgba(0, 0, 0, 0.08);
+
+  /* ── Motion ──────────────────────────────────────────────────────────────── */
+  --pv-t-fast:           150ms ease-out;
+  --pv-t-med:            220ms ease-out;
+
+  /* ── Typography ──────────────────────────────────────────────────────────── */
+  --pv-font-ui:          'Inter', 'Source Sans 3', system-ui, sans-serif;
+  --pv-font-display:     'Space Grotesk', 'Inter', sans-serif;   /* auth / user headings */
+  --pv-font-signage:     'Barlow Condensed', 'Inter', sans-serif;/* admin panel headings */
+  --pv-font-mono:        'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
+
+  /* ── shadcn semantic tokens (consumed by components/ui) ─────────────────── */
+  --radius:                 var(--pv-radius-md);
+  --background:             var(--pv-bg);
+  --foreground:             var(--pv-text);
+  --card:                   var(--pv-surface);
+  --card-foreground:        var(--pv-text);
+  --popover:                var(--pv-surface);
+  --popover-foreground:     var(--pv-text);
+  --primary:                var(--pv-amber);
+  --primary-hover:          var(--pv-amber-hover);
+  --primary-foreground:     #ffffff;
+  --secondary:              var(--pv-navy-soft);
+  --secondary-foreground:   var(--pv-navy);
+  --muted:                  #f1f4f8;
+  --muted-foreground:       #64748b;  /* slate-500 ≈4.7:1 on white (AA) */
+  --accent:                 #f1f4f8;
+  --accent-foreground:      var(--pv-ink);
+  --destructive:            var(--pv-danger-strong);
+  --destructive-soft:       var(--pv-danger-soft);
+  --success:                var(--pv-success-strong);
+  --success-soft:           var(--pv-success-soft);
+  --warning:                var(--pv-warning);
+  --warning-soft:           var(--pv-warning-soft);
+  --border:                 var(--pv-border);
+  --input:                  var(--pv-border);
+  --ring:                   var(--pv-amber);
+  --link:                   var(--pv-amber-text);
+  --heading:                var(--pv-navy);
+  --font-heading:           var(--pv-font-display);
+  /* selected chip / pill (filters, tabs): navy on light, inverse on dark */
+  --emphasis:               var(--pv-navy);
+  --emphasis-foreground:    #ffffff;
+  --elevation-card:         var(--pv-shadow-card);
+  --chart-1:                #1a56c4;
+
+  /* ── Sidebar (navy in every surface and theme) ──────────────────────────── */
+  --sidebar:                    var(--pv-navy);
+  --sidebar-foreground:         rgba(255, 255, 255, 0.7);
+  --sidebar-primary:            var(--pv-amber);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent:             rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground:  #ffffff;
+  --sidebar-border:             rgba(255, 255, 255, 0.08);
+  --sidebar-ring:               var(--pv-amber);
 }
 
-:root {
-  --color-primary:     #f2894a;
-  --color-bg:          #f5f5f5;
-  --color-card:        #ffffff;
-  --color-input-bg:    #f8f8f8;
-  --color-text:        #333333;
-  --color-muted:       #888888;
-  --color-error:       #e53e3e;
-  --shadow-card:       0px 4px 20px 0px rgba(0, 0, 0, 0.08);
-
-  --color-title:       #092c4c;
-  --color-sub:         #555555;
-  --color-faint:       #aaaaaa;
-  --color-border:      #e8e8e8;
-  --color-border-soft: #f0f0f0;
-  --color-toggle-off:  #d1d5db;
-
-  font-family: 'Inter', 'Source Sans 3', system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--color-text);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ── Admin surface: navy primary, tighter radius, signage headings ────────── */
+html[data-surface="admin"] {
+  --radius:               8px;
+  --primary:              var(--pv-navy);
+  --primary-hover:        var(--pv-navy-hover);
+  --ring:                 var(--pv-navy);
+  --border:               #e5e9ee;
+  --input:                var(--pv-border-strong);
+  --muted-foreground:     var(--pv-text-2);
+  --link:                 var(--pv-navy);
+  --heading:              var(--pv-navy);
+  --font-heading:         var(--pv-font-signage);
 }
 
 html.dark {
-  --color-bg:          #0f172a;
-  --color-card:        #1e293b;
-  --color-input-bg:    #273549;
-  --color-text:        #e2e8f0;
-  --color-muted:       #94a3b8;
-  --color-title:       #e2e8f0;
-  --color-sub:         #94a3b8;
-  --color-faint:       #64748b;
-  --color-border:      #334155;
-  --color-border-soft: #1e2d3d;
-  --color-toggle-off:  #475569;
-  --shadow-card:       0px 4px 20px 0px rgba(0, 0, 0, 0.4);
+  --background:              #0f172a;
+  --foreground:              #e2e8f0;
+  --card:                    #1e293b;
+  --card-foreground:         #e2e8f0;
+  --popover:                 #1e293b;
+  --popover-foreground:      #e2e8f0;
+  --secondary:               #273549;
+  --secondary-foreground:    #e2e8f0;
+  --muted:                   #273549;
+  --muted-foreground:        #94a3b8;
+  --accent:                  #273549;
+  --accent-foreground:       #e2e8f0;
+  --border:                  #334155;
+  --input:                   #334155;
+  --link:                    #fb923c;
+  --heading:                 #e2e8f0;
+  --success:                 #6fcf97;
+  --success-soft:            rgba(56, 161, 105, 0.18);
+  --warning:                 #fdba74;
+  --warning-soft:            rgba(242, 137, 74, 0.16);
+  --destructive:             #f87171;
+  --destructive-soft:        rgba(229, 62, 62, 0.18);
+  --emphasis:                #e2e8f0;
+  --emphasis-foreground:     #0f172a;
+  --elevation-card:          0 4px 20px rgba(0, 0, 0, 0.4);
+  --chart-1:                 #60a5fa;
 }
 
-body {
-  min-height: 100vh;
-  background-color: var(--color-bg);
+/* Tailwind theme → utilities (bg-primary, text-muted-foreground, font-signage…) */
+@theme inline {
+  --font-sans:    var(--pv-font-ui);
+  --font-display: var(--pv-font-display);
+  --font-signage: var(--pv-font-signage);
+  --font-heading: var(--font-heading);
+  --font-mono:    var(--pv-font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-popover:              var(--popover);
+  --color-popover-foreground:   var(--popover-foreground);
+  --color-primary:              var(--primary);
+  --color-primary-hover:        var(--primary-hover);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-destructive:          var(--destructive);
+  --color-destructive-soft:     var(--destructive-soft);
+  --color-success:              var(--success);
+  --color-success-soft:         var(--success-soft);
+  --color-warning:              var(--warning);
+  --color-warning-soft:         var(--warning-soft);
+  --color-border:               var(--border);
+  --color-input:                var(--input);
+  --color-ring:                 var(--ring);
+  --color-link:                 var(--link);
+  --color-heading:              var(--heading);
+  --color-emphasis:             var(--emphasis);
+  --color-emphasis-foreground:  var(--emphasis-foreground);
+  --color-chart-1:              var(--chart-1);
+
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+
+  /* brand + domain colours */
+  --color-amber:         var(--pv-amber);
+  --color-navy:          var(--pv-navy);
+  --color-navy-soft:     var(--pv-navy-soft);
+  --color-ink:           var(--pv-ink);
+  --color-zone-libre:    var(--zone-libre);
+  --color-zone-moderado: var(--zone-moderado);
+  --color-zone-ocupado:  var(--zone-ocupado);
+
+  --shadow-card:  var(--elevation-card);
+  --shadow-brand: 0 6px 16px var(--pv-amber-glow);
 }
 
-#app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--foreground);
+    background-color: var(--background);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  button:not(:disabled), [role="button"] { cursor: pointer; }
 }
 
-a {
-  color: inherit;
+/* Respect reduced-motion globally (dialogs, toasts, hovers…). */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-button {
-  font-family: inherit;
+/* Page-load entrance: one restrained rise, staggered with an inline animation-delay. */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+}
+@utility animate-rise {
+  animation: rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
-input {
-  font-family: inherit;
+/* "Live" indicator dot (dashboard, auth showcase). */
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0.5); }
+  70%  { box-shadow: 0 0 0 7px rgba(22, 177, 120, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0); }
 }
+@utility live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pv-success);
+  animation: live-pulse 2s ease-out infinite;
+}
+
+/* Bay-marking stripe under page titles — ParkVision signature. */
+@utility bay-stripe {
+  &::after {
+    content: '';
+    display: block;
+    width: 38px;
+    height: 7px;
+    margin-top: 7px;
+    border-radius: 1px;
+    background: repeating-linear-gradient(115deg, var(--pv-amber) 0 9px, transparent 9px 15px);
+  }
+}
+

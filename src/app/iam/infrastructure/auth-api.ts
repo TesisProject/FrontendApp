@@ -1,5 +1,5 @@
 import { httpClient } from '../../shared/infrastructure/http-client'
-import type { SignInRequest, SignInResponse, RegisterRequest, RegisterResponse, UpdateProfileRequest } from './auth-response'
+import type { SignInRequest, SignInResponse, SignUpRequest } from './auth-response'
 
 export class AuthApi {
   private base = '/iam'
@@ -8,12 +8,8 @@ export class AuthApi {
     return httpClient.post<SignInResponse>(`${this.base}/auth/sign-in`, credentials, { skipAuth: true })
   }
 
-  register(payload: RegisterRequest): Promise<RegisterResponse> {
-    return httpClient.post<RegisterResponse>(`${this.base}/users`, payload, { skipAuth: true })
-  }
-
-  updateProfile(userId: number, payload: UpdateProfileRequest): Promise<void> {
-    return httpClient.put<void>(`${this.base}/users/${userId}/profile`, payload)
+  signUp(payload: SignUpRequest): Promise<SignInResponse> {
+    return httpClient.post<SignInResponse>(`${this.base}/auth/sign-up`, payload, { skipAuth: true })
   }
 
   forgotPassword(email: string): Promise<void> {

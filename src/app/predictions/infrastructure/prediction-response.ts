@@ -12,32 +12,16 @@ export interface OccupancyForecastResponse {
   updatedAt: string
 }
 
-export interface PredictedSideResponse {
-  availabilityProbability: number
-  totalSpots: number
-  availableSpots: number
-  occupiedSpots: number
-  modelVersion: string
-}
-
-export interface ActualSideResponse {
-  totalSpots: number
-  availableSpots: number
-  occupiedSpots: number
-  occurredAt: string
-}
-
-export interface ComparisonDeltaResponse {
-  availableDiff: number
-  occupiedDiff: number
-}
-
-export interface ZoneForecastComparisonResponse {
+export interface ZoneModelMetricsResponse {
   zoneId: number
-  dayOfWeek: DayOfWeek
-  startMinuteOfDay: number
-  windowSizeMinutes: number
-  predicted: PredictedSideResponse
-  actual: ActualSideResponse | null
-  delta: ComparisonDeltaResponse | null
+  reliabilityPct: number | null
+  trainingPct: number | null
+  evaluatedHours: number
+  hits: number
+  historyDays: number | null
+  targetDays: number
+  lookbackDays: number
+  tolerancePct: number
+  modelVersion: string | null
+  computedAt: string
 }

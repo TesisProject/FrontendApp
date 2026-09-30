@@ -1,24 +1,16 @@
 import { httpClient } from '../../shared/infrastructure/http-client'
-import type {
-  OccupancyForecastResponse,
-  ZoneForecastComparisonResponse,
-} from './prediction-response'
+import type { OccupancyForecastResponse, ZoneModelMetricsResponse } from './prediction-response'
 
 const BASE = '/prediction/forecasts'
-const ZONES_BASE = '/prediction/zones'
 
 export class PredictionApi {
   getBySpot(spotId: number): Promise<OccupancyForecastResponse[]> {
     return httpClient.get<OccupancyForecastResponse[]>(`${BASE}/spots/${spotId}`)
   }
 
-  getCurrentForSpot(spotId: number): Promise<OccupancyForecastResponse> {
-    return httpClient.get<OccupancyForecastResponse>(`${BASE}/spots/${spotId}/current`)
-  }
-
-  /** Comparación predicción IA vs detección real de cámaras para la ventana vigente de la zona. */
-  getZoneComparison(zoneId: number): Promise<ZoneForecastComparisonResponse> {
-    return httpClient.get<ZoneForecastComparisonResponse>(`${ZONES_BASE}/${zoneId}/forecast/comparison`)
+  /** Confiabilidad y progreso de entrenamiento del modelo, calculados por el backend con datos reales. */
+  getZoneModelMetrics(zoneId: number): Promise<ZoneModelMetricsResponse> {
+    return httpClient.get<ZoneModelMetricsResponse>(`/prediction/zones/${zoneId}/model-metrics`)
   }
 }
 

@@ -1,325 +1,217 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
+import { ChartNoAxesColumn, Check, ChevronRight, CircleX, House } from '@lucide/vue'
 import { useAuthStore } from '../../../iam/application/auth.store'
 import { useZoneStore } from '../../../parking/application/zone.store'
+import { useNotificationStore } from '../../../notifications/application/notification.store'
+import { CLASSIFICATION_COLOR, CLASSIFICATION_LABEL } from '../../../parking/domain/zone-classification'
+import { NOTIFICATION_META } from '../../../notifications/presentation/notification-ui'
+import type { Zone, ZoneClassification } from '../../../parking/domain/model/zone.model'
+import ClassificationBadge from '../../../parking/presentation/components/ClassificationBadge.vue'
+import OccupancyMeter from '../../../parking/presentation/components/OccupancyMeter.vue'
+import OccupancyRing from '../../../parking/presentation/components/OccupancyRing.vue'
+import SpaceCounts from '../../../parking/presentation/components/SpaceCounts.vue'
+import StateMessage from '../components/StateMessage.vue'
+import { formatRelative } from '../../helpers/date'
 
-const authStore = useAuthStore()
-const zoneStore = useZoneStore()
+const authStore  = useAuthStore()
+const zoneStore  = useZoneStore()
+const notifStore = useNotificationStore()
 
-const totalZones    = computed(() => (zoneStore.zones as any[]).length)
-const totalFree     = computed(() => (zoneStore.zones as any[]).reduce((sum, z) => sum + z.freeCount, 0))
-const totalOccupied = computed(() => (zoneStore.zones as any[]).reduce((sum, z) => sum + z.occupiedCount, 0))
-const zonesLibre    = computed(() => (zoneStore.zones as any[]).filter(z => z.classification === 'LIBRE').length)
-const zonesModerado = computed(() => (zoneStore.zones as any[]).filter(z => z.classification === 'MODERADO').length)
-const zonesOcupado  = computed(() => (zoneStore.zones as any[]).filter(z => z.classification === 'OCUPADO').length)
+const userId = computed(() => authStore.user?.id ?? 0)
+const zones  = computed(() => zoneStore.zones as Zone[])
+
+const totalFree     = computed(() => zones.value.reduce((sum, z) => sum + z.freeCount, 0))
+const totalOccupied = computed(() => zones.value.reduce((sum, z) => sum + z.occupiedCount, 0))
 
 const globalOccupancy = computed(() => {
   const total = totalFree.value + totalOccupied.value
-  if (total === 0) return 0
-  return Math.round((totalOccupied.value / total) * 100)
+  return total === 0 ? 0 : Math.round((totalOccupied.value / total) * 100)
 })
 
-onMounted(() => zoneStore.fetchZones())
+// zones sorted with most available first — surfaces where the user can park now
+const sortedZones = computed(() =>
+  [...zones.value].sort((a, b) => a.occupancyPercentage - b.occupancyPercentage),
+)
+
+const recentNotifications = computed(() => notifStore.notifications.slice(0, 5))
+
+const metrics = computed(() => [
+  { label: 'Zonas registradas', value: zones.value.length,   icon: House,             accent: '#3182ce', tint: '#ebf8ff' },
+  { label: 'Espacios libres',   value: totalFree.value,      icon: Check,             accent: '#38a169', tint: '#f0fff4' },
+  { label: 'Espacios ocupados', value: totalOccupied.value,  icon: CircleX,           accent: '#e53e3e', tint: '#fff5f5' },
+  { label: 'Ocupación global',  value: globalOccupancy.value, unit: '%', icon: ChartNoAxesColumn, accent: '#f2894a', tint: '#fffbeb' },
+])
+
+const classifications = (['LIBRE', 'MODERADO', 'OCUPADO'] as ZoneClassification[]).map(c => ({
+  key:   c,
+  label: CLASSIFICATION_LABEL[c],
+  color: CLASSIFICATION_COLOR[c],
+  count: computed(() => zones.value.filter(z => z.classification === c).length),
+}))
+
+const card = 'rounded-2xl border border-border/60 bg-card shadow-card'
+const sectionTitle = 'text-base font-semibold tracking-[-0.01em] text-heading'
+const stagger = (i: number, base = 0) => ({ animationDelay: `${base + Math.min(i, 4) * 0.06}s` })
+
+onMounted(() => {
+  zoneStore.fetchZones()
+  if (userId.value) notifStore.fetchAll(userId.value)
+})
 </script>
 
 <template>
-  <div class="dashboard">
-    <div class="welcome">
-      <h1 class="welcome-title">Bienvenido, {{ authStore.user?.email?.split('@')[0] }}</h1>
-      <p class="welcome-sub">Aquí tienes un resumen del estado actual de los estacionamientos</p>
-    </div>
+  <div class="mx-auto max-w-[1340px]">
+    <header class="mb-7 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end sm:gap-6">
+      <div>
+        <span class="mb-2 inline-flex items-center gap-[7px] text-[11px] font-semibold tracking-[0.14em] text-link uppercase">
+          <span class="live-dot" aria-hidden="true" />
+          Panel en vivo
+        </span>
+        <h1 class="mb-1.5 font-display text-[27px] font-bold tracking-[-0.02em] text-heading capitalize">
+          Hola, {{ authStore.user?.email?.split('@')[0] }}
+        </h1>
+        <p class="text-[13px] text-muted-foreground">El estado de los estacionamientos, en tiempo real</p>
+      </div>
+      <div class="flex shrink-0 flex-col items-start leading-none sm:items-end" aria-hidden="true">
+        <span class="font-display text-[34px] font-bold tracking-[-0.02em] text-heading tabular-nums">
+          {{ globalOccupancy }}<span class="ml-px text-lg text-muted-foreground">%</span>
+        </span>
+        <span class="mt-1.5 text-[11px] tracking-[0.08em] text-muted-foreground uppercase">ocupación ahora</span>
+      </div>
+    </header>
 
-    <div v-if="zoneStore.zonesLoading" class="loading">Cargando métricas...</div>
+    <StateMessage v-if="zoneStore.zonesLoading">Cargando métricas...</StateMessage>
 
     <template v-else>
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-icon" style="background: #ebf8ff; color: #3182ce;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-          </div>
-          <div class="metric-info">
-            <span class="metric-value">{{ totalZones }}</span>
-            <span class="metric-label">Zonas registradas</span>
-          </div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-icon" style="background: #f0fff4; color: #38a169;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          </div>
-          <div class="metric-info">
-            <span class="metric-value">{{ totalFree }}</span>
-            <span class="metric-label">Espacios libres</span>
-          </div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-icon" style="background: #fff5f5; color: #e53e3e;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
-            </svg>
-          </div>
-          <div class="metric-info">
-            <span class="metric-value">{{ totalOccupied }}</span>
-            <span class="metric-label">Espacios ocupados</span>
-          </div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-icon" style="background: #fffbeb; color: #f2894a;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-            </svg>
-          </div>
-          <div class="metric-info">
-            <span class="metric-value">{{ globalOccupancy }}%</span>
-            <span class="metric-label">Ocupación global</span>
-          </div>
+      <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div
+          v-for="(m, i) in metrics"
+          :key="m.label"
+          :class="card"
+          class="relative flex animate-rise items-center gap-4 overflow-hidden p-5 transition-[transform,box-shadow] duration-200 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-(--accent) before:opacity-85 before:content-[''] hover:-translate-y-[3px] hover:shadow-[0_10px_28px_rgba(15,23,42,0.12)]"
+          :style="{ '--accent': m.accent, '--accent-tint': m.tint, ...stagger(i, 0.02) }"
+        >
+          <span class="flex size-12 shrink-0 items-center justify-center rounded-[13px] bg-(--accent-tint) text-(--accent) dark:bg-[color-mix(in_srgb,var(--accent)_20%,transparent)]">
+            <component :is="m.icon" class="size-[22px]" aria-hidden="true" />
+          </span>
+          <span class="flex flex-col gap-[3px]">
+            <span class="font-display text-[28px] leading-none font-bold tracking-[-0.02em] text-heading tabular-nums">
+              {{ m.value }}<span v-if="m.unit" class="ml-px text-lg text-muted-foreground">{{ m.unit }}</span>
+            </span>
+            <span class="text-xs text-muted-foreground">{{ m.label }}</span>
+          </span>
         </div>
       </div>
 
-      <div class="section">
-        <h2 class="section-title">Estado por clasificación</h2>
-        <div class="classification-grid">
-          <div class="classif-card libre">
-            <div class="classif-top">
-              <span class="classif-dot" style="background: #38a169;"></span>
-              <span class="classif-name">Libre</span>
-            </div>
-            <span class="classif-count">{{ zonesLibre }}</span>
-            <span class="classif-sub">zonas disponibles</span>
+      <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.7fr_1fr]">
+        <!-- Main column -->
+        <section>
+          <div class="mb-3.5 flex items-center justify-between">
+            <h2 :class="sectionTitle">Zonas monitoreadas</h2>
+            <RouterLink to="/dashboard/zones" class="rounded-md text-[13px] font-semibold text-link hover:underline focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none">
+              Ver mapa →
+            </RouterLink>
           </div>
 
-          <div class="classif-card moderado">
-            <div class="classif-top">
-              <span class="classif-dot" style="background: #f2894a;"></span>
-              <span class="classif-name">Moderado</span>
-            </div>
-            <span class="classif-count">{{ zonesModerado }}</span>
-            <span class="classif-sub">zonas con espacio</span>
+          <div v-if="sortedZones.length === 0" :class="card" class="px-5 py-8">
+            <StateMessage tone="empty" compact>No hay zonas registradas todavía.</StateMessage>
           </div>
 
-          <div class="classif-card ocupado">
-            <div class="classif-top">
-              <span class="classif-dot" style="background: #e53e3e;"></span>
-              <span class="classif-name">Ocupado</span>
-            </div>
-            <span class="classif-count">{{ zonesOcupado }}</span>
-            <span class="classif-sub">zonas llenas</span>
-          </div>
-        </div>
-      </div>
+          <div v-else class="flex flex-col gap-3">
+            <RouterLink
+              v-for="(zone, i) in sortedZones"
+              :key="zone.id"
+              :to="`/dashboard/zones/${zone.id}`"
+              :class="card"
+              class="group flex animate-rise items-center gap-[18px] px-[18px] py-4 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-[0_8px_22px_rgba(15,23,42,0.1)] focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+              :style="stagger(i, 0.1)"
+            >
+              <OccupancyRing :percentage="zone.occupancyPercentage" :color="CLASSIFICATION_COLOR[zone.classification]" />
 
-      <div class="section">
-        <h2 class="section-title">Ocupación global</h2>
-        <div class="global-bar-card">
-          <div class="global-bar-wrap">
-            <div class="global-bar">
-              <div class="global-bar-fill" :style="{ width: globalOccupancy + '%' }" />
+              <div class="min-w-0 flex-1">
+                <div class="mb-1 flex items-center gap-2.5">
+                  <span class="truncate text-[15px] font-bold text-heading">{{ zone.name }}</span>
+                  <ClassificationBadge :classification="zone.classification" />
+                </div>
+                <span class="mb-2.5 block truncate text-xs text-muted-foreground">{{ zone.street }}, {{ zone.district }}</span>
+                <OccupancyMeter
+                  :percentage="zone.occupancyPercentage"
+                  :color="CLASSIFICATION_COLOR[zone.classification]"
+                  class="mb-2"
+                />
+                <SpaceCounts :free="zone.freeCount" :occupied="zone.occupiedCount" :total="zone.totalSpaces" />
+              </div>
+
+              <ChevronRight
+                class="size-[18px] shrink-0 text-muted-foreground/60 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-primary"
+                aria-hidden="true"
+              />
+            </RouterLink>
+          </div>
+        </section>
+
+        <!-- Side column -->
+        <div class="flex flex-col gap-5">
+          <section :class="card" class="p-5">
+            <h2 :class="sectionTitle" class="mb-3.5">Estado por clasificación</h2>
+            <ul class="divide-y divide-border/60">
+              <li v-for="c in classifications" :key="c.key" class="flex items-center gap-2.5 py-2">
+                <span class="size-2.5 shrink-0 rounded-full" :style="{ background: c.color }" />
+                <span class="flex-1 text-[13px] font-semibold text-foreground/80">{{ c.label }}</span>
+                <span class="font-display text-xl font-bold text-heading tabular-nums">{{ c.count.value }}</span>
+              </li>
+            </ul>
+          </section>
+
+          <section :class="card" class="p-5">
+            <h2 :class="sectionTitle" class="mb-3.5">Ocupación global</h2>
+            <div class="mb-3.5 flex items-center gap-3.5">
+              <div class="h-3 flex-1 overflow-hidden rounded-lg bg-muted">
+                <div
+                  class="h-full rounded-lg bg-linear-to-r from-zone-moderado to-zone-ocupado transition-[width] duration-500 ease-out"
+                  :style="{ width: `${globalOccupancy}%` }"
+                />
+              </div>
+              <span class="min-w-10 font-display text-lg font-bold text-heading tabular-nums">
+                {{ globalOccupancy }}<span class="text-xs text-muted-foreground">%</span>
+              </span>
             </div>
-            <span class="global-pct">{{ globalOccupancy }}%</span>
-          </div>
-          <div class="global-legend">
-            <span class="legend-item">
-              <span class="legend-dot" style="background: #e53e3e;"></span>
-              {{ totalOccupied }} ocupados
-            </span>
-            <span class="legend-item">
-              <span class="legend-dot" style="background: #38a169;"></span>
-              {{ totalFree }} libres
-            </span>
-          </div>
+            <div class="flex gap-5 text-[13px] text-foreground/80">
+              <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-zone-ocupado" />{{ totalOccupied }} ocupados</span>
+              <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-zone-libre" />{{ totalFree }} libres</span>
+            </div>
+          </section>
+
+          <section :class="card" class="p-5">
+            <div class="mb-3.5 flex items-center justify-between">
+              <h2 :class="sectionTitle">Alertas recientes</h2>
+              <RouterLink to="/dashboard/alerts" class="rounded-md text-[13px] font-semibold text-link hover:underline focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none">
+                Ver todas →
+              </RouterLink>
+            </div>
+
+            <StateMessage v-if="notifStore.loading" compact>Cargando alertas...</StateMessage>
+            <p v-else-if="recentNotifications.length === 0" class="py-2 text-[13px] text-muted-foreground">
+              No tienes alertas recientes.
+            </p>
+            <ul v-else class="divide-y divide-border/60">
+              <li v-for="n in recentNotifications" :key="n.id" class="flex items-start gap-2.5 py-[11px]">
+                <span class="mt-1.5 size-2 shrink-0 rounded-full" :class="NOTIFICATION_META[n.type].dot" />
+                <div class="flex min-w-0 flex-col gap-0.5">
+                  <span class="text-[13px] leading-snug" :class="n.isRead ? 'text-foreground/80' : 'font-semibold text-heading'">
+                    {{ n.message }}
+                  </span>
+                  <span class="text-[11px] text-muted-foreground">
+                    {{ NOTIFICATION_META[n.type].label }} · {{ formatRelative(n.createdAt) }}
+                  </span>
+                </div>
+              </li>
+            </ul>
+          </section>
         </div>
       </div>
     </template>
   </div>
 </template>
-
-<style scoped>
-.dashboard { max-width: 900px; }
-
-.welcome { margin-bottom: 28px; }
-
-.welcome-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-title);
-  margin: 0 0 6px;
-  text-transform: capitalize;
-}
-
-.welcome-sub {
-  font-size: 13px;
-  color: var(--color-muted);
-  margin: 0;
-}
-
-.loading {
-  color: var(--color-muted);
-  font-size: 14px;
-  padding: 40px 0;
-}
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
-}
-
-.metric-card {
-  background: var(--color-card);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: var(--shadow-card);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.metric-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.metric-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.metric-value {
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--color-title);
-  line-height: 1;
-}
-
-.metric-label {
-  font-size: 12px;
-  color: var(--color-muted);
-}
-
-.section { margin-bottom: 28px; }
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-title);
-  margin: 0 0 14px;
-}
-
-.classification-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-
-.classif-card {
-  background: var(--color-card);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.classif-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.classif-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.classif-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-sub);
-}
-
-.classif-count {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--color-title);
-  line-height: 1;
-}
-
-.classif-sub {
-  font-size: 12px;
-  color: var(--color-faint);
-}
-
-.global-bar-card {
-  background: var(--color-card);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.global-bar-wrap {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.global-bar {
-  flex: 1;
-  height: 12px;
-  background: var(--color-border-soft);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.global-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #f2894a, #e53e3e);
-  border-radius: 8px;
-  transition: width 0.5s;
-}
-
-.global-pct {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-title);
-  min-width: 40px;
-}
-
-.global-legend {
-  display: flex;
-  gap: 20px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--color-sub);
-}
-
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-</style>

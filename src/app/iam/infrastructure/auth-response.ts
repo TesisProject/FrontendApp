@@ -1,3 +1,5 @@
+import type { DocumentType } from '../domain/model/document-type.vo'
+
 export interface SignInResponse {
   token: string
   userId: number
@@ -10,20 +12,13 @@ export interface SignInRequest {
   password: string
 }
 
-export interface RegisterRequest {
+export interface SignUpRequest {
   email: string
   password: string
-  roleName: string
-}
-
-export interface RegisterResponse {
-  id: number
-  email: string
-  role: string
-}
-
-export interface UpdateProfileRequest {
   firstName: string
-  lastName:  string
-  phone:     string
+  lastName: string
+  documentType: DocumentType
+  documentNumber: string
+  phonePrefix: string
+  phone: string
 }

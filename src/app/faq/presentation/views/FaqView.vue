@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { Search } from '@lucide/vue'
 import type { FaqCategory, FaqItem } from '../../domain/model/faq.model'
+import { Input } from '@/app/shared/presentation/components/ui/input'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/app/shared/presentation/components/ui/accordion'
+import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
+import PageHeader from '../../../shared/presentation/components/PageHeader.vue'
+import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
 
 const search      = ref('')
 const activeCategory = ref<FaqCategory | 'all'>('all')
-const openId      = ref<number | null>(null)
+const openItem    = ref<string | undefined>(undefined)
 
-const categories: { key: FaqCategory | 'all'; label: string }[] = [
-  { key: 'all',           label: 'Todas'          },
-  { key: 'general',       label: 'General'        },
-  { key: 'zonas',         label: 'Zonas'          },
-  { key: 'predicciones',  label: 'Predicciones'   },
-  { key: 'notificaciones',label: 'Notificaciones' },
-  { key: 'cuenta',        label: 'Cuenta'         },
+const categories: { value: FaqCategory | 'all'; label: string }[] = [
+  { value: 'all',            label: 'Todas'          },
+  { value: 'general',        label: 'General'        },
+  { value: 'zonas',          label: 'Zonas'          },
+  { value: 'predicciones',   label: 'Predicciones'   },
+  { value: 'notificaciones', label: 'Notificaciones' },
+  { value: 'cuenta',         label: 'Cuenta'         },
 ]
 
 const faqs: FaqItem[] = [
@@ -128,275 +134,52 @@ const filtered = computed(() => {
   })
 })
 
-function toggle(id: number) {
-  openId.value = openId.value === id ? null : id
-}
+// Changing category collapses whatever was open.
+watch(activeCategory, () => { openItem.value = undefined })
 </script>
 
 <template>
-  <div class="faq-page">
+  <div class="mx-auto flex w-full max-w-[760px] flex-col gap-5">
+    <PageHeader title="Preguntas frecuentes" sub="Encuentra respuestas sobre el funcionamiento de ParkVision" />
 
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">Preguntas frecuentes</h1>
-        <p class="page-subtitle">Encuentra respuestas sobre el funcionamiento de ParkVision</p>
-      </div>
-    </div>
-
-    <!-- Search -->
-    <div class="search-wrap">
-      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input
+    <div class="relative">
+      <Search class="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      <Input
         v-model="search"
-        type="text"
-        class="search-input"
+        type="search"
+        aria-label="Buscar pregunta"
         placeholder="Buscar pregunta..."
+        class="h-11 rounded-xl border bg-card pl-10 text-sm"
       />
     </div>
 
-    <!-- Category filters -->
-    <div class="category-tabs">
-      <button
-        v-for="cat in categories"
-        :key="cat.key"
-        class="cat-tab"
-        :class="{ active: activeCategory === cat.key }"
-        @click="activeCategory = cat.key; openId = null"
-      >
-        {{ cat.label }}
-      </button>
-    </div>
+    <FilterPills v-model="activeCategory" :options="categories" label="Filtrar por categoría" />
 
-    <!-- Empty state -->
-    <div v-if="filtered.length === 0" class="empty-state">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-faint)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <p class="empty-text">No hay resultados para "<strong>{{ search }}</strong>"</p>
-    </div>
+    <StateMessage v-if="filtered.length === 0" tone="empty" :icon="Search">
+      No hay resultados para "<strong>{{ search }}</strong>"
+    </StateMessage>
 
-    <!-- Accordion -->
-    <div v-else class="accordion">
-      <div
+    <Accordion v-else v-model="openItem" type="single" collapsible class="flex flex-col gap-2.5">
+      <AccordionItem
         v-for="item in filtered"
         :key="item.id"
-        class="accordion-item"
-        :class="{ open: openId === item.id }"
+        :value="String(item.id)"
+        class="overflow-hidden rounded-xl border bg-card transition-[border-color,box-shadow] last:border-b data-[state=open]:border-primary/40 data-[state=open]:shadow-[0_4px_14px_rgba(0,0,0,0.06)]"
       >
-        <button class="accordion-header" @click="toggle(item.id)">
-          <span class="question-text">{{ item.question }}</span>
-          <svg
-            class="chevron"
-            width="16" height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
-        <div class="accordion-body">
-          <p class="answer-text">{{ item.answer }}</p>
-        </div>
-      </div>
-    </div>
+        <AccordionTrigger class="px-5 py-4 text-sm font-semibold text-heading hover:no-underline [&>svg]:size-4">
+          {{ item.question }}
+        </AccordionTrigger>
+        <AccordionContent class="px-5 pb-4 text-[13px] leading-relaxed text-muted-foreground">
+          {{ item.answer }}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
 
-    <p class="footer-note">
+    <p class="text-center text-[13px] text-muted-foreground">
       ¿No encontraste lo que buscabas?
-      <a href="mailto:jefreysi20@gmail.com" class="footer-link" target="_blank" rel="noopener">Contacta al administrador del sistema</a>
+      <a href="mailto:jefreysi20@gmail.com" class="font-medium text-link hover:underline" target="_blank" rel="noopener">
+        Contacta al administrador del sistema
+      </a>
     </p>
-
   </div>
 </template>
-
-<style scoped>
-.faq-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 760px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.page-header { margin-bottom: 4px; }
-
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-title);
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 13px;
-  color: var(--color-muted);
-  margin: 0;
-}
-
-/* Search */
-.search-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  color: var(--color-faint);
-  pointer-events: none;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px 14px 10px 38px;
-  border: 1.5px solid var(--color-border);
-  border-radius: 10px;
-  font-size: 14px;
-  color: var(--color-text);
-  background: var(--color-input-bg);
-  outline: none;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.search-input:focus { border-color: var(--color-title); }
-.search-input::placeholder { color: var(--color-faint); }
-
-/* Category tabs */
-.category-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.cat-tab {
-  padding: 6px 14px;
-  border: 1.5px solid var(--color-border);
-  border-radius: 20px;
-  background: none;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-muted);
-  cursor: pointer;
-  transition: all 0.18s;
-  font-family: inherit;
-}
-
-.cat-tab:hover { border-color: var(--color-title); color: var(--color-title); }
-
-.cat-tab.active {
-  background: var(--color-title);
-  border-color: var(--color-title);
-  color: #ffffff;
-}
-
-/* Accordion */
-.accordion {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.accordion-item {
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: box-shadow 0.2s;
-}
-
-.accordion-item.open {
-  box-shadow: 0 4px 14px rgba(0,0,0,0.07);
-  border-color: var(--color-border);
-}
-
-.accordion-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-}
-
-.question-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-title);
-  line-height: 1.45;
-  flex: 1;
-}
-
-.chevron {
-  flex-shrink: 0;
-  color: var(--color-faint);
-  transition: transform 0.25s ease;
-}
-
-.open .chevron { transform: rotate(180deg); }
-
-.accordion-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease, padding 0.3s ease;
-  padding: 0 20px;
-}
-
-.open .accordion-body {
-  max-height: 300px;
-  padding: 0 20px 18px;
-}
-
-.answer-text {
-  font-size: 13px;
-  color: var(--color-sub);
-  line-height: 1.7;
-  margin: 0;
-  border-top: 1px solid var(--color-border-soft);
-  padding-top: 14px;
-}
-
-/* Empty */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 48px 0;
-}
-
-.empty-text {
-  font-size: 14px;
-  color: var(--color-muted);
-  margin: 0;
-}
-
-/* Footer */
-.footer-note {
-  font-size: 12px;
-  color: var(--color-faint);
-  text-align: center;
-  padding-top: 8px;
-}
-
-.footer-link {
-  color: var(--color-primary);
-  font-weight: 500;
-  text-decoration: none;
-  transition: opacity 0.2s;
-}
-
-.footer-link:hover { opacity: 0.75; }
-</style>

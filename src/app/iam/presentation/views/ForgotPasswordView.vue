@@ -2,6 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../application/auth.store'
+import AuthCard from '../components/AuthCard.vue'
+import AuthField from '../components/AuthField.vue'
+import AuthInput from '../components/AuthInput.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import SubmitButton from '../components/SubmitButton.vue'
+import TextLink from '../../../shared/presentation/components/TextLink.vue'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -15,127 +21,34 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="card">
-    <button class="back-btn" @click="router.back()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-    </button>
-    <h1 class="title">Recuperar contraseña</h1>
+  <AuthCard
+    back
+    eyebrow="Recuperación"
+    title="Recupera tu acceso"
+    sub="Escribe tu correo y te enviaremos un código de verificación para restablecer tu contraseña."
+    @back="router.back()"
+  >
+    <form class="mb-[18px] flex flex-col gap-3.5" @submit.prevent="handleSubmit" novalidate>
+      <AuthField label="Correo electrónico">
+        <AuthInput
+          v-model="email"
+          type="email"
+          autocomplete="email"
+          placeholder="tucorreo@ejemplo.com"
+        />
+      </AuthField>
 
-    <div class="field">
-      <label class="label">Correo electrónico</label>
-      <input v-model="email" type="email" class="input" autocomplete="email" @keyup.enter="handleSubmit" />
-    </div>
+      <FormAlert :message="authStore.recoveryError" />
 
-    <p class="hint">Al ingresar tu correo te llegará un código de verificación</p>
+      <SubmitButton
+        :loading="authStore.recoveryLoading"
+        label="Enviar código"
+        loading-label="Enviando..."
+      />
+    </form>
 
-    <p v-if="authStore.recoveryError" class="error-msg">{{ authStore.recoveryError }}</p>
-
-    <button class="btn-primary" :disabled="authStore.recoveryLoading" @click="handleSubmit">
-      {{ authStore.recoveryLoading ? 'Enviando...' : 'Enviar' }}
-    </button>
-  </div>
+    <p class="text-center text-[13px] text-muted-foreground">
+      <TextLink to="/login">← Volver a iniciar sesión</TextLink>
+    </p>
+  </AuthCard>
 </template>
-
-<style scoped>
-.card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0px 4px 20px 0px rgba(0, 0, 0, 0.08);
-  width: 400px;
-  padding: 28px 32px;
-}
-
-.back-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #092c4c;
-  padding: 4px;
-  margin-bottom: 12px;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.back-btn:hover {
-  background: #f5f5f5;
-}
-
-.title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 22px;
-  color: #092c4c;
-  margin: 0 0 28px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 12px;
-}
-
-.label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #333;
-}
-
-.input {
-  height: 42px;
-  background: white;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 14px;
-  color: #333;
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.input:focus {
-  border-color: #f2894a;
-  box-shadow: 0 0 0 3px rgba(242, 137, 74, 0.12);
-}
-
-.hint {
-  font-size: 11px;
-  color: #888;
-  margin-bottom: 24px;
-}
-
-.error-msg {
-  font-size: 13px;
-  color: #e53e3e;
-  margin-bottom: 8px;
-}
-
-.btn-primary {
-  width: 100%;
-  height: 44px;
-  background: #f2894a;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #e07a3a;
-}
-
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-</style>
