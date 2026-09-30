@@ -16,7 +16,7 @@ import AdminSearch from '../components/AdminSearch.vue'
 import AdminStateBox from '../components/AdminStateBox.vue'
 import AdminTableCard from '../components/AdminTableCard.vue'
 import AdminField from '../components/AdminField.vue'
-import FilterPills from '../components/FilterPills.vue'
+import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
 
 const store  = useAdminUsersStore()
 const search = ref('')
@@ -124,7 +124,7 @@ onMounted(() => store.fetchUsers())
 
 <template>
   <AdminPage title="Usuarios" :sub="`${store.users.length} usuarios registrados`">
-    <FilterPills v-model="activeFilter" :options="roleFilters" label="Filtrar por rol" />
+    <FilterPills v-model="activeFilter" :options="roleFilters" label="Filtrar por rol" class="mb-3.5" />
     <AdminSearch v-model="search" placeholder="Buscar por email..." />
 
     <AdminStateBox v-if="store.loading">Cargando usuarios...</AdminStateBox>
@@ -143,6 +143,7 @@ onMounted(() => store.fetchUsers())
           <NativeSelect
             :model-value="u.role"
             :aria-label="`Rol de ${u.email}`"
+            wrapper-class="w-fit"
             class="h-8 w-auto py-1 pr-8 pl-2.5 text-xs font-semibold"
             :class="roleClass[u.role]"
             @update:model-value="requestRoleChange(u.id, u.role, $event as AdminRole)"

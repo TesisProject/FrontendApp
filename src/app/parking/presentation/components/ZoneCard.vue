@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import {
-  classificationColor,
-  classificationLabel,
-} from '../../domain/zone-classification'
+import { ArrowRight, Heart, MapPin } from '@lucide/vue'
+import { classificationColor } from '../../domain/zone-classification'
 import type { Zone } from '../../domain/model/zone.model'
-import IconPin from '../../../shared/presentation/components/IconPin.vue'
-import IconArrowRight from '../../../shared/presentation/components/IconArrowRight.vue'
+import ClassificationBadge from './ClassificationBadge.vue'
+import OccupancyMeter from './OccupancyMeter.vue'
 
 defineProps<{
   zone: Zone
@@ -21,259 +19,75 @@ defineEmits<{
 </script>
 
 <template>
-  <div
-    class="zone-card"
-    :class="{ selected }"
-    role="button"
-    tabindex="0"
-    @click="$emit('focus')"
-    @keydown.enter.prevent="$emit('focus')"
-    @keydown.space.prevent="$emit('focus')"
+  <article
+    class="relative flex overflow-hidden rounded-xl border-[1.5px] bg-card shadow-[0_1px_3px_rgba(10,30,60,0.05)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(10,30,60,0.12)]"
+    :class="selected ? 'border-primary shadow-[0_6px_18px_rgba(242,137,74,0.22)]' : 'border-border/70'"
   >
-    <span
-      class="zone-spine"
-      :style="{ background: classificationColor(zone.classification) }"
-    />
-    <div class="zone-body">
-      <div class="card-head">
-        <div class="card-title-wrap">
-          <p class="zone-name">{{ zone.name }}</p>
-          <p class="zone-address">
-            <IconPin :size="11" />
-            {{ zone.street }}, {{ zone.district }}
+    <span class="w-1 shrink-0" :style="{ background: classificationColor(zone.classification) }" />
+
+    <div class="flex min-w-0 flex-1 flex-col gap-3 px-[15px] py-3.5">
+      <div class="flex items-start justify-between gap-2.5">
+        <div class="min-w-0">
+          <!-- Stretched button: the whole card focuses the zone on the map. -->
+          <button
+            type="button"
+            class="mb-1 text-left text-[15px] leading-tight font-bold text-heading after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-3 focus-visible:after:ring-ring/40"
+            :aria-pressed="selected"
+            @click="$emit('focus')"
+          >
+            {{ zone.name }}
+          </button>
+          <p class="flex items-center gap-[5px] text-xs text-muted-foreground">
+            <MapPin class="size-[11px] shrink-0 opacity-70" aria-hidden="true" />
+            <span class="truncate">{{ zone.street }}, {{ zone.district }}</span>
           </p>
         </div>
         <button
-          class="fav-icon-btn"
-          :class="{ active: isFavorite }"
+          type="button"
+          class="relative z-10 flex shrink-0 rounded-md p-[3px] transition-colors hover:bg-primary/10 hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+          :class="isFavorite ? 'text-primary' : 'text-muted-foreground/50'"
           :aria-pressed="isFavorite"
-          :aria-label="
-            isFavorite ? 'Quitar de favoritos' : 'Guardar en favoritos'
-          "
+          :aria-label="isFavorite ? 'Quitar de favoritos' : 'Guardar en favoritos'"
           :title="isFavorite ? 'Quitar de favoritos' : 'Guardar en favoritos'"
-          @click.stop="$emit('toggle-favorite')"
+          @click="$emit('toggle-favorite')"
         >
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            :fill="isFavorite ? 'currentColor' : 'none'"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <path
-              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-            />
-          </svg>
+          <Heart class="size-[15px]" :fill="isFavorite ? 'currentColor' : 'none'" :stroke-width="2.2" aria-hidden="true" />
         </button>
       </div>
 
-      <div class="avail-row">
-        <div class="avail-figure">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-baseline gap-2">
           <span
-            class="avail-num"
+            class="font-display text-[28px] leading-none font-bold tracking-[-0.02em] tabular-nums"
             :style="{ color: classificationColor(zone.classification) }"
-            >{{ zone.freeCount }}</span
-          >
-          <span class="avail-text">
-            <span class="avail-t1">libres</span>
-            <span class="avail-t2">de {{ zone.totalSpaces }} espacios</span>
+          >{{ zone.freeCount }}</span>
+          <span class="flex flex-col leading-tight">
+            <span class="text-xs font-semibold text-foreground/80">libres</span>
+            <span class="text-[11px] text-muted-foreground">de {{ zone.totalSpaces }} espacios</span>
           </span>
         </div>
-        <span
-          class="status-pill"
-          :style="{ background: classificationColor(zone.classification) }"
-        >
-          {{ classificationLabel(zone.classification) }}
+        <ClassificationBadge :classification="zone.classification" />
+      </div>
+
+      <div class="flex items-center gap-[9px]">
+        <OccupancyMeter
+          :percentage="zone.occupancyPercentage"
+          :color="classificationColor(zone.classification)"
+          class="h-[7px] flex-1"
+        />
+        <span class="text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
+          {{ Math.round(zone.occupancyPercentage) }}% ocupado
         </span>
       </div>
 
-      <div class="meter">
-        <div class="meter-track">
-          <div
-            class="meter-fill"
-            :style="{
-              width: zone.occupancyPercentage + '%',
-              background: classificationColor(zone.classification),
-            }"
-          />
-        </div>
-        <span class="meter-pct"
-          >{{ Math.round(zone.occupancyPercentage) }}% ocupado</span
-        >
-      </div>
-
-      <button class="detail-link" @click.stop="$emit('view-detail')">
+      <button
+        type="button"
+        class="group relative z-10 inline-flex items-center gap-[5px] self-start rounded-sm text-xs font-semibold text-link transition-[gap] hover:gap-2 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+        @click="$emit('view-detail')"
+      >
         Ver detalle
-        <IconArrowRight :size="13" />
+        <ArrowRight class="size-[13px]" :stroke-width="2.2" aria-hidden="true" />
       </button>
     </div>
-  </div>
+  </article>
 </template>
-
-<style scoped>
-.zone-card {
-  position: relative;
-  display: flex;
-  background: #fff;
-  border-radius: 12px;
-  border: 1.5px solid #eef1f4;
-  box-shadow: 0 1px 3px rgba(10, 30, 60, 0.05);
-  cursor: pointer;
-  overflow: hidden;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s,
-    transform 0.2s;
-}
-
-.zone-card:hover {
-  box-shadow: 0 6px 18px rgba(10, 30, 60, 0.12);
-  transform: translateY(-2px);
-}
-.zone-card.selected {
-  border-color: #f2894a;
-  box-shadow: 0 6px 18px rgba(242, 137, 74, 0.22);
-}
-
-.zone-spine {
-  width: 4px;
-  flex-shrink: 0;
-}
-
-.zone-body {
-  flex: 1;
-  min-width: 0;
-  padding: 14px 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.card-title-wrap { min-width: 0; }
-
-.zone-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #0a1e38;
-  margin: 0 0 4px;
-  line-height: 1.2;
-}
-
-.zone-address {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: #8a98a8;
-  margin: 0;
-}
-.zone-address svg { flex-shrink: 0; color: #b3bdc8; }
-
-.fav-icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #cfd6de;
-  padding: 3px;
-  display: flex;
-  align-items: center;
-  border-radius: 6px;
-  flex-shrink: 0;
-  transition: color 0.2s, background 0.2s;
-}
-.fav-icon-btn:hover { color: #f2894a; background: #fff5ef; }
-.fav-icon-btn.active { color: #f2894a; }
-
-.avail-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.avail-figure {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.avail-num {
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.02em;
-}
-
-.avail-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-.avail-t1 { font-size: 12px; font-weight: 600; color: #3d4a5a; }
-.avail-t2 { font-size: 11px; color: #9aa7b4; }
-
-.status-pill {
-  padding: 4px 11px;
-  border-radius: 20px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.meter {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-.meter-track {
-  flex: 1;
-  height: 7px;
-  background: #eef1f4;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.meter-fill {
-  height: 100%;
-  border-radius: 6px;
-  transition: width 0.5s ease;
-}
-.meter-pct {
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7a8a;
-  white-space: nowrap;
-}
-
-.detail-link {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #f2894a;
-  cursor: pointer;
-  transition: gap 0.2s, color 0.2s;
-}
-.detail-link:hover { gap: 8px; color: #e07a3a; }
-</style>

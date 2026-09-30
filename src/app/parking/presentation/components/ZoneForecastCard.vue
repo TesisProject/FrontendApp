@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { Check, Info, X } from '@lucide/vue'
+import { Input } from '@/app/shared/presentation/components/ui/input'
+import SectionCard from '../../../shared/presentation/components/SectionCard.vue'
+import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
+import OccupancyMeter from './OccupancyMeter.vue'
 import { computed, ref, watch } from 'vue'
 import { predictionApi } from '../../../predictions/infrastructure/prediction-api'
 import { toForecast, toModelMetrics } from '../../../predictions/infrastructure/prediction-assembler'
@@ -155,6 +160,14 @@ function barColor(pct: number): string {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
+// Hora · barra · % [· predicción · real · veredicto]; en móvil se oculta "Predicción".
+const rowGrid = computed(() => [
+  'grid items-center gap-3 px-2 py-[5px]',
+  showComparison.value
+    ? 'grid-cols-[44px_1fr_38px_128px_20px] md:grid-cols-[44px_1fr_38px_128px_128px_20px] max-md:[&>:nth-child(4)]:hidden'
+    : 'grid-cols-[44px_1fr_38px]',
+])
+
 async function fetchAll(spotIds: number[]): Promise<OccupancyForecast[]> {
   const all: OccupancyForecast[] = []
   let failed = 0
@@ -196,47 +209,43 @@ watch(
 </script>
 
 <template>
-  <div class="section-card">
-    <div class="forecast-head">
-      <div>
-        <h2 class="section-title">Predicciones</h2>
-        <p class="forecast-sub">Probabilidad de espacios disponibles por hora ({{ dateLabel }})</p>
-      </div>
-      <input
-        class="date-input"
+  <SectionCard title="Predicciones" :sub="`Probabilidad de espacios disponibles por hora (${dateLabel})`">
+    <template #actions>
+      <Input
         type="date"
-        :value="selectedDate"
+        :model-value="selectedDate"
         :min="earliestDate"
         :max="maxDate"
         aria-label="Fecha de la predicción"
+        class="h-8 w-auto cursor-pointer px-2.5 text-[13px] text-heading"
         @change="onDateChange"
       />
-    </div>
+    </template>
 
-    <div v-if="loading" class="section-state">Cargando predicciones...</div>
-    <div v-else-if="error" class="section-state error">{{ error }}</div>
-    <div v-else-if="rows.length === 0" class="section-state">
+    <StateMessage v-if="loading" compact>Cargando predicciones...</StateMessage>
+    <StateMessage v-else-if="error" tone="error" compact>{{ error }}</StateMessage>
+    <StateMessage v-else-if="rows.length === 0" tone="empty" compact>
       Aún no hay predicciones para {{ isToday ? 'hoy' : 'este día' }} en esta zona.
-    </div>
+    </StateMessage>
 
     <template v-else>
-      <p v-if="evaluation.total > 0" class="evaluation">
-        Acertó en <strong>{{ evaluation.hits }} de {{ evaluation.total }}</strong> horas con lectura real
-        <span class="evaluation-note">· margen ±{{ HIT_TOLERANCE_PCT }} pts</span>
+      <p v-if="evaluation.total > 0" class="mb-2.5 text-xs text-muted-foreground">
+        Acertó en <strong class="text-heading">{{ evaluation.hits }} de {{ evaluation.total }}</strong> horas con lectura real
+        <span class="opacity-70">· margen ±{{ HIT_TOLERANCE_PCT }} pts</span>
       </p>
-      <p v-else-if="hasElapsedHours" class="evaluation">
+      <p v-else-if="hasElapsedHours" class="mb-2.5 text-xs text-muted-foreground">
         Sin lecturas de las cámaras para {{ isToday ? 'las horas ya transcurridas' : 'este día' }}:
         no se puede comprobar si la predicción acertó.
       </p>
 
-      <div class="forecast-table" :class="{ 'forecast-table--compare': showComparison }">
-        <div class="forecast-row forecast-row--head" aria-hidden="true">
-          <span>Hora</span>
-          <span>Disponibilidad</span>
+      <div role="table" aria-label="Predicción por hora">
+        <div :class="[rowGrid, 'pt-0 pb-1.5 text-[10.5px] font-semibold tracking-[0.4px] text-muted-foreground uppercase']" role="row">
+          <span role="columnheader">Hora</span>
+          <span role="columnheader">Disponibilidad</span>
           <span />
           <template v-if="showComparison">
-            <span class="col-count">Predicción</span>
-            <span class="col-count">Real</span>
+            <span role="columnheader">Predicción</span>
+            <span role="columnheader">Real</span>
             <span />
           </template>
         </div>
@@ -244,278 +253,59 @@ watch(
         <div
           v-for="row in rows"
           :key="row.hour"
-          class="forecast-row"
-          :class="{ 'forecast-row--now': isToday && row.hour === currentHour }"
+          :class="[rowGrid, 'border-b border-border/50 last:border-b-0', isToday && row.hour === currentHour && 'rounded-md bg-muted']"
+          role="row"
+          :aria-current="isToday && row.hour === currentHour ? 'time' : undefined"
         >
-          <span class="forecast-hour">{{ row.label }}</span>
-          <div class="forecast-bar">
-            <div class="forecast-fill" :style="{ width: row.pct + '%', background: barColor(row.pct) }" />
-          </div>
-          <span class="forecast-pct">{{ row.pct }}%</span>
+          <span class="text-[12.5px] font-semibold text-heading tabular-nums" role="cell">{{ row.label }}</span>
+          <span role="cell"><OccupancyMeter :percentage="row.pct" :color="barColor(row.pct)" class="h-2" /></span>
+          <span class="text-right text-xs font-bold text-heading tabular-nums" role="cell">{{ row.pct }}%</span>
 
           <template v-if="showComparison">
-            <span class="col-count col-count--muted">
+            <span class="text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
               <template v-if="row.predicted">
                 {{ plural(row.predicted.free, 'libre', 'libres') }} · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}
               </template>
             </span>
-            <span class="col-count">
+            <span class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
               <template v-if="row.actual">
                 {{ plural(row.actual.free, 'libre', 'libres') }} · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}
               </template>
             </span>
             <span
               v-if="row.verdict"
-              class="verdict"
-              :class="`verdict--${row.verdict}`"
+              class="inline-flex size-[18px] items-center justify-center rounded-full"
+              :class="row.verdict === 'hit' ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
               role="img"
               :aria-label="row.verdict === 'hit' ? 'Acertó' : 'Falló'"
               :title="row.verdict === 'hit' ? 'La predicción acertó' : 'La predicción falló'"
             >
-              <svg v-if="row.verdict === 'hit'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-              <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              <Check v-if="row.verdict === 'hit'" class="size-3" :stroke-width="3.5" />
+              <X v-else class="size-3" :stroke-width="3.5" />
             </span>
             <span v-else />
           </template>
         </div>
       </div>
 
-      <div v-if="metrics" class="model-info">
-        <div v-for="bar in modelBars" :key="bar.label" class="metric">
-          <span class="metric-label">{{ bar.label }}</span>
-          <div class="forecast-bar forecast-bar--thin">
-            <div class="forecast-fill metric-fill" :style="{ width: (bar.pct ?? 0) + '%' }" />
-          </div>
-          <strong v-if="bar.pct !== null">{{ bar.pct }}%</strong>
-          <span v-else class="metric-empty" title="Aún no hay datos suficientes para calcularlo">Sin datos suficientes</span>
+      <div v-if="metrics" class="mt-3.5 grid gap-2.5 border-t pt-3 md:grid-cols-2 md:gap-6">
+        <div v-for="bar in modelBars" :key="bar.label" class="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 text-xs">
+          <span class="text-muted-foreground">{{ bar.label }}</span>
+          <OccupancyMeter :percentage="bar.pct ?? 0" color="var(--heading)" />
+          <strong v-if="bar.pct !== null" class="text-heading tabular-nums">{{ bar.pct }}%</strong>
+          <span v-else class="text-[11.5px] text-muted-foreground" title="Aún no hay datos suficientes para calcularlo">
+            Sin datos suficientes
+          </span>
         </div>
       </div>
 
-      <p class="disclaimer">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-        </svg>
+      <p class="mt-2.5 flex items-start gap-1.5 text-[11.5px] leading-snug text-muted-foreground">
+        <Info class="mt-0.5 size-[13px] shrink-0" aria-hidden="true" />
         <span>
           Las predicciones son generadas por inteligencia artificial y pueden contener errores.
           <template v-if="modelVersion">· Modelo v{{ modelVersion }}</template>
         </span>
       </p>
     </template>
-  </div>
+  </SectionCard>
 </template>
-
-<style scoped>
-.section-card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e8e8e8;
-  padding: 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-}
-
-.forecast-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #092c4c;
-  margin: 0;
-}
-
-.forecast-sub {
-  font-size: 12px;
-  color: #8a94a0;
-  margin: 2px 0 0;
-}
-
-.date-input {
-  padding: 5px 10px;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 8px;
-  background: white;
-  color: #092c4c;
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.date-input:hover,
-.date-input:focus-visible {
-  border-color: #092c4c;
-  outline: none;
-}
-
-.section-state {
-  font-size: 13px;
-  color: #aaa;
-  padding: 20px 0;
-  text-align: center;
-}
-.section-state.error {
-  color: #e53e3e;
-}
-
-.evaluation {
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: #6b7785;
-}
-.evaluation strong {
-  color: #092c4c;
-}
-.evaluation-note {
-  color: #a0a8b3;
-}
-
-/* Tabla: filas finas separadas por una línea, columnas alineadas con una cabecera. */
-.forecast-row {
-  display: grid;
-  grid-template-columns: 44px 1fr 38px;
-  align-items: center;
-  gap: 12px;
-  padding: 5px 8px;
-  border-bottom: 1px solid #f3f4f6;
-}
-.forecast-table--compare .forecast-row {
-  grid-template-columns: 44px 1fr 38px 128px 128px 20px;
-}
-.forecast-row:last-child {
-  border-bottom: none;
-}
-.forecast-row--now {
-  background: #f0f4f8;
-  border-radius: 6px;
-}
-.forecast-row--head {
-  padding-top: 0;
-  padding-bottom: 6px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: #a0a8b3;
-}
-
-.forecast-hour {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #092c4c;
-  font-variant-numeric: tabular-nums;
-}
-
-.forecast-bar {
-  height: 8px;
-  background: #f0f0f0;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.forecast-bar--thin {
-  height: 6px;
-}
-
-.forecast-fill {
-  height: 100%;
-  border-radius: 6px;
-  transition: width 0.5s ease;
-}
-
-.forecast-pct {
-  font-size: 12px;
-  font-weight: 700;
-  color: #092c4c;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.col-count {
-  font-size: 11.5px;
-  color: #092c4c;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.col-count--muted {
-  color: #8a94a0;
-}
-
-.verdict {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.verdict--hit {
-  background: #e6f7ee;
-  color: #2f855a;
-}
-.verdict--miss {
-  background: #fde8e8;
-  color: #c53030;
-}
-
-/* Métricas del modelo en una sola línea, sin cajas. */
-.model-info {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-.metric {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-}
-.metric-label {
-  color: #6b7785;
-}
-.metric strong {
-  color: #092c4c;
-  font-variant-numeric: tabular-nums;
-}
-.metric-fill {
-  background: #092c4c;
-}
-.metric-empty {
-  color: #8a94a0;
-  font-size: 11.5px;
-}
-
-.disclaimer {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin: 10px 0 0;
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: #8a94a0;
-}
-.disclaimer svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-@media (max-width: 800px) {
-  /* En pantallas angostas se oculta la columna "Predicción" para que no se apiñe. */
-  .forecast-table--compare .forecast-row {
-    grid-template-columns: 44px 1fr 38px 128px 20px;
-  }
-  .forecast-table--compare .forecast-row > :nth-child(4) {
-    display: none;
-  }
-  .model-info {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-}
-</style>

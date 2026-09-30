@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAuthStore }    from '../../../../app/iam/application/auth.store'
+import { Star } from '@lucide/vue'
+import { toast } from 'vue-sonner'
+import { Button } from '@/app/shared/presentation/components/ui/button'
+import { Textarea } from '@/app/shared/presentation/components/ui/textarea'
+import { Avatar, AvatarFallback } from '@/app/shared/presentation/components/ui/avatar'
+import { useAuthStore }    from '../../../iam/application/auth.store'
 import { useRatingsStore } from '../../application/ratings.store'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import { formatShortDate } from '../../../shared/helpers/date'
+import StarRating from './StarRating.vue'
 
 const props = defineProps<{ zoneId: number }>()
 
@@ -15,10 +23,9 @@ const avg     = computed(() => ratingsStore.avgStars(props.zoneId).value)
 const isLoadingReviews = computed(() => ratingsStore.reviewsLoading[props.zoneId] ?? false)
 
 // form
-const editing  = ref(false)
-const hovered  = ref(0)
-const form     = ref({ stars: 0, comment: '', type: '' })
-const savedOk  = ref(false)
+const editing = ref(false)
+const hovered = ref(0)
+const form    = ref({ stars: 0, comment: '', type: '' })
 
 function startEdit() {
   form.value = {
@@ -27,7 +34,6 @@ function startEdit() {
     type:    current.value?.type    ?? '',
   }
   editing.value = true
-  savedOk.value = false
 }
 
 function cancelEdit() {
@@ -39,16 +45,8 @@ function starLabel(n: number) {
   return ['', 'Muy malo', 'Malo', 'Regular', 'Bueno', 'Excelente'][n] ?? ''
 }
 
-function starFill(n: number, active: number) {
-  return n <= active ? '#f59e0b' : '#e5e7eb'
-}
-
 function initials(displayName: string) {
   return displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 async function save() {
@@ -56,11 +54,10 @@ async function save() {
   const ok = await ratingsStore.submit(userId.value, props.zoneId, form.value.stars, form.value.comment, form.value.type)
   if (ok) {
     editing.value = false
-    savedOk.value = true
     hovered.value = 0
+    toast.success('Calificación guardada')
     // recarga reseñas públicas
     await ratingsStore.fetchByZone(props.zoneId)
-    setTimeout(() => savedOk.value = false, 3000)
   }
 }
 
@@ -78,373 +75,93 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="zone-rating">
-
-    <!-- ── Reseñas de la comunidad ─────────────────────── -->
-    <div class="block">
-      <div class="block-header">
-        <span class="block-title">Reseñas</span>
-        <div v-if="!isLoadingReviews && reviews.length" class="avg-pill">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
-            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-          </svg>
+  <section class="divide-y overflow-hidden rounded-[14px] border bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+    <!-- Reseñas de la comunidad -->
+    <div class="flex flex-col gap-3 px-5 py-[18px]">
+      <div class="flex items-center gap-2.5">
+        <h2 class="flex-1 text-sm font-bold text-heading">Reseñas</h2>
+        <span
+          v-if="!isLoadingReviews && reviews.length"
+          class="flex items-center gap-1 rounded-[10px] border border-amber-200 bg-amber-50 px-2.5 py-[3px] text-xs font-bold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+        >
+          <Star :size="13" :stroke-width="0" class="fill-amber-500" aria-hidden="true" />
           {{ avg.toFixed(1) }} · {{ reviews.length }} {{ reviews.length === 1 ? 'reseña' : 'reseñas' }}
-        </div>
+        </span>
       </div>
 
-      <div v-if="isLoadingReviews" class="section-state">Cargando reseñas...</div>
-
-      <div v-else-if="reviews.length === 0" class="empty-reviews">
+      <p v-if="isLoadingReviews" class="text-[13px] text-muted-foreground">Cargando reseñas...</p>
+      <p v-else-if="reviews.length === 0" class="text-[13px] text-muted-foreground italic">
         Sé el primero en calificar esta zona
-      </div>
+      </p>
 
-      <div v-else class="reviews-list">
-        <div v-for="r in reviews" :key="r.userId" class="review-card">
-          <div class="review-top">
-            <div class="avatar">{{ initials(r.userDisplayName) }}</div>
-            <div class="review-meta">
-              <span class="reviewer-name">{{ r.userDisplayName }}</span>
-              <span class="review-date">{{ formatDate(r.createdAt) }}</span>
+      <ul v-else class="flex max-h-[280px] flex-col gap-3 overflow-y-auto pr-0.5">
+        <li v-for="r in reviews" :key="r.userId" class="flex flex-col gap-1.5 rounded-[10px] border bg-muted/40 px-3 py-2.5">
+          <div class="flex items-center gap-2.5">
+            <Avatar class="size-8">
+              <AvatarFallback class="bg-muted text-[11px] font-bold text-heading">{{ initials(r.userDisplayName) }}</AvatarFallback>
+            </Avatar>
+            <div class="flex flex-1 flex-col gap-px">
+              <span class="text-xs font-semibold text-foreground">{{ r.userDisplayName }}</span>
+              <span class="text-[11px] text-muted-foreground">{{ formatShortDate(r.createdAt) }}</span>
             </div>
-            <div class="review-stars">
-              <svg v-for="n in 5" :key="n" width="13" height="13" viewBox="0 0 24 24" :fill="starFill(n, r.stars)" stroke="none">
-                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-              </svg>
-            </div>
+            <StarRating :model-value="r.stars" readonly />
           </div>
-          <p v-if="r.comment" class="review-comment">{{ r.comment }}</p>
-        </div>
-      </div>
+          <p v-if="r.comment" class="text-[13px] leading-normal text-foreground/80">{{ r.comment }}</p>
+        </li>
+      </ul>
     </div>
 
-    <!-- ── Tu calificación ────────────────────────────── -->
-    <div class="block" v-if="userId">
-      <div class="block-header">
-        <span class="block-title">Tu calificación</span>
-        <span v-if="savedOk" class="saved-badge">¡Guardado!</span>
+    <!-- Tu calificación -->
+    <div v-if="userId" class="flex flex-col gap-3 px-5 py-[18px]">
+      <h2 class="text-sm font-bold text-heading">Tu calificación</h2>
+
+      <div v-if="!current && !editing" class="flex flex-wrap items-center gap-3.5">
+        <p class="flex-1 text-[13px] text-muted-foreground">Aún no has calificado esta zona</p>
+        <Button size="sm" variant="emphasis" @click="startEdit">
+          Calificar
+        </Button>
       </div>
 
-      <!-- Sin calificación, no editando -->
-      <div v-if="!current && !editing" class="empty-state">
-        <p class="empty-text">Aún no has calificado esta zona</p>
-        <button class="btn-rate" @click="startEdit">Calificar</button>
-      </div>
-
-      <!-- Calificación existente, no editando -->
-      <div v-else-if="current && !editing" class="existing-rating">
-        <div class="stars-display">
-          <svg v-for="n in 5" :key="n" width="20" height="20" viewBox="0 0 24 24" :fill="starFill(n, current.stars)" stroke="none">
-            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-          </svg>
-          <span class="stars-label">{{ starLabel(current.stars) }}</span>
+      <div v-else-if="current && !editing" class="flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <StarRating :model-value="current.stars" readonly :size="20" />
+          <span class="text-xs font-semibold text-amber-600 dark:text-amber-400">{{ starLabel(current.stars) }}</span>
         </div>
-        <p v-if="current.comment" class="comment-display">{{ current.comment }}</p>
-        <div class="existing-actions">
-          <button class="btn-edit" @click="startEdit">Editar</button>
-          <button class="btn-delete" :disabled="ratingsStore.saving" @click="deleteRating">Eliminar</button>
+        <p v-if="current.comment" class="text-[13px] text-foreground/80 italic">{{ current.comment }}</p>
+        <div class="flex gap-2">
+          <Button size="sm" variant="outline-primary" class="border-emphasis text-emphasis hover:bg-emphasis hover:text-emphasis-foreground" @click="startEdit">
+            Editar
+          </Button>
+          <Button size="sm" variant="outline-destructive" :disabled="ratingsStore.saving" @click="deleteRating">Eliminar</Button>
         </div>
       </div>
 
-      <!-- Formulario -->
-      <div v-if="editing" class="edit-form">
-        <div class="stars-input">
-          <svg
-            v-for="n in 5" :key="n"
-            width="28" height="28" viewBox="0 0 24 24"
-            :fill="starFill(n, hovered || form.stars)"
-            stroke="none"
-            class="star-btn"
-            @mouseenter="hovered = n"
-            @mouseleave="hovered = 0"
-            @click="form.stars = n"
-          >
-            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-          </svg>
-          <span class="stars-hint">{{ starLabel(hovered || form.stars) }}</span>
+      <form v-if="editing" class="flex flex-col gap-2.5" @submit.prevent="save">
+        <div class="flex items-center gap-2">
+          <StarRating v-model="form.stars" v-model:hovered="hovered" :size="28" label="Tu calificación de la zona" />
+          <span class="min-w-[70px] text-xs font-semibold text-amber-600 dark:text-amber-400" aria-live="polite">
+            {{ starLabel(hovered || form.stars) }}
+          </span>
         </div>
 
-        <textarea
+        <Textarea
           v-model="form.comment"
-          class="comment-input"
+          aria-label="Comentario"
           placeholder="Comentario opcional..."
           rows="2"
           maxlength="300"
+          class="min-h-0 resize-none"
         />
 
-        <p v-if="ratingsStore.error" class="err-msg">{{ ratingsStore.error }}</p>
+        <FormAlert :message="ratingsStore.error" />
 
-        <div class="form-actions">
-          <button class="btn-cancel" @click="cancelEdit">Cancelar</button>
-          <button class="btn-save" :disabled="!form.stars || ratingsStore.saving" @click="save">
+        <div class="flex justify-end gap-2">
+          <Button type="button" size="sm" variant="outline" @click="cancelEdit">Cancelar</Button>
+          <Button type="submit" size="sm" :disabled="!form.stars || ratingsStore.saving">
             {{ ratingsStore.saving ? 'Guardando...' : 'Guardar' }}
-          </button>
+          </Button>
         </div>
-      </div>
+      </form>
     </div>
-
-  </div>
+  </section>
 </template>
-
-<style scoped>
-.zone-rating {
-  background: white;
-  border-radius: 14px;
-  border: 1px solid #e8e8e8;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-
-.block {
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.block + .block {
-  border-top: 1px solid #f0f0f0;
-}
-
-.block-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.block-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1a1a2e;
-  flex: 1;
-}
-
-.avg-pill {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #fffbeb;
-  color: #92400e;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 10px;
-  border: 1px solid #fde68a;
-}
-
-.saved-badge {
-  font-size: 11px;
-  font-weight: 600;
-  background: #f0fff4;
-  color: #38a169;
-  padding: 2px 10px;
-  border-radius: 10px;
-}
-
-/* Reviews list */
-.section-state { font-size: 13px; color: #aaa; }
-
-.empty-reviews {
-  font-size: 13px;
-  color: #aaa;
-  font-style: italic;
-}
-
-.reviews-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 280px;
-  overflow-y: auto;
-  padding-right: 2px;
-}
-
-.review-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  background: #fafafa;
-  border-radius: 10px;
-  border: 1px solid #f0f0f0;
-}
-
-.review-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #e8edf2;
-  color: #092c4c;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.review-meta {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.reviewer-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-}
-
-.review-date {
-  font-size: 11px;
-  color: #aaa;
-}
-
-.review-stars {
-  display: flex;
-  gap: 2px;
-}
-
-.review-comment {
-  font-size: 13px;
-  color: #555;
-  margin: 0;
-  line-height: 1.5;
-}
-
-/* Own rating */
-.empty-state { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.empty-text  { font-size: 13px; color: #888; margin: 0; flex: 1; }
-
-.btn-rate {
-  padding: 6px 14px;
-  border-radius: 8px;
-  background: #092c4c;
-  color: white;
-  border: none;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-  transition: opacity 0.15s;
-}
-.btn-rate:hover { opacity: 0.85; }
-
-.existing-rating { display: flex; flex-direction: column; gap: 8px; }
-
-.stars-display { display: flex; align-items: center; gap: 3px; }
-
-.stars-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #f59e0b;
-  margin-left: 6px;
-}
-
-.comment-display {
-  font-size: 13px;
-  color: #555;
-  margin: 0;
-  font-style: italic;
-}
-
-.existing-actions { display: flex; gap: 8px; }
-
-.btn-edit {
-  padding: 4px 12px;
-  border-radius: 7px;
-  border: 1.5px solid #092c4c;
-  background: white;
-  color: #092c4c;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-}
-.btn-edit:hover { background: #092c4c; color: white; }
-
-.btn-delete {
-  padding: 4px 12px;
-  border-radius: 7px;
-  border: 1.5px solid #e53e3e;
-  background: white;
-  color: #e53e3e;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-}
-.btn-delete:hover:not(:disabled) { background: #e53e3e; color: white; }
-.btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.edit-form { display: flex; flex-direction: column; gap: 10px; }
-
-.stars-input { display: flex; align-items: center; gap: 4px; }
-
-.star-btn { cursor: pointer; transition: transform 0.1s; }
-.star-btn:hover { transform: scale(1.15); }
-
-.stars-hint {
-  font-size: 12px;
-  font-weight: 600;
-  color: #f59e0b;
-  margin-left: 8px;
-  min-width: 70px;
-}
-
-.comment-input {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 13px;
-  font-family: inherit;
-  resize: none;
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
-}
-.comment-input:focus { border-color: #092c4c; }
-
-.err-msg { font-size: 12px; color: #e53e3e; margin: 0; }
-
-.form-actions { display: flex; gap: 8px; justify-content: flex-end; }
-
-.btn-cancel {
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 1.5px solid #e0e0e0;
-  background: white;
-  color: #555;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: border-color 0.15s;
-}
-.btn-cancel:hover { border-color: #999; }
-
-.btn-save {
-  padding: 6px 14px;
-  border-radius: 8px;
-  background: #092c4c;
-  color: white;
-  border: none;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: opacity 0.15s;
-}
-.btn-save:hover:not(:disabled) { opacity: 0.85; }
-.btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
-</style>

@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../../../../app/iam/application/auth.store'
+import { RouterLink } from 'vue-router'
+import { Heart, Trash2 } from '@lucide/vue'
+import { Badge } from '@/app/shared/presentation/components/ui/badge'
+import { Button } from '@/app/shared/presentation/components/ui/button'
+import { useAuthStore } from '../../../iam/application/auth.store'
 import { useFavoriteStore } from '../../application/favorite.store'
-import { useZoneStore } from '../../../../app/parking/application/zone.store'
-import type { ZoneClassification } from '../../../../app/parking/domain/model/zone.model'
+import { useZoneStore } from '../../../parking/application/zone.store'
+import { classificationColor } from '../../../parking/domain/zone-classification'
+import type { Zone } from '../../../parking/domain/model/zone.model'
+import ClassificationBadge from '../../../parking/presentation/components/ClassificationBadge.vue'
+import OccupancyMeter from '../../../parking/presentation/components/OccupancyMeter.vue'
+import SpaceCounts from '../../../parking/presentation/components/SpaceCounts.vue'
+import PageHeader from '../../../shared/presentation/components/PageHeader.vue'
+import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
+import { formatShortDate } from '../../../shared/helpers/date'
 
-const router        = useRouter()
 const authStore     = useAuthStore()
 const favoriteStore = useFavoriteStore()
 const zoneStore     = useZoneStore()
@@ -15,7 +24,7 @@ const userId = computed(() => authStore.user?.id ?? 0)
 
 const favoriteZones = computed(() => {
   const ids = favoriteStore.favoriteZoneIds
-  return (zoneStore.zones as any[]).filter(z => ids.has(z.id))
+  return (zoneStore.zones as Zone[]).filter(z => ids.has(z.id))
 })
 
 const savedAtMap = computed(() => {
@@ -24,18 +33,6 @@ const savedAtMap = computed(() => {
   return map
 })
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-function classificationColor(c: ZoneClassification) {
-  return { LIBRE: '#38a169', MODERADO: '#f2894a', OCUPADO: '#e53e3e' }[c]
-}
-
-function classificationLabel(c: ZoneClassification) {
-  return { LIBRE: 'Libre', MODERADO: 'Moderado', OCUPADO: 'Ocupado' }[c]
-}
-
 async function handleRemove(zoneId: number) {
   await favoriteStore.removeFavorite(userId.value, zoneId)
 }
@@ -43,297 +40,82 @@ async function handleRemove(zoneId: number) {
 onMounted(async () => {
   await Promise.all([
     favoriteStore.fetchFavorites(userId.value),
-    (zoneStore.zones as any[]).length === 0 ? zoneStore.fetchZones() : Promise.resolve(),
+    zoneStore.zones.length === 0 ? zoneStore.fetchZones() : Promise.resolve(),
   ])
 })
 </script>
 
 <template>
-  <div class="favorites-page">
+  <div class="flex flex-col gap-6">
+    <PageHeader title="Mis Favoritos" sub="Zonas que guardaste para acceso rápido">
+      <template v-if="favoriteZones.length > 0" #actions>
+        <Badge variant="neutral" class="mt-1 px-3 py-1 text-xs font-semibold text-heading">
+          {{ favoriteZones.length }} {{ favoriteZones.length === 1 ? 'zona' : 'zonas' }}
+        </Badge>
+      </template>
+    </PageHeader>
 
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">Mis Favoritos</h1>
-        <p class="page-subtitle">Zonas que guardaste para acceso rápido</p>
-      </div>
-      <span v-if="favoriteZones.length > 0" class="count-badge">
-        {{ favoriteZones.length }} {{ favoriteZones.length === 1 ? 'zona' : 'zonas' }}
-      </span>
-    </div>
+    <StateMessage v-if="favoriteStore.loading || zoneStore.zonesLoading">Cargando favoritos...</StateMessage>
+    <StateMessage v-else-if="favoriteStore.error" tone="error">{{ favoriteStore.error }}</StateMessage>
 
-    <!-- Loading -->
-    <div v-if="favoriteStore.loading || zoneStore.zonesLoading" class="center-state">
-      <span class="state-text">Cargando favoritos...</span>
-    </div>
+    <StateMessage v-else-if="favoriteZones.length === 0" tone="empty" :icon="Heart" title="Sin zonas guardadas">
+      Guarda zonas desde el detalle para acceder a ellas rápidamente.
+      <template #action>
+        <Button as-child variant="emphasis">
+          <RouterLink to="/dashboard/zones">Explorar zonas</RouterLink>
+        </Button>
+      </template>
+    </StateMessage>
 
-    <!-- Error -->
-    <div v-else-if="favoriteStore.error" class="center-state">
-      <span class="state-text error">{{ favoriteStore.error }}</span>
-    </div>
-
-    <!-- Empty state -->
-    <div v-else-if="favoriteZones.length === 0" class="empty-state">
-      <div class="empty-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-        </svg>
-      </div>
-      <p class="empty-title">Sin zonas guardadas</p>
-      <p class="empty-sub">Guarda zonas desde el detalle para acceder a ellas rápidamente.</p>
-      <button class="btn-explore" @click="router.push('/dashboard/zones')">
-        Explorar zonas
-      </button>
-    </div>
-
-    <!-- Zones grid -->
-    <div v-else class="zones-grid">
-      <div
+    <ul v-else class="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
+      <li
         v-for="zone in favoriteZones"
         :key="zone.id"
-        class="zone-card"
+        class="flex flex-col gap-2.5 rounded-xl border bg-card p-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)] transition-shadow hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)]"
       >
-        <div class="card-header">
-          <div class="card-info">
-            <p class="zone-name">{{ zone.name }}</p>
-            <p class="zone-address">{{ zone.street }}, {{ zone.district }}</p>
+        <div class="flex items-start justify-between gap-2.5">
+          <div class="min-w-0">
+            <p class="mb-0.5 truncate text-sm font-bold text-heading">{{ zone.name }}</p>
+            <p class="text-xs text-muted-foreground">{{ zone.street }}, {{ zone.district }}</p>
           </div>
-          <div class="card-actions">
-            <span class="badge" :style="{ background: classificationColor(zone.classification) }">
-              {{ classificationLabel(zone.classification) }}
-            </span>
-            <button class="remove-btn" title="Quitar de favoritos" @click="handleRemove(zone.id)">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-              </svg>
-            </button>
+          <div class="flex shrink-0 items-center gap-1.5">
+            <ClassificationBadge :classification="zone.classification" />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7 text-muted-foreground/60 hover:bg-destructive-soft hover:text-destructive"
+              :aria-label="`Quitar ${zone.name} de favoritos`"
+              title="Quitar de favoritos"
+              @click="handleRemove(zone.id)"
+            >
+              <Trash2 class="size-[15px]" />
+            </Button>
           </div>
         </div>
 
-        <div class="bar-wrap">
-          <div class="bar">
-            <div class="bar-fill" :style="{ width: zone.occupancyPercentage + '%', background: classificationColor(zone.classification) }" />
-          </div>
-          <span class="bar-pct">{{ Math.round(zone.occupancyPercentage) }}%</span>
+        <div class="flex items-center gap-2">
+          <OccupancyMeter
+            :percentage="zone.occupancyPercentage"
+            :color="classificationColor(zone.classification)"
+            class="h-[5px] flex-1"
+          />
+          <span class="text-xs font-semibold text-heading tabular-nums">{{ Math.round(zone.occupancyPercentage) }}%</span>
         </div>
 
-        <div class="spaces-row">
-          <span class="stat free">{{ zone.freeCount }} libres</span>
-          <span class="sep">·</span>
-          <span class="stat occupied">{{ zone.occupiedCount }} ocupados</span>
-          <span class="sep">·</span>
-          <span class="stat total">{{ zone.totalSpaces }} total</span>
-        </div>
+        <SpaceCounts :free="zone.freeCount" :occupied="zone.occupiedCount" :total="zone.totalSpaces" />
 
-        <div class="card-footer">
-          <span class="saved-at" v-if="savedAtMap.get(zone.id)">
-            Guardado el {{ formatDate(savedAtMap.get(zone.id)!) }}
+        <div class="flex items-center justify-between border-t border-border/60 pt-2">
+          <span v-if="savedAtMap.get(zone.id)" class="text-[11px] text-muted-foreground">
+            Guardado el {{ formatShortDate(savedAtMap.get(zone.id)!) }}
           </span>
-          <button class="detail-link" @click="router.push(`/dashboard/zones/${zone.id}`)">
+          <RouterLink
+            :to="`/dashboard/zones/${zone.id}`"
+            class="ml-auto rounded-sm text-xs font-semibold text-link hover:underline focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+          >
             Ver detalle →
-          </button>
+          </RouterLink>
         </div>
-      </div>
-    </div>
-
+      </li>
+    </ul>
   </div>
 </template>
-
-<style scoped>
-.favorites-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-title);
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 13px;
-  color: var(--color-muted);
-  margin: 0;
-}
-
-.count-badge {
-  background: #eef2f7;
-  color: var(--color-title);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 12px;
-  margin-top: 4px;
-}
-
-.center-state {
-  display: flex;
-  justify-content: center;
-  padding: 60px 0;
-}
-.state-text       { font-size: 14px; color: var(--color-faint); }
-.state-text.error { color: #e53e3e; }
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 60px 0;
-  gap: 10px;
-}
-.empty-icon  { margin-bottom: 8px; }
-.empty-title { font-size: 16px; font-weight: 600; color: var(--color-sub); margin: 0; }
-.empty-sub   { font-size: 13px; color: var(--color-faint); margin: 0; text-align: center; }
-
-.btn-explore {
-  margin-top: 8px;
-  padding: 8px 20px;
-  background: #092c4c;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.btn-explore:hover { background: #0d3d6b; }
-
-.zones-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-}
-
-.zone-card {
-  background: var(--color-card);
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-  padding: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  transition: box-shadow 0.2s;
-}
-.zone-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.09); }
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.zone-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-title);
-  margin: 0 0 3px;
-}
-
-.zone-address {
-  font-size: 12px;
-  color: var(--color-muted);
-  margin: 0;
-}
-
-.card-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.badge {
-  padding: 3px 9px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 700;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.remove-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #ccc;
-  padding: 4px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  transition: color 0.2s, background 0.2s;
-}
-.remove-btn:hover { color: #e53e3e; background: #fde8e8; }
-
-.bar-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.bar {
-  flex: 1;
-  height: 5px;
-  background: var(--color-border-soft);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.bar-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.4s;
-}
-.bar-pct {
-  font-size: 11px;
-  font-weight: 600;
-  color: #666;
-  min-width: 28px;
-  text-align: right;
-}
-
-.spaces-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.stat          { font-size: 11px; }
-.stat.free     { color: #38a169; font-weight: 600; }
-.stat.occupied { color: #e53e3e; font-weight: 600; }
-.stat.total    { color: var(--color-faint); }
-.sep           { color: #ddd; font-size: 11px; }
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border-soft);
-}
-
-.saved-at {
-  font-size: 11px;
-  color: var(--color-faint);
-}
-
-.detail-link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: #f2894a;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-.detail-link:hover { color: #e07a3a; }
-</style>

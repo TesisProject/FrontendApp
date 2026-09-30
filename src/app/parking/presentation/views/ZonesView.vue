@@ -4,10 +4,13 @@ import { useRouter } from 'vue-router'
 import { useZoneStore } from '../../application/zone.store'
 import { useFavoriteStore } from '../../../favorites/application/favorite.store'
 import { useAuthStore } from '../../../iam/application/auth.store'
-import {
-  classificationColor,
-  classificationLabel,
-} from '../../domain/zone-classification'
+import { MapPin, Search } from '@lucide/vue'
+import { Input } from '@/app/shared/presentation/components/ui/input'
+import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
+import PageHeader from '../../../shared/presentation/components/PageHeader.vue'
+import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
+import ClassificationBadge from '../components/ClassificationBadge.vue'
+import SpaceCounts from '../components/SpaceCounts.vue'
 import { useGoogleMap } from '../composables/useGoogleMap'
 import { usePlacesAutocomplete } from '../composables/usePlacesAutocomplete'
 import ZoneCard from '../components/ZoneCard.vue'
@@ -115,91 +118,54 @@ onUnmounted(() => clearInterval(refreshTimer))
 </script>
 
 <template>
-  <div class="zones-page">
-    <div class="left-panel">
-      <div class="panel-header">
-        <h1 class="page-title">Zonas</h1>
-        <div class="search-box">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#aaa"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
+  <div class="flex flex-col-reverse gap-5 lg:h-[calc(100vh-64px)] lg:flex-row">
+    <div class="flex min-h-0 flex-col lg:w-[360px] lg:shrink-0">
+      <div class="px-0.5 pb-3.5">
+        <PageHeader title="Zonas" class="mb-3.5" />
+
+        <div class="relative mb-2.5">
+          <Search class="pointer-events-none absolute top-1/2 left-3 size-[15px] -translate-y-1/2 text-muted-foreground/70" aria-hidden="true" />
+          <Input
             v-model="search"
-            type="text"
+            role="combobox"
+            :aria-expanded="showSuggestions"
+            aria-autocomplete="list"
+            aria-label="Buscar zona, distrito o lugar"
             placeholder="Buscar zona, distrito o lugar..."
-            class="search-input"
             autocomplete="off"
+            class="h-[38px] border bg-card pl-9"
             @input="onSearchInput"
             @blur="hideSuggestions"
           />
-          <div v-if="showSuggestions" class="suggestions-dropdown">
-            <button
+          <ul
+            v-if="showSuggestions"
+            role="listbox"
+            class="absolute inset-x-0 top-[calc(100%+4px)] z-50 divide-y divide-border/60 overflow-hidden rounded-[10px] border bg-popover shadow-[var(--pv-shadow-md)]"
+          >
+            <li
               v-for="(pred, i) in suggestions"
               :key="i"
-              class="suggestion-item"
+              role="option"
+              :aria-selected="false"
+              class="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-accent"
               @mousedown.prevent="selectSuggestion(pred)"
             >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="suggestion-icon"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              <div class="suggestion-texts">
-                <span class="suggestion-main">{{ pred.mainText }}</span>
-                <span class="suggestion-secondary">{{
-                  pred.secondaryText
-                }}</span>
-              </div>
-            </button>
-          </div>
+              <MapPin class="size-[13px] shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span class="flex min-w-0 flex-col gap-px">
+                <span class="truncate text-[13px] font-semibold text-heading">{{ pred.mainText }}</span>
+                <span class="truncate text-[11px] text-muted-foreground">{{ pred.secondaryText }}</span>
+              </span>
+            </li>
+          </ul>
         </div>
 
-        <div class="filters">
-          <button
-            v-for="f in filters"
-            :key="f.value"
-            class="filter-chip"
-            :class="{ active: activeFilter === f.value }"
-            @click="activeFilter = f.value"
-          >
-            {{ f.label }}
-          </button>
-        </div>
+        <FilterPills v-model="activeFilter" :options="filters" label="Filtrar por clasificación" size="sm" />
       </div>
 
-      <div class="zone-list">
-        <div v-if="zoneStore.zonesLoading" class="state-box">
-          <span class="state-text">Cargando zonas...</span>
-        </div>
-        <div v-else-if="zoneStore.zonesError" class="state-box">
-          <span class="state-text error">{{ zoneStore.zonesError }}</span>
-        </div>
-        <div v-else-if="filteredZones.length === 0" class="state-box">
-          <span class="state-text">No se encontraron zonas.</span>
-        </div>
+      <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-1 pr-2 pb-5 pl-0.5 [scrollbar-width:thin]">
+        <StateMessage v-if="zoneStore.zonesLoading">Cargando zonas...</StateMessage>
+        <StateMessage v-else-if="zoneStore.zonesError" tone="error">{{ zoneStore.zonesError }}</StateMessage>
+        <StateMessage v-else-if="filteredZones.length === 0" tone="empty" compact>No se encontraron zonas.</StateMessage>
 
         <ZoneCard
           v-for="zone in filteredZones"
@@ -214,347 +180,36 @@ onUnmounted(() => clearInterval(refreshTimer))
       </div>
     </div>
 
-    <div ref="mapPanelRef" class="map-panel">
-      <div class="map-card">
-        <div ref="mapRef" class="map" />
-        <div v-if="mapError" class="map-error">
-          <p class="map-error-text">{{ mapError }}</p>
+    <div ref="mapPanelRef" class="relative flex h-[360px] flex-col lg:h-auto lg:flex-1">
+      <div class="relative flex-1 overflow-hidden rounded-[14px] border">
+        <div ref="mapRef" class="size-full" />
+        <div v-if="mapError" class="absolute inset-0 flex items-center justify-center bg-muted p-6 text-center">
+          <p class="max-w-xs text-sm font-medium text-destructive" role="alert">{{ mapError }}</p>
         </div>
       </div>
 
-      <Transition name="popup">
+      <Transition
+        enter-active-class="transition duration-150"
+        leave-active-class="transition duration-150"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
         <div
           v-if="popupZone"
-          class="map-popup"
+          class="pointer-events-auto absolute z-10 min-w-[200px] -translate-x-1/2 -translate-y-[calc(100%+18px)] rounded-[10px] bg-popover px-3.5 py-3 text-popover-foreground shadow-[0_4px_20px_rgba(0,0,0,0.18)] after:absolute after:-bottom-[7px] after:left-1/2 after:-translate-x-1/2 after:border-x-8 after:border-t-8 after:border-x-transparent after:border-t-popover after:content-['']"
           :style="{ left: popupPos.x + 'px', top: popupPos.y + 'px' }"
         >
-          <p class="popup-name">{{ popupZone.name }}</p>
-          <p class="popup-address">
-            {{ popupZone.street }}, {{ popupZone.district }}
-          </p>
-          <span
-            class="popup-badge"
-            :style="{
-              background: classificationColor(popupZone.classification),
-            }"
-          >
-            {{ classificationLabel(popupZone.classification) }}
-          </span>
-          <div class="popup-stats">
-            <span class="stat-free">{{ popupZone.freeCount }} libres</span>
-            <span class="sep">·</span>
-            <span class="stat-occ">{{ popupZone.occupiedCount }} ocupados</span>
-            <span class="sep">·</span>
-            <span class="stat-total">{{ popupZone.totalSpaces }} total</span>
-          </div>
+          <p class="mb-[3px] text-sm font-bold text-heading">{{ popupZone.name }}</p>
+          <p class="mb-2 text-xs text-muted-foreground">{{ popupZone.street }}, {{ popupZone.district }}</p>
+          <ClassificationBadge :classification="popupZone.classification" />
+          <SpaceCounts
+            :free="popupZone.freeCount"
+            :occupied="popupZone.occupiedCount"
+            :total="popupZone.totalSpaces"
+            class="mt-2"
+          />
         </div>
       </Transition>
     </div>
   </div>
 </template>
-
-<style scoped>
-.zones-page {
-  display: flex;
-  gap: 20px;
-  height: calc(100vh - 96px);
-}
-
-.left-panel {
-  width: 360px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.panel-header {
-  padding: 0 2px 14px;
-}
-
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #092c4c;
-  margin: 0 0 14px;
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 0 12px;
-  height: 38px;
-  margin-bottom: 10px;
-}
-
-.search-input {
-  border: none;
-  outline: none;
-  font-size: 13px;
-  color: #333;
-  background: transparent;
-  width: 100%;
-}
-
-.search-input::placeholder {
-  color: #bbb;
-}
-
-.filters {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.filter-chip {
-  padding: 4px 12px;
-  border-radius: 16px;
-  border: 1px solid #e0e0e0;
-  background: white;
-  color: #666;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.filter-chip:hover {
-  border-color: #092c4c;
-  color: #092c4c;
-}
-.filter-chip.active {
-  background: #092c4c;
-  border-color: #092c4c;
-  color: white;
-}
-
-.zone-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 4px 8px 20px 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: transparent;
-}
-
-.zone-list::-webkit-scrollbar {
-  width: 4px;
-}
-.zone-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-.zone-list::-webkit-scrollbar-thumb {
-  background: #ddd;
-  border-radius: 4px;
-}
-
-.state-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 0;
-}
-
-.state-text {
-  font-size: 13px;
-  color: #aaa;
-}
-.state-text.error {
-  color: #e53e3e;
-}
-
-.map-panel {
-  flex: 1;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-.map-card {
-  flex: 1;
-  position: relative;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-}
-
-.map {
-  width: 100%;
-  height: 100%;
-}
-
-.map-error {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: #f7f9fb;
-  text-align: center;
-}
-
-.map-error-text {
-  margin: 0;
-  max-width: 320px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-error);
-}
-
-.map-popup {
-  position: absolute;
-  transform: translate(-50%, calc(-100% - 18px));
-  background: white;
-  border-radius: 10px;
-  padding: 12px 14px;
-  min-width: 200px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
-  z-index: 10;
-  pointer-events: all;
-}
-
-.map-popup::after {
-  content: '';
-  position: absolute;
-  bottom: -7px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid white;
-}
-
-.popup-name {
-  margin: 0 0 3px;
-  font-weight: 700;
-  font-size: 14px;
-  color: #092c4c;
-}
-
-.popup-address {
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: #888;
-}
-
-.popup-badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 700;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.popup-stats {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  margin-top: 8px;
-  font-size: 12px;
-}
-
-.stat-free {
-  color: #38a169;
-  font-weight: 600;
-}
-.stat-occ {
-  color: #e53e3e;
-  font-weight: 600;
-}
-.stat-total {
-  color: #aaa;
-}
-.sep {
-  color: #ddd;
-}
-
-.popup-enter-active,
-.popup-leave-active {
-  transition:
-    opacity 0.15s,
-    transform 0.15s;
-}
-.popup-enter-from,
-.popup-leave-to {
-  opacity: 0;
-  transform: translate(-50%, calc(-100% - 10px));
-}
-
-/* Places suggestions dropdown */
-.search-box {
-  position: relative;
-}
-
-.suggestions-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-  z-index: 100;
-  overflow: hidden;
-}
-
-.suggestion-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  transition: background 0.15s;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.suggestion-item:last-child {
-  border-bottom: none;
-}
-.suggestion-item:hover {
-  background: #f8f8f8;
-}
-
-.suggestion-icon {
-  color: #aaa;
-  flex-shrink: 0;
-}
-
-.suggestion-texts {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  overflow: hidden;
-}
-
-.suggestion-main {
-  font-size: 13px;
-  font-weight: 600;
-  color: #092c4c;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.suggestion-secondary {
-  font-size: 11px;
-  color: #888;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-</style>

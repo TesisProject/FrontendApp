@@ -80,7 +80,7 @@ onBeforeUnmount(() => clearInterval(flipTimer))
           <span class="inline-flex items-center gap-[7px]"><i class="size-[9px] rounded-[3px] bg-[#f2894a]" />Moderado</span>
           <span class="inline-flex items-center gap-[7px]"><i class="size-[9px] rounded-[3px] bg-[#ff5d5d]" />Ocupado</span>
           <span class="ml-auto inline-flex items-center gap-[7px] text-[11px] text-white/50">
-            <i class="live-dot" />En vivo · cada 30 s
+            <i class="live-dot" aria-hidden="true" />En vivo · cada 30 s
           </span>
         </div>
       </div>
@@ -182,21 +182,5 @@ onBeforeUnmount(() => clearInterval(flipTimer))
   15% { opacity: 1; }
   85% { opacity: 1; }
   100% { transform: translateY(320%); opacity: 0; }
-}
-
-.live-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: #16b178;
-  animation: live-pulse 1.8s ease-out infinite;
-}
-@keyframes live-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0.55); }
-  70% { box-shadow: 0 0 0 7px rgba(22, 177, 120, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .live-dot { animation: none; }
 }
 </style>

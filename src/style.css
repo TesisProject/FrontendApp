@@ -8,11 +8,9 @@
 /* =============================================================================
    ParkVision · Design tokens (single source of truth)
    -----------------------------------------------------------------------------
-   --pv-*     canonical light palette + scales. Consumed by:
-                • shadcn semantic tokens (--primary, --card, … below)
-                • user pages    (--color-* aliases below, theme-aware)
-   --color-*  user-app theme layer (light + dark via html.dark), derived from
-              --pv-* where the value is shared.
+   --pv-*     canonical palette + scales (light). The shadcn semantic tokens
+              below (--primary, --card, …) are built from them and are what
+              components consume; html.dark and html[data-surface] re-map them.
    The active surface (auth · admin · user) lives on <html data-surface>, set
    by the router; the admin surface re-skins the semantic tokens with navy.
    ============================================================================= */
@@ -119,30 +117,23 @@
   --input:                  var(--pv-border);
   --ring:                   var(--pv-amber);
   --link:                   var(--pv-amber-text);
-  --heading:                var(--pv-ink);
+  --heading:                var(--pv-navy);
   --font-heading:           var(--pv-font-display);
+  /* selected chip / pill (filters, tabs): navy on light, inverse on dark */
+  --emphasis:               var(--pv-navy);
+  --emphasis-foreground:    #ffffff;
+  --elevation-card:         var(--pv-shadow-card);
+  --chart-1:                #1a56c4;
 
-  /* ── User-app theme layer (derived from --pv-*, overridden in html.dark) ─── */
-  --color-primary:           var(--pv-amber);
-  --color-accent-text:       var(--pv-amber-text);
-  --color-accent-text-hover: var(--pv-amber-text-hover);
-  --color-bg:                var(--pv-bg);
-  --color-card:              var(--pv-surface);
-  --color-input-bg:          var(--pv-input-bg);
-  --color-text:              #333333;
-  --color-muted:             #64748b;  /* slate-500 ≈4.7:1 on white (AA) */
-  --color-error:             var(--pv-danger);
-  --shadow-card:             var(--pv-shadow-card);
-
-  --color-title:             var(--pv-navy);
-  --color-sub:               #555555;
-  --color-faint:             var(--pv-text-faint);
-  --color-border:            #e8e8e8;
-  --color-border-soft:       var(--pv-border-soft);
-  --color-toggle-off:        #d1d5db;
-
-  /* legacy alias kept for existing consumers */
-  --font-display:            var(--pv-font-display);
+  /* ── Sidebar (navy in every surface and theme) ──────────────────────────── */
+  --sidebar:                    var(--pv-navy);
+  --sidebar-foreground:         rgba(255, 255, 255, 0.7);
+  --sidebar-primary:            var(--pv-amber);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent:             rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground:  #ffffff;
+  --sidebar-border:             rgba(255, 255, 255, 0.08);
+  --sidebar-ring:               var(--pv-amber);
 }
 
 /* ── Admin surface: navy primary, tighter radius, signage headings ────────── */
@@ -176,22 +167,16 @@ html.dark {
   --input:                   #334155;
   --link:                    #fb923c;
   --heading:                 #e2e8f0;
-
-  --color-bg:                #0f172a;
-  --color-card:              #1e293b;
-  --color-input-bg:          #273549;
-  --color-text:              #e2e8f0;
-  --color-muted:             #94a3b8;
-  --color-title:             #e2e8f0;
-  --color-sub:               #94a3b8;
-  --color-faint:             #7c879a;
-  --color-border:            #334155;
-  --color-border-soft:       #1e2d3d;
-  --color-toggle-off:        #475569;
-  --shadow-card:             0px 4px 20px 0px rgba(0, 0, 0, 0.4);
-  /* lighter amber so links stay legible on dark surfaces */
-  --color-accent-text:       #fb923c;
-  --color-accent-text-hover: #fdba74;
+  --success:                 #6fcf97;
+  --success-soft:            rgba(56, 161, 105, 0.18);
+  --warning:                 #fdba74;
+  --warning-soft:            rgba(242, 137, 74, 0.16);
+  --destructive:             #f87171;
+  --destructive-soft:        rgba(229, 62, 62, 0.18);
+  --emphasis:                #e2e8f0;
+  --emphasis-foreground:     #0f172a;
+  --elevation-card:          0 4px 20px rgba(0, 0, 0, 0.4);
+  --chart-1:                 #60a5fa;
 }
 
 /* Tailwind theme → utilities (bg-primary, text-muted-foreground, font-signage…) */
@@ -233,6 +218,18 @@ html.dark {
   --color-ring:                 var(--ring);
   --color-link:                 var(--link);
   --color-heading:              var(--heading);
+  --color-emphasis:             var(--emphasis);
+  --color-emphasis-foreground:  var(--emphasis-foreground);
+  --color-chart-1:              var(--chart-1);
+
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
 
   /* brand + domain colours */
   --color-amber:         var(--pv-amber);
@@ -243,7 +240,7 @@ html.dark {
   --color-zone-moderado: var(--zone-moderado);
   --color-zone-ocupado:  var(--zone-ocupado);
 
-  --shadow-card:  var(--pv-shadow-card);
+  --shadow-card:  var(--elevation-card);
   --shadow-brand: 0 6px 16px var(--pv-amber-glow);
 }
 
@@ -256,8 +253,8 @@ html.dark {
     min-height: 100vh;
     font-size: 14px;
     line-height: 1.5;
-    color: var(--color-text);
-    background-color: var(--color-bg);
+    color: var(--foreground);
+    background-color: var(--background);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -269,15 +266,6 @@ html.dark {
   }
 
   button:not(:disabled), [role="button"] { cursor: pointer; }
-
-  /* Legacy compat: views still on scoped CSS (user app, pending phase 3) were
-     written against UA defaults, not Tailwind's preflight. shadcn components
-     carry data-slot, so they are unaffected. Remove once phase 3 lands. */
-  svg { display: inline; vertical-align: baseline; }
-  :is(button, input, select, textarea):not([data-slot]) {
-    font-size: 13.3333px;
-    line-height: normal;
-  }
 }
 
 /* Respect reduced-motion globally (dialogs, toasts, hovers…). */
@@ -287,6 +275,28 @@ html.dark {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Page-load entrance: one restrained rise, staggered with an inline animation-delay. */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+}
+@utility animate-rise {
+  animation: rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* "Live" indicator dot (dashboard, auth showcase). */
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0.5); }
+  70%  { box-shadow: 0 0 0 7px rgba(22, 177, 120, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0); }
+}
+@utility live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pv-success);
+  animation: live-pulse 2s ease-out infinite;
 }
 
 /* Bay-marking stripe under page titles — ParkVision signature. */

@@ -14,7 +14,7 @@ import AdminPage from '../components/AdminPage.vue'
 import AdminStateBox from '../components/AdminStateBox.vue'
 import AdminTableCard from '../components/AdminTableCard.vue'
 import AdminField from '../components/AdminField.vue'
-import FilterPills from '../components/FilterPills.vue'
+import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
 
 const store    = useAdminCameraAlertsStore()
 const authStore = useAuthStore()
@@ -98,7 +98,7 @@ onUnmounted(() => clearInterval(refreshTimer))
 
 <template>
   <AdminPage title="Alertas de cámaras" :sub="`${store.alerts.length} alertas registradas · actualización cada 30s`">
-    <FilterPills v-model="activeTab" :options="tabs" label="Filtrar por estado" />
+    <FilterPills v-model="activeTab" :options="tabs" label="Filtrar por estado" class="mb-3.5" />
 
     <AdminStateBox v-if="store.loading">Cargando alertas...</AdminStateBox>
     <AdminStateBox v-else-if="store.error" tone="error">{{ store.error }}</AdminStateBox>

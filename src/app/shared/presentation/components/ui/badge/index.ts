@@ -20,13 +20,15 @@ export const badgeVariants = cva(
         success: "border-transparent bg-success-soft text-success",
         warning: "border-transparent bg-warning-soft text-warning",
         danger:  "border-transparent bg-destructive-soft text-destructive",
-        info:    "border-transparent bg-navy-soft text-[#1a56c4]",
+        info:    "border-transparent bg-navy-soft text-[#1a56c4] dark:bg-[#1a56c4]/25 dark:text-[#93c5fd]",
         neutral: "border-transparent bg-muted text-muted-foreground",
       },
       size: {
         default: "",
         // Admin data pills: mono, uppercase, tracked.
         status: "px-2.5 py-[3px] font-mono text-[10px] font-semibold tracking-[0.6px] uppercase",
+        // User-app status pills: bold, uppercase, tighter.
+        pill: "px-2.5 py-[3px] text-[10px] font-bold tracking-[0.3px] uppercase",
       },
     },
     defaultVariants: {
