@@ -102,7 +102,7 @@ export const useAdminSpacesStore = defineStore('adminSpaces', () => {
     }
   }
 
-  /** Asigna el espacio a la cámara con su ROI (coordenadas de la foto sin girar). */
+  /** Asigna el espacio a la cámara con su ROI (coordenadas de la foto ya girada). */
   async function saveRoi(spaceId: number, cameraId: number, roi: PointResponse[]): Promise<boolean> {
     saving.value = true
     error.value  = null
