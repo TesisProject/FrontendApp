@@ -120,9 +120,9 @@ function onLeave() {
 </script>
 
 <template>
-  <div class="chart-wrap">
+  <div class="relative w-full">
     <svg
-      class="chart"
+      class="block h-auto w-full cursor-crosshair"
       :viewBox="`0 0 ${W} ${H}`"
       role="img"
       aria-label="Historial de ocupación: espacios ocupados a lo largo del tiempo"
@@ -136,7 +136,7 @@ function onLeave() {
           :key="'g' + t.value"
           :x1="PAD.left" :x2="W - PAD.right"
           :y1="t.y" :y2="t.y"
-          stroke="#e8ecf0" stroke-width="1"
+          stroke="var(--border)" stroke-width="1"
         />
       </g>
 
@@ -146,7 +146,7 @@ function onLeave() {
           v-for="t in yTicks"
           :key="'y' + t.value"
           :x="PAD.left - 8" :y="t.y + 3.5"
-          text-anchor="end" class="tick-label"
+          text-anchor="end" class="fill-muted-foreground text-[11px] tabular-nums"
         >{{ t.value }}</text>
       </g>
 
@@ -156,20 +156,20 @@ function onLeave() {
           v-for="(l, i) in xLabels"
           :key="'x' + i"
           :x="l.x" :y="H - 8"
-          :text-anchor="l.anchor" class="tick-label"
+          :text-anchor="l.anchor" class="fill-muted-foreground text-[11px] tabular-nums"
         >{{ l.label }}</text>
       </g>
 
       <!-- Área + línea -->
-      <path v-if="areaPath" :d="areaPath" fill="rgba(26, 86, 196, 0.10)" />
-      <path v-if="coords.length > 1" :d="linePath" fill="none" stroke="#1a56c4" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path v-if="areaPath" :d="areaPath" fill="var(--chart-1)" fill-opacity="0.1" />
+      <path v-if="coords.length > 1" :d="linePath" fill="none" stroke="var(--chart-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
 
       <!-- Crosshair -->
       <line
         v-if="hovered"
         :x1="hovered.coord.x" :x2="hovered.coord.x"
         :y1="PAD.top" :y2="PAD.top + plotH"
-        stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 3"
+        stroke="var(--muted-foreground)" stroke-opacity="0.5" stroke-width="1" stroke-dasharray="3 3"
       />
 
       <!-- Un punto por frame (anillo blanco de 2px sobre el relleno) -->
@@ -178,69 +178,21 @@ function onLeave() {
         :key="'p' + i"
         :cx="c.x" :cy="c.y"
         :r="hoverIndex === i ? 5.5 : 3.5"
-        fill="#1a56c4" stroke="white" stroke-width="2"
+        fill="var(--chart-1)" stroke="var(--card)" stroke-width="2"
       />
     </svg>
 
     <!-- Tooltip HTML: cuándo se tomó el frame y qué ocupación tenía -->
-    <div v-if="hovered" class="tooltip" :style="tooltipStyle">
-      <span class="tooltip-time">{{ formatTime(hovered.point.occurredAt, true) }}</span>
-      <span class="tooltip-data">
-        <span class="occ">{{ hovered.point.occupiedSpots }} ocupados</span>
+    <div
+      v-if="hovered"
+      class="pointer-events-none absolute z-[5] flex -translate-x-1/2 -translate-y-[calc(100%+12px)] flex-col gap-0.5 rounded-lg bg-navy px-[11px] py-[7px] whitespace-nowrap text-white shadow-[0_4px_14px_rgba(9,44,76,0.25)] dark:border dark:bg-popover"
+      :style="tooltipStyle"
+    >
+      <span class="text-[11px] font-semibold text-[#bcd3ea] tabular-nums dark:text-muted-foreground">{{ formatTime(hovered.point.occurredAt, true) }}</span>
+      <span class="text-xs tabular-nums">
+        <span class="font-bold">{{ hovered.point.occupiedSpots }} ocupados</span>
         · {{ hovered.point.freeSpots }} libres de {{ hovered.point.totalSpots }}
       </span>
     </div>
   </div>
 </template>
-
-<style scoped>
-.chart-wrap {
-  position: relative;
-  width: 100%;
-}
-
-.chart {
-  display: block;
-  width: 100%;
-  height: auto;
-  cursor: crosshair;
-}
-
-.tick-label {
-  font-size: 11px;
-  fill: #8a94a0;
-  font-variant-numeric: tabular-nums;
-}
-
-.tooltip {
-  position: absolute;
-  transform: translate(-50%, calc(-100% - 12px));
-  background: #092c4c;
-  color: white;
-  border-radius: 8px;
-  padding: 7px 11px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  pointer-events: none;
-  white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(9, 44, 76, 0.25);
-  z-index: 5;
-}
-
-.tooltip-time {
-  font-size: 11px;
-  font-weight: 600;
-  color: #bcd3ea;
-  font-variant-numeric: tabular-nums;
-}
-
-.tooltip-data {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.tooltip-data .occ {
-  font-weight: 700;
-}
-</style>

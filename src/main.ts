@@ -3,10 +3,13 @@ import { createPinia } from 'pinia'
 import router from './router'
 import App from './App.vue'
 import './style.css'
+import { applyThemeToDocument, storedDarkPreference } from './app/shared/application/theme.store'
 
-// Apply dark mode immediately from localStorage to avoid flash on load
-const stored = localStorage.getItem('pv_dark_mode')
-if (stored === '1') document.documentElement.classList.add('dark')
+// Apply surface + dark mode before mount to avoid a flash; the router keeps it
+// in sync afterwards (see router.afterEach).
+const path = window.location.pathname
+const surface = path.startsWith('/dashboard') ? 'user' : path.startsWith('/admin/') ? 'admin' : 'auth'
+applyThemeToDocument(surface, storedDarkPreference())
 
 const app = createApp(App)
 const pinia = createPinia()

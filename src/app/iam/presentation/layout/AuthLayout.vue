@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { RouterView } from 'vue-router'
+import BrandWordmark from '../../../shared/presentation/components/BrandWordmark.vue'
 
 const year = new Date().getFullYear()
 
@@ -37,29 +38,30 @@ onBeforeUnmount(() => clearInterval(flipTimer))
 </script>
 
 <template>
-  <div class="auth-shell">
+  <div class="grid min-h-screen grid-cols-1 min-[981px]:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]">
     <!-- ───────────── Brand showcase ───────────── -->
-    <aside class="showcase">
+    <aside class="showcase relative hidden flex-col overflow-hidden px-12 pt-[38px] pb-[30px] text-white min-[981px]:flex">
       <div class="showcase-glow showcase-glow--amber" />
       <div class="showcase-glow showcase-glow--green" />
 
-      <header class="showcase-top">
-        <span class="wordmark">
-          <span class="wordmark-mark">P</span>
-          <span class="wordmark-text">Park<span class="wordmark-acc">Vision</span></span>
-        </span>
+      <header class="relative z-1">
+        <BrandWordmark />
       </header>
 
-      <div class="showcase-mid">
-        <p class="eyebrow">Visión artificial en tiempo real</p>
-        <h1 class="thesis">Encuentra estacionamiento<br />antes de llegar.</h1>
-        <p class="thesis-sub">
+      <div class="relative z-1 flex max-w-[460px] flex-1 flex-col justify-center py-6">
+        <p class="mb-4 text-xs font-semibold tracking-[0.16em] text-[#f2a878] uppercase">
+          Visión artificial en tiempo real
+        </p>
+        <h1 class="mb-3.5 font-display text-[38px] leading-[1.08] font-bold tracking-[-0.025em]">
+          Encuentra estacionamiento<br />antes de llegar.
+        </h1>
+        <p class="mb-[34px] max-w-[400px] text-[15px] leading-[1.6] text-white/60">
           Cámaras inteligentes leen cada plaza y te muestran dónde aparcar
           en tu ciudad, plaza por plaza.
         </p>
 
         <!-- live availability grid -->
-        <div class="lot" :class="{ live: !reduceMotion }">
+        <div class="mb-[22px]" aria-hidden="true">
           <div class="lot-stage">
             <div class="lot-grid">
               <span
@@ -73,32 +75,31 @@ onBeforeUnmount(() => clearInterval(flipTimer))
           </div>
         </div>
 
-        <div class="legend">
-          <span class="legend-item"><i class="dot dot--free" />Libre</span>
-          <span class="legend-item"><i class="dot dot--moderate" />Moderado</span>
-          <span class="legend-item"><i class="dot dot--occupied" />Ocupado</span>
-          <span class="legend-live"><i class="live-dot" />En vivo · cada 30 s</span>
+        <div class="flex flex-wrap items-center gap-[18px] text-xs text-white/70">
+          <span class="inline-flex items-center gap-[7px]"><i class="size-[9px] rounded-[3px] bg-[#16b178]" />Libre</span>
+          <span class="inline-flex items-center gap-[7px]"><i class="size-[9px] rounded-[3px] bg-[#f2894a]" />Moderado</span>
+          <span class="inline-flex items-center gap-[7px]"><i class="size-[9px] rounded-[3px] bg-[#ff5d5d]" />Ocupado</span>
+          <span class="ml-auto inline-flex items-center gap-[7px] text-[11px] text-white/50">
+            <i class="live-dot" aria-hidden="true" />En vivo · cada 30 s
+          </span>
         </div>
       </div>
 
-      <footer class="showcase-foot">
-        <span class="foot-copy">© {{ year }} ParkVision</span>
-        <nav class="foot-links">
-          <a href="#">Términos</a>
-          <a href="#">Privacidad</a>
+      <footer class="relative z-1 flex items-center justify-between text-xs text-white/45">
+        <span>© {{ year }} ParkVision</span>
+        <nav class="flex gap-5">
+          <a href="#" class="text-white/55 hover:text-white">Términos</a>
+          <a href="#" class="text-white/55 hover:text-white">Privacidad</a>
         </nav>
       </footer>
     </aside>
 
     <!-- ───────────── Form panel ───────────── -->
-    <main class="form-panel">
-      <div class="form-mobile-brand">
-        <span class="wordmark wordmark--dark">
-          <span class="wordmark-mark">P</span>
-          <span class="wordmark-text">Park<span class="wordmark-acc">Vision</span></span>
-        </span>
+    <main class="flex flex-col overflow-y-auto bg-white px-[22px] pt-7 pb-10 min-[981px]:p-10">
+      <div class="flex justify-center pt-3 pb-2 min-[981px]:hidden">
+        <BrandWordmark tone="dark" />
       </div>
-      <div class="form-shell">
+      <div class="m-auto w-full max-w-[410px]">
         <RouterView />
       </div>
     </main>
@@ -106,23 +107,12 @@ onBeforeUnmount(() => clearInterval(flipTimer))
 </template>
 
 <style scoped>
-.auth-shell {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
-}
-
-/* ───────── Showcase ───────── */
+/* Signature pieces (glows, live lot grid, scan line, pulse) stay as CSS:
+   they are bespoke art direction, not layout. */
 .showcase {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding: 38px 48px 30px;
   background:
     radial-gradient(120% 80% at 15% 0%, #103057 0%, transparent 55%),
     linear-gradient(160deg, #0a1e38 0%, #07182e 55%, #060f20 100%);
-  color: #fff;
 }
 
 .showcase-glow {
@@ -142,69 +132,7 @@ onBeforeUnmount(() => clearInterval(flipTimer))
   bottom: -160px; right: -100px;
 }
 
-.showcase-top,
-.showcase-mid,
-.showcase-foot { position: relative; z-index: 1; }
-
-.wordmark { display: inline-flex; align-items: center; gap: 11px; }
-.wordmark-mark {
-  display: grid;
-  place-items: center;
-  width: 32px; height: 32px;
-  border-radius: 9px;
-  background: var(--color-primary);
-  color: #fff;
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 700;
-  font-size: 19px;
-  box-shadow: 0 4px 14px rgba(242, 137, 74, 0.4);
-}
-.wordmark-text {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 600;
-  font-size: 19px;
-  letter-spacing: -0.01em;
-  color: #fff;
-}
-.wordmark-acc { color: var(--color-primary); }
-
-.showcase-mid {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  max-width: 460px;
-  padding: 24px 0;
-}
-
-.eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #f2a878;
-  margin: 0 0 16px;
-}
-
-.thesis {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 700;
-  font-size: 38px;
-  line-height: 1.08;
-  letter-spacing: -0.025em;
-  margin: 0 0 14px;
-}
-
-.thesis-sub {
-  font-size: 15px;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.62);
-  margin: 0 0 34px;
-  max-width: 400px;
-}
-
 /* live parking grid */
-.lot { margin-bottom: 22px; }
 .lot-stage {
   position: relative;
   width: 100%;
@@ -254,82 +182,5 @@ onBeforeUnmount(() => clearInterval(flipTimer))
   15% { opacity: 1; }
   85% { opacity: 1; }
   100% { transform: translateY(320%); opacity: 0; }
-}
-
-.legend {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-}
-.legend-item { display: inline-flex; align-items: center; gap: 7px; }
-.dot { width: 9px; height: 9px; border-radius: 3px; }
-.dot--free { background: #16b178; }
-.dot--moderate { background: #f2894a; }
-.dot--occupied { background: #ff5d5d; }
-
-.legend-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-left: auto;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-}
-.live-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: #16b178;
-  box-shadow: 0 0 0 0 rgba(22, 177, 120, 0.6);
-  animation: live-pulse 1.8s ease-out infinite;
-}
-@keyframes live-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0.55); }
-  70% { box-shadow: 0 0 0 7px rgba(22, 177, 120, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(22, 177, 120, 0); }
-}
-
-.showcase-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
-}
-.foot-links { display: flex; gap: 20px; }
-.foot-links a { color: rgba(255, 255, 255, 0.55); text-decoration: none; }
-.foot-links a:hover { color: #fff; }
-
-/* ───────── Form panel ───────── */
-.form-panel {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  background: #fff;
-  padding: 40px 40px;
-}
-
-.form-mobile-brand { display: none; }
-
-.form-shell {
-  width: 100%;
-  max-width: 410px;
-  margin: auto;
-}
-
-.wordmark--dark .wordmark-text { color: #0a1e38; }
-
-/* ───────── Responsive ───────── */
-@media (max-width: 980px) {
-  .auth-shell { grid-template-columns: 1fr; }
-  .showcase { display: none; }
-  .form-mobile-brand { display: flex; justify-content: center; padding: 12px 0 8px; }
-  .form-panel { padding: 28px 22px 40px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .live-dot { animation: none; }
 }
 </style>

@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
+import { ArrowLeft, Heart, ImageOff, MapPin } from '@lucide/vue'
+import { Button } from '@/app/shared/presentation/components/ui/button'
 import { useZoneStore } from '../../application/zone.store'
 import { useFavoriteStore } from '../../../favorites/application/favorite.store'
 import { useAuthStore } from '../../../iam/application/auth.store'
+import { classificationColor } from '../../domain/zone-classification'
+import type { ParkingSpace } from '../../domain/model/space.model'
 import ZoneRating from '../../../ratings/presentation/components/ZoneRating.vue'
+import SectionCard from '../../../shared/presentation/components/SectionCard.vue'
+import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
 import OccupancyHistoryChart from '../components/OccupancyHistoryChart.vue'
 import ZoneForecastCard from '../components/ZoneForecastCard.vue'
-import type { ZoneClassification } from '../../domain/model/zone.model'
+import ClassificationBadge from '../components/ClassificationBadge.vue'
+import OccupancyMeter from '../components/OccupancyMeter.vue'
 
 // Enlace de la imagen de vista previa (snapshot de cámara o foto de la zona). Vacío = sin imagen.
 const PREVIEW_IMAGE_URL = ''
 
-const router = useRouter()
 const route = useRoute()
 const zoneStore = useZoneStore()
 const favoriteStore = useFavoriteStore()
@@ -21,6 +27,7 @@ const authStore = useAuthStore()
 const zoneId = computed(() => Number(route.params.id))
 const userId = computed(() => authStore.user?.id ?? 0)
 const isFav = computed(() => favoriteStore.isFavorite(zoneId.value))
+const spaces = computed(() => zoneStore.spaces as ParkingSpace[])
 
 async function toggleFavorite() {
   if (isFav.value) {
@@ -30,15 +37,21 @@ async function toggleFavorite() {
   }
 }
 
-const classificationColor = (c: ZoneClassification) =>
-  ({ LIBRE: '#38a169', MODERADO: '#f2894a', OCUPADO: '#e53e3e' })[c]
-
-const classificationLabel = (c: ZoneClassification) =>
-  ({ LIBRE: 'Libre', MODERADO: 'Moderado', OCUPADO: 'Ocupado' })[c]
-
 const occupancyPct = computed(() =>
   zoneStore.zone ? Math.round(zoneStore.zone.occupancyPercentage) : 0,
 )
+
+const stats = computed(() => {
+  const z = zoneStore.zone
+  if (!z) return []
+  return [
+    { label: 'Total',    value: z.totalSpaces,   tone: 'text-heading' },
+    { label: 'Libres',   value: z.freeCount,     tone: 'text-success' },
+    { label: 'Ocupados', value: z.occupiedCount, tone: 'text-destructive' },
+  ]
+})
+
+const statCard = 'flex flex-col gap-1 rounded-xl border bg-card px-5 py-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
 
 let refreshTimer: ReturnType<typeof setInterval>
 
@@ -60,573 +73,130 @@ onUnmounted(() => clearInterval(refreshTimer))
 </script>
 
 <template>
-  <div class="detail-page">
-    <!-- Header -->
-    <div class="page-header">
-      <button class="back-btn" @click="router.push('/dashboard/zones')">
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M19 12H5M12 5l-7 7 7 7" />
-        </svg>
-        Zonas
-      </button>
+  <div class="flex flex-col gap-5">
+    <div>
+      <Button as-child variant="ghost" class="h-auto px-2.5 py-1.5 text-sm font-medium text-heading">
+        <RouterLink to="/dashboard/zones"><ArrowLeft class="size-[18px]" :stroke-width="2.5" /> Zonas</RouterLink>
+      </Button>
     </div>
 
-    <!-- Loading / Error -->
-    <div v-if="zoneStore.zoneLoading" class="center-state">
-      <span class="state-text">Cargando zona...</span>
-    </div>
-    <div v-else-if="zoneStore.zoneError" class="center-state">
-      <span class="state-text error">{{ zoneStore.zoneError }}</span>
-    </div>
+    <StateMessage v-if="zoneStore.zoneLoading">Cargando zona...</StateMessage>
+    <StateMessage v-else-if="zoneStore.zoneError" tone="error">{{ zoneStore.zoneError }}</StateMessage>
 
     <template v-else-if="zoneStore.zone">
-      <!-- Zone title row -->
-      <div class="zone-title-row">
-        <div>
-          <h1 class="zone-name">{{ zoneStore.zone.name }}</h1>
-          <p class="zone-address">
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#888"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              style="vertical-align: middle; margin-right: 4px"
-            >
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            {{ zoneStore.zone.street }}, {{ zoneStore.zone.district }} ·
-            {{ zoneStore.zone.city }}
+      <!-- Title row -->
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="mb-1.5 font-display text-2xl font-bold text-heading">{{ zoneStore.zone.name }}</h1>
+          <p class="flex items-center gap-1 text-[13px] text-muted-foreground">
+            <MapPin class="size-[13px] shrink-0" aria-hidden="true" />
+            {{ zoneStore.zone.street }}, {{ zoneStore.zone.district }} · {{ zoneStore.zone.city }}
           </p>
         </div>
-        <div class="title-actions">
-          <span
-            class="classification-badge"
-            :style="{
-              background: classificationColor(zoneStore.zone.classification),
-            }"
-          >
-            {{ classificationLabel(zoneStore.zone.classification) }}
-          </span>
-          <button
-            class="fav-btn"
-            :class="{ active: isFav }"
+        <div class="mt-1 flex shrink-0 items-center gap-2.5">
+          <ClassificationBadge :classification="zoneStore.zone.classification" class="px-3.5 py-[5px] text-xs" />
+          <Button
+            variant="outline"
+            size="sm"
+            class="rounded-full px-3.5 text-xs font-semibold hover:border-primary hover:bg-primary/10 hover:text-link"
+            :class="isFav && 'border-primary bg-primary/10 text-link'"
+            :aria-pressed="isFav"
             @click="toggleFavorite"
-            :title="isFav ? 'Quitar de favoritos' : 'Guardar en favoritos'"
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              :fill="isFav ? 'currentColor' : 'none'"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-              />
-            </svg>
+            <Heart class="size-4" :fill="isFav ? 'currentColor' : 'none'" aria-hidden="true" />
             {{ isFav ? 'Guardado' : 'Guardar' }}
-          </button>
+          </Button>
         </div>
       </div>
 
-      <!-- Stats row -->
-      <div class="stats-row">
-        <div class="stat-card">
-          <span class="stat-value">{{ zoneStore.zone.totalSpaces }}</span>
-          <span class="stat-label">Total</span>
+      <!-- Stats -->
+      <div class="grid grid-cols-2 gap-3.5 md:grid-cols-4">
+        <div v-for="s in stats" :key="s.label" :class="statCard">
+          <span class="font-display text-[26px] leading-none font-bold tabular-nums" :class="s.tone">{{ s.value }}</span>
+          <span class="text-xs font-medium text-muted-foreground">{{ s.label }}</span>
         </div>
-        <div class="stat-card">
-          <span class="stat-value libre">{{ zoneStore.zone.freeCount }}</span>
-          <span class="stat-label">Libres</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value ocupado">{{
-            zoneStore.zone.occupiedCount
-          }}</span>
-          <span class="stat-label">Ocupados</span>
-        </div>
-        <div class="stat-card">
-          <div class="pct-wrap">
-            <span class="stat-value">{{ occupancyPct }}%</span>
-            <div class="pct-bar">
-              <div
-                class="pct-fill"
-                :style="{
-                  width: occupancyPct + '%',
-                  background: classificationColor(
-                    zoneStore.zone.classification,
-                  ),
-                }"
-              />
-            </div>
+        <div :class="statCard">
+          <div class="flex flex-col gap-1.5">
+            <span class="font-display text-[26px] leading-none font-bold text-heading tabular-nums">{{ occupancyPct }}%</span>
+            <OccupancyMeter
+              :percentage="occupancyPct"
+              :color="classificationColor(zoneStore.zone.classification)"
+              class="h-1"
+            />
           </div>
-          <span class="stat-label">Ocupación</span>
+          <span class="text-xs font-medium text-muted-foreground">Ocupación</span>
         </div>
       </div>
 
-      <!-- Main content -->
-      <div class="main-grid">
-        <div class="spaces-row">
+      <div class="grid items-stretch gap-4 md:grid-cols-2">
         <!-- Spaces -->
-        <div class="section-card spaces-section">
-          <h2 class="section-title">Espacios</h2>
+        <SectionCard title="Espacios" class="flex flex-col">
+          <StateMessage v-if="zoneStore.spacesLoading" compact>Cargando espacios...</StateMessage>
+          <StateMessage v-else-if="zoneStore.spacesError" tone="error" compact>{{ zoneStore.spacesError }}</StateMessage>
+          <StateMessage v-else-if="spaces.length === 0" tone="empty" compact>Sin espacios registrados.</StateMessage>
+          <template v-else>
+            <ul class="grid flex-1 grid-cols-[repeat(auto-fill,80px)] auto-rows-[80px] content-center justify-center gap-3">
+              <li
+                v-for="space in spaces"
+                :key="space.id"
+                class="flex aspect-square items-center justify-center rounded-lg border-[1.5px] text-[13px] font-bold text-heading transition-transform hover:scale-105"
+                :class="space.occupied
+                  ? 'border-zone-ocupado bg-destructive-soft'
+                  : 'border-zone-libre bg-success-soft'"
+                :title="`${space.spaceNumber} · ${space.occupied ? 'Ocupado' : 'Libre'}`"
+              >
+                {{ space.spaceNumber }}
+                <span class="sr-only">{{ space.occupied ? 'ocupado' : 'libre' }}</span>
+              </li>
+            </ul>
+            <div class="mt-3.5 flex gap-4 border-t pt-3.5 text-xs text-muted-foreground">
+              <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-libre" /> Libre</span>
+              <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-ocupado" /> Ocupado</span>
+            </div>
+          </template>
+        </SectionCard>
 
-          <div v-if="zoneStore.spacesLoading" class="section-state">
-            Cargando espacios...
-          </div>
-          <div v-else-if="zoneStore.spacesError" class="section-state error">
-            {{ zoneStore.spacesError }}
-          </div>
-          <div
-            v-else-if="(zoneStore.spaces as any[]).length === 0"
-            class="section-state"
-          >
-            Sin espacios registrados.
-          </div>
-          <div v-else class="spaces-grid">
+        <!-- Image preview -->
+        <SectionCard title="Vista previa" class="flex flex-col">
+          <div class="relative min-h-40 flex-1 overflow-hidden rounded-[10px] bg-muted/50">
+            <img
+              v-if="PREVIEW_IMAGE_URL"
+              :src="PREVIEW_IMAGE_URL"
+              alt="Vista previa del estacionamiento"
+              class="absolute inset-0 size-full object-cover"
+            />
             <div
-              v-for="space in zoneStore.spaces as any[]"
-              :key="space.id"
-              class="space-box"
-              :class="space.occupied ? 'space-occupied' : 'space-libre'"
-              :title="
-                space.spaceNumber + (space.occupied ? ' · Ocupado' : ' · Libre')
-              "
+              v-else
+              class="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-[10px] border-[1.5px] border-dashed text-[13px] text-muted-foreground"
             >
-              <span class="space-num">{{ space.spaceNumber }}</span>
+              <ImageOff class="size-10 stroke-[1.5] opacity-60" aria-hidden="true" />
+              Sin imagen disponible
             </div>
           </div>
-
-          <!-- Legend -->
-          <div
-            class="legend"
-            v-if="
-              !zoneStore.spacesLoading && (zoneStore.spaces as any[]).length > 0
-            "
-          >
-            <span class="legend-item">
-              <span class="legend-dot libre-dot" /> Libre
-            </span>
-            <span class="legend-item">
-              <span class="legend-dot ocupado-dot" /> Ocupado
-            </span>
-          </div>
-        </div>
-
-          <!-- Image preview -->
-          <div class="section-card preview-section">
-            <h2 class="section-title">Vista previa</h2>
-            <div class="preview-box">
-              <img
-                v-if="PREVIEW_IMAGE_URL"
-                :src="PREVIEW_IMAGE_URL"
-                alt="Vista previa del estacionamiento"
-                class="preview-img"
-              />
-              <div v-else class="preview-empty">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <path d="M21 15l-5-5L5 21" />
-                </svg>
-                <span>Sin imagen disponible</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Occupancy history -->
-        <div class="section-card">
-          <div class="history-head">
-            <h2 class="section-title">Historial de ocupación</h2>
-            <p class="history-sub">
-              Cada punto es un frame registrado por las cámaras — pasa el cursor
-              para ver la hora y la ocupación de ese momento.
-            </p>
-          </div>
-
-          <div v-if="zoneStore.historyLoading" class="section-state">
-            Cargando historial...
-          </div>
-          <div v-else-if="zoneStore.historyError" class="section-state error">
-            {{ zoneStore.historyError }}
-          </div>
-          <div v-else-if="zoneStore.history.length === 0" class="section-state">
-            Aún no hay historial registrado para esta zona.
-          </div>
-          <OccupancyHistoryChart v-else :points="zoneStore.history" />
-        </div>
-
-        <!-- Forecast -->
-        <ZoneForecastCard
-          :zone-id="zoneId"
-          :spot-ids="(zoneStore.spaces as any[]).map((s) => s.id)"
-          :history="zoneStore.history"
-          :history-unavailable="!!zoneStore.historyError"
-        />
-
-        <!-- Rating -->
-        <ZoneRating :zone-id="zoneId" />
+        </SectionCard>
       </div>
+
+      <!-- Occupancy history -->
+      <SectionCard
+        title="Historial de ocupación"
+        sub="Cada punto es un frame registrado por las cámaras — pasa el cursor para ver la hora y la ocupación de ese momento."
+      >
+        <StateMessage v-if="zoneStore.historyLoading" compact>Cargando historial...</StateMessage>
+        <StateMessage v-else-if="zoneStore.historyError" tone="error" compact>{{ zoneStore.historyError }}</StateMessage>
+        <StateMessage v-else-if="zoneStore.history.length === 0" tone="empty" compact>
+          Aún no hay historial registrado para esta zona.
+        </StateMessage>
+        <OccupancyHistoryChart v-else :points="zoneStore.history" />
+      </SectionCard>
+
+      <ZoneForecastCard
+        :zone-id="zoneId"
+        :spot-ids="spaces.map((s) => s.id)"
+        :history="zoneStore.history"
+        :history-unavailable="!!zoneStore.historyError"
+      />
+
+      <ZoneRating :zone-id="zoneId" />
     </template>
   </div>
 </template>
-
-<style scoped>
-.detail-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Header */
-.page-header {
-  display: flex;
-  align-items: center;
-}
-
-.back-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #092c4c;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-.back-btn:hover {
-  background: #f0f4f8;
-}
-
-/* Title row */
-.zone-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.zone-name {
-  font-size: 24px;
-  font-weight: 700;
-  color: #092c4c;
-  margin: 0 0 6px;
-}
-
-.zone-address {
-  font-size: 13px;
-  color: #888;
-  margin: 0;
-  display: flex;
-  align-items: center;
-}
-
-.title-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-.classification-badge {
-  padding: 5px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
-.fav-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
-  border-radius: 20px;
-  border: 1.5px solid #e0e0e0;
-  background: white;
-  color: #aaa;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.fav-btn:hover {
-  border-color: #f2894a;
-  color: #f2894a;
-}
-.fav-btn.active {
-  border-color: #f2894a;
-  color: #f2894a;
-  background: #fff5ef;
-}
-
-/* Stats */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e8e8e8;
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-}
-
-.stat-value {
-  font-size: 26px;
-  font-weight: 700;
-  color: #092c4c;
-  line-height: 1;
-}
-.stat-value.libre {
-  color: #38a169;
-}
-.stat-value.ocupado {
-  color: #e53e3e;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #888;
-  font-weight: 500;
-}
-
-.pct-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pct-bar {
-  height: 4px;
-  background: #f0f0f0;
-  border-radius: 4px;
-  overflow: hidden;
-  width: 100%;
-}
-
-.pct-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.5s ease;
-}
-
-/* Main grid */
-.main-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
-.spaces-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: stretch;
-}
-
-.preview-section {
-  display: flex;
-  flex-direction: column;
-}
-
-.preview-box {
-  flex: 1;
-  min-height: 160px;
-  position: relative;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #f7f9fb;
-}
-
-.preview-empty {
-  position: absolute;
-  inset: 0;
-  border: 1.5px dashed #d5dbe2;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #aab3bd;
-  font-size: 13px;
-}
-
-.preview-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-@media (max-width: 800px) {
-  .spaces-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-.history-head {
-  margin-bottom: 12px;
-}
-
-.history-sub {
-  font-size: 12px;
-  color: #8a94a0;
-  margin: 4px 0 0;
-}
-
-.section-card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e8e8e8;
-  padding: 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #092c4c;
-  margin: 0 0 16px;
-}
-
-.section-state {
-  font-size: 13px;
-  color: #aaa;
-  padding: 20px 0;
-  text-align: center;
-}
-.section-state.error {
-  color: #e53e3e;
-}
-
-/* Spaces grid */
-.spaces-section {
-  display: flex;
-  flex-direction: column;
-}
-
-/* El grid ocupa el alto libre de la card y centra los espacios; la leyenda queda abajo. */
-.spaces-grid {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 80px);
-  grid-auto-rows: 80px;
-  justify-content: center;
-  align-content: center;
-  gap: 12px;
-}
-
-.space-box {
-  aspect-ratio: 1;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: default;
-  transition: transform 0.15s;
-}
-.space-box:hover {
-  transform: scale(1.06);
-}
-
-.space-libre {
-  background: #e6f7ee;
-  border: 1.5px solid #38a169;
-}
-.space-occupied {
-  background: #fde8e8;
-  border: 1.5px solid #e53e3e;
-}
-
-.space-num {
-  font-size: 13px;
-  font-weight: 700;
-  color: #092c4c;
-}
-
-.legend {
-  display: flex;
-  gap: 16px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #666;
-}
-
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-.libre-dot {
-  background: #38a169;
-}
-.ocupado-dot {
-  background: #e53e3e;
-}
-
-/* State helpers */
-.center-state {
-  display: flex;
-  justify-content: center;
-  padding: 60px 0;
-}
-.state-text {
-  font-size: 14px;
-  color: #aaa;
-}
-.state-text.error {
-  color: #e53e3e;
-}
-</style>

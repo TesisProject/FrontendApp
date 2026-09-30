@@ -4,6 +4,23 @@ import { useAdminCamerasStore } from '../../application/admin-cameras.store'
 import { useAdminZonesStore }   from '../../application/admin-zones.store'
 import { useAdminNodesStore }   from '../../application/admin-nodes.store'
 import type { AdminCamera, AdminCameraForm } from '../../domain/model/admin-camera.model'
+import { Plus } from '@lucide/vue'
+import { toast } from 'vue-sonner'
+import { Button } from '@/app/shared/presentation/components/ui/button'
+import { Badge } from '@/app/shared/presentation/components/ui/badge'
+import { Input } from '@/app/shared/presentation/components/ui/input'
+import { Label } from '@/app/shared/presentation/components/ui/label'
+import { Switch } from '@/app/shared/presentation/components/ui/switch'
+import { NativeSelect, NativeSelectOption } from '@/app/shared/presentation/components/ui/native-select'
+import { TableCell, TableRow } from '@/app/shared/presentation/components/ui/table'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/app/shared/presentation/components/ui/dialog'
+import ConfirmDialog from '../../../shared/presentation/components/ConfirmDialog.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import AdminPage from '../components/AdminPage.vue'
+import AdminSearch from '../components/AdminSearch.vue'
+import AdminStateBox from '../components/AdminStateBox.vue'
+import AdminTableCard from '../components/AdminTableCard.vue'
+import AdminField from '../components/AdminField.vue'
 
 const store      = useAdminCamerasStore()
 const zonesStore = useAdminZonesStore()
@@ -20,7 +37,7 @@ const filtered = computed(() =>
 const showModal  = ref(false)
 const editTarget = ref<AdminCamera | null>(null)
 const form       = ref<AdminCameraForm>({ zoneId: '', nodeId: '', name: '', location: '', active: true })
-const feedback   = ref<{ ok: boolean; msg: string } | null>(null)
+const formError  = ref<string | null>(null)
 const confirmId  = ref<number | null>(null)
 
 function zoneName(zoneId: number) {
@@ -30,7 +47,7 @@ function zoneName(zoneId: number) {
 function openCreate() {
   editTarget.value = null
   form.value = { zoneId: zonesStore.zones[0]?.id ?? '', nodeId: '', name: '', location: '', active: true }
-  feedback.value = null
+  formError.value = null
   showModal.value = true
 }
 
@@ -43,7 +60,7 @@ function openEdit(camera: AdminCamera) {
     location: camera.location,
     active:   camera.active,
   }
-  feedback.value = null
+  formError.value = null
   showModal.value = true
 }
 
@@ -56,10 +73,12 @@ async function handleSubmit() {
   } else {
     ok = await store.createCamera(form.value)
   }
-  feedback.value = ok
-    ? { ok: true,  msg: editTarget.value ? 'Cámara actualizada' : 'Cámara creada' }
-    : { ok: false, msg: store.actionError ?? 'Ocurrió un error, intenta de nuevo' }
-  if (ok) setTimeout(closeModal, 1000)
+  if (!ok) {
+    formError.value = store.actionError ?? 'Ocurrió un error, intenta de nuevo'
+    return
+  }
+  toast.success(editTarget.value ? 'Cámara actualizada' : 'Cámara creada')
+  closeModal()
 }
 
 const deleteError = ref<string | null>(null)
@@ -77,140 +96,107 @@ async function handleDelete(id: number) {
   }
 }
 
-function statusColor(active: boolean) {
-  return active ? '#38a169' : '#888'
-}
-
-function statusLabel(active: boolean) {
-  return active ? 'Activa' : 'Inactiva'
-}
-
 onMounted(() => Promise.all([store.fetchCameras(), zonesStore.fetchZones(), nodesStore.fetchNodes()]))
 </script>
 
 <template>
-  <div class="admin-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">Cámaras</h1>
-        <p class="page-sub">{{ store.cameras.length }} cámaras registradas</p>
-      </div>
-      <button class="btn-primary" @click="openCreate">+ Nueva cámara</button>
-    </div>
+  <AdminPage title="Cámaras" :sub="`${store.cameras.length} cámaras registradas`">
+    <template #actions>
+      <Button @click="openCreate"><Plus /> Nueva cámara</Button>
+    </template>
 
-    <div class="search-bar">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input v-model="search" type="text" placeholder="Buscar por nombre o código..." />
-    </div>
+    <AdminSearch v-model="search" placeholder="Buscar por nombre o código..." />
 
-    <div v-if="store.loading" class="state-box">Cargando cámaras...</div>
-    <div v-else-if="store.error" class="state-box error">{{ store.error }}</div>
+    <AdminStateBox v-if="store.loading">Cargando cámaras...</AdminStateBox>
+    <AdminStateBox v-else-if="store.error" tone="error">{{ store.error }}</AdminStateBox>
 
-    <div v-else class="table-card">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Nombre</th><th>Zona</th><th>Código</th><th>Ubicación</th><th>Estado</th><th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="filtered.length === 0">
-            <td colspan="6" class="empty-row">No se encontraron cámaras</td>
-          </tr>
-          <tr v-for="c in filtered" :key="c.id">
-            <td class="td-name">{{ c.name }}</td>
-            <td>{{ zoneName(c.zoneId) }}</td>
-            <td class="td-url">{{ c.code }}</td>
-            <td class="td-url">{{ c.location || '—' }}</td>
-            <td>
-              <span class="badge" :style="{ background: statusColor(c.active) + '20', color: statusColor(c.active) }">
-                {{ statusLabel(c.active) }}
-              </span>
-            </td>
-            <td>
-              <div class="actions">
-                <button class="action-btn edit"   @click="openEdit(c)">Editar</button>
-                <button class="action-btn delete" @click="openDelete(c.id)">Eliminar</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Confirm delete -->
-    <div v-if="confirmId !== null" class="overlay" @click.self="confirmId = null">
-      <div class="confirm-box">
-        <p class="confirm-text">¿Eliminar esta cámara?</p>
-        <p v-if="deleteError" class="feedback err">{{ deleteError }}</p>
-        <div class="confirm-actions">
-          <button class="btn-ghost"  @click="confirmId = null">Cancelar</button>
-          <button class="btn-danger" @click="handleDelete(confirmId!)">Eliminar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal -->
-    <div v-if="showModal" class="overlay" @click.self="closeModal">
-      <div class="modal">
-        <h2 class="modal-title">{{ editTarget ? 'Editar cámara' : 'Nueva cámara' }}</h2>
-
-        <p v-if="editTarget" class="code-hint">Código <strong>{{ editTarget.code }}</strong></p>
-        <p v-else class="code-hint">El código (CAM-001, CAM-002…) lo asigna el sistema al crearla.</p>
-
-        <div class="form-group">
-          <label>Zona</label>
-          <select v-model="form.zoneId">
-            <option v-for="z in zonesStore.zones" :key="z.id" :value="z.id">{{ z.name }}</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Nombre <span class="optional">(opcional)</span></label>
-          <input v-model="form.name" type="text" placeholder="Cámara entrada norte" />
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Ubicación <span class="optional">(opcional)</span></label>
-            <input v-model="form.location" type="text" placeholder="Poste central" />
+    <AdminTableCard
+      v-else
+      :columns="['Nombre', 'Zona', 'Código', 'Ubicación', 'Estado', 'Acciones']"
+      :empty="filtered.length === 0"
+      empty-text="No se encontraron cámaras"
+    >
+      <TableRow v-for="c in filtered" :key="c.id">
+        <TableCell class="font-semibold text-navy">{{ c.name }}</TableCell>
+        <TableCell>{{ zoneName(c.zoneId) }}</TableCell>
+        <TableCell class="font-mono text-xs font-semibold text-navy">{{ c.code }}</TableCell>
+        <TableCell class="max-w-[200px] truncate text-xs text-muted-foreground">{{ c.location || '—' }}</TableCell>
+        <TableCell>
+          <Badge :variant="c.active ? 'success' : 'neutral'" size="status">
+            {{ c.active ? 'Activa' : 'Inactiva' }}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <div class="flex flex-wrap gap-1.5">
+            <Button size="sm" variant="outline-primary" @click="openEdit(c)">Editar</Button>
+            <Button size="sm" variant="outline-destructive" @click="openDelete(c.id)">Eliminar</Button>
           </div>
-          <div class="form-group">
-            <label>Nodo Fog <span class="optional">(opcional)</span></label>
-            <select v-model="form.nodeId">
-              <option value="">Sin nodo</option>
-              <option v-for="n in nodesStore.nodes" :key="n.id" :value="n.id">{{ n.name }} ({{ n.code }})</option>
-            </select>
+        </TableCell>
+      </TableRow>
+    </AdminTableCard>
+
+    <ConfirmDialog
+      :open="confirmId !== null"
+      title="Eliminar cámara"
+      confirm-label="Eliminar"
+      destructive
+      :error="deleteError"
+      @cancel="confirmId = null"
+      @confirm="handleDelete(confirmId!)"
+    >
+      ¿Eliminar esta cámara?
+    </ConfirmDialog>
+
+    <Dialog v-model:open="showModal">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{{ editTarget ? 'Editar cámara' : 'Nueva cámara' }}</DialogTitle>
+          <DialogDescription v-if="editTarget">
+            Código <strong class="font-mono text-foreground">{{ editTarget.code }}</strong>
+          </DialogDescription>
+          <DialogDescription v-else>
+            El código (CAM-001, CAM-002…) lo asigna el sistema al crearla.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form class="grid gap-3.5" @submit.prevent="handleSubmit">
+          <AdminField v-slot="{ id }" label="Zona">
+            <NativeSelect :id="id" v-model="form.zoneId">
+              <NativeSelectOption v-for="z in zonesStore.zones" :key="z.id" :value="z.id">{{ z.name }}</NativeSelectOption>
+            </NativeSelect>
+          </AdminField>
+
+          <AdminField v-slot="{ id }" label="Nombre" optional>
+            <Input :id="id" v-model="form.name" placeholder="Cámara entrada norte" />
+          </AdminField>
+
+          <div class="grid gap-3 sm:grid-cols-2">
+            <AdminField v-slot="{ id }" label="Ubicación" optional>
+              <Input :id="id" v-model="form.location" placeholder="Poste central" />
+            </AdminField>
+            <AdminField v-slot="{ id }" label="Nodo Fog" optional>
+              <NativeSelect :id="id" v-model="form.nodeId">
+                <NativeSelectOption value="">Sin nodo</NativeSelectOption>
+                <NativeSelectOption v-for="n in nodesStore.nodes" :key="n.id" :value="n.id">{{ n.name }} ({{ n.code }})</NativeSelectOption>
+              </NativeSelect>
+            </AdminField>
           </div>
-        </div>
 
-        <div v-if="editTarget" class="form-group">
-          <label class="check-label">
-            <input v-model="form.active" type="checkbox" />
-            Cámara activa
-          </label>
-        </div>
+          <div v-if="editTarget" class="flex items-center gap-2.5">
+            <Switch id="camera-active" v-model="form.active" />
+            <Label for="camera-active">Cámara activa</Label>
+          </div>
 
-        <p v-if="feedback" class="feedback" :class="feedback.ok ? 'ok' : 'err'">{{ feedback.msg }}</p>
+          <FormAlert :message="formError" />
 
-        <div class="modal-actions">
-          <button class="btn-ghost"  @click="closeModal">Cancelar</button>
-          <button class="btn-primary" :disabled="store.saving" @click="handleSubmit">
-            {{ store.saving ? 'Guardando...' : (editTarget ? 'Actualizar' : 'Crear cámara') }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="closeModal">Cancelar</Button>
+            <Button type="submit" :disabled="store.saving">
+              {{ store.saving ? 'Guardando...' : (editTarget ? 'Actualizar' : 'Crear cámara') }}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  </AdminPage>
 </template>
-
-<style scoped>
-@import '../styles/admin-shared.css';
-
-.td-url { color: #888; font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.optional { font-weight: 400; text-transform: none; letter-spacing: 0; color: #bbb; }
-.check-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.check-label input { width: auto; }
-</style>

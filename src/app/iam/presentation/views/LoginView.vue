@@ -5,11 +5,12 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import { useAuthStore } from '../../application/auth.store'
-import AuthCard from '../../../shared/presentation/components/ui/AuthCard.vue'
-import AuthField from '../../../shared/presentation/components/ui/AuthField.vue'
-import AuthInput from '../../../shared/presentation/components/ui/AuthInput.vue'
-import AuthAlert from '../../../shared/presentation/components/ui/AuthAlert.vue'
-import SubmitButton from '../../../shared/presentation/components/ui/SubmitButton.vue'
+import AuthCard from '../components/AuthCard.vue'
+import AuthField from '../components/AuthField.vue'
+import AuthInput from '../components/AuthInput.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import SubmitButton from '../components/SubmitButton.vue'
+import TextLink from '../../../shared/presentation/components/TextLink.vue'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -48,7 +49,7 @@ const onSubmit = handleSubmit(async (values) => {
     title="Inicia sesión"
     sub="Ingresa tus credenciales para ver la disponibilidad en tiempo real."
   >
-    <form class="auth-form" @submit.prevent="onSubmit" novalidate>
+    <form class="mb-[18px] flex flex-col gap-3.5" @submit.prevent="onSubmit" novalidate>
       <AuthField label="Correo electrónico" :error="errors.email">
         <AuthInput
           v-model="email"
@@ -75,11 +76,11 @@ const onSubmit = handleSubmit(async (values) => {
         />
       </AuthField>
 
-      <div class="auth-forgot">
-        <router-link to="/forgot-password" class="auth-link">¿Olvidaste tu contraseña?</router-link>
+      <div class="-mt-0.5 mb-0.5 flex justify-end">
+        <TextLink to="/forgot-password">¿Olvidaste tu contraseña?</TextLink>
       </div>
 
-      <AuthAlert :message="authStore.loginError" />
+      <FormAlert :message="authStore.loginError" />
 
       <SubmitButton
         :loading="authStore.loginLoading"
@@ -88,14 +89,14 @@ const onSubmit = handleSubmit(async (values) => {
       />
     </form>
 
-    <p class="auth-alt">
+    <p class="text-center text-[13px] text-muted-foreground">
       ¿No tienes cuenta?
-      <router-link to="/register" class="auth-link">Regístrate aquí</router-link>
+      <TextLink to="/register">Regístrate aquí</TextLink>
     </p>
 
-    <p class="auth-alt">
+    <p class="text-center text-[13px] text-muted-foreground">
       ¿Eres administrador?
-      <router-link to="/admin" class="auth-link">Accede al panel</router-link>
+      <TextLink to="/admin">Accede al panel</TextLink>
     </p>
   </AuthCard>
 </template>
