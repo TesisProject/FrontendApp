@@ -7,7 +7,6 @@ import type {
   AdminApiKeyResponse, AdminApiKeyCreateRequest, AdminCreatedApiKeyResponse,
   MonitoredSpaceResponse, UpdateSpaceRoiRequest, CameraScreenshotResponse,
 } from './admin-response'
-import type { AdminCameraAlert } from '../domain/model/admin-camera-alert.model'
 import type { AdminSpaceResponse } from './admin-response'
 
 export class AdminApi {
@@ -51,17 +50,6 @@ export class AdminApi {
   }
   deleteSpace(spaceId: number): Promise<void> {
     return httpClient.delete(`/parking/spaces/${spaceId}`)
-  }
-
-  // Camera alerts — /api/v1/notifications/camera-alerts
-  getCameraAlerts(): Promise<AdminCameraAlert[]> {
-    return httpClient.get('/notifications/camera-alerts')
-  }
-  acknowledgeAlert(alertId: number, acknowledgedBy: number): Promise<void> {
-    return httpClient.patch(`/notifications/camera-alerts/${alertId}/acknowledge`, { acknowledgedBy })
-  }
-  resolveAlert(alertId: number, resolutionNote: string): Promise<void> {
-    return httpClient.patch(`/notifications/camera-alerts/${alertId}/resolve`, { resolutionNote })
   }
 
   // Cameras — /api/v1/occupancy/cameras (única ruta de vision que publica el gateway)

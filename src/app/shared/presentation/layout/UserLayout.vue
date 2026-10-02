@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { Bell, CircleHelp, CircleUserRound, Heart, LayoutGrid, User } from '@lucide/vue'
+import { CircleHelp, CircleUserRound, Heart, LayoutGrid, User } from '@lucide/vue'
 import { useAuthStore } from '../../../iam/application/auth.store'
 import AppShell from './AppShell.vue'
 import type { NavItem } from './nav-item'
@@ -12,7 +12,6 @@ const nav: NavItem[] = [
   { to: '/dashboard',           label: 'Dashboard', icon: LayoutGrid, exact: true },
   { to: '/dashboard/zones',     label: 'Zonas',     icon: CircleUserRound },
   { to: '/dashboard/favorites', label: 'Favoritos', icon: Heart },
-  { to: '/dashboard/alerts',    label: 'Alertas',   icon: Bell },
   { to: '/dashboard/faq',       label: 'Ayuda',     icon: CircleHelp },
 ]
 

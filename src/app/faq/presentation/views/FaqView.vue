@@ -17,7 +17,6 @@ const categories: { value: FaqCategory | 'all'; label: string }[] = [
   { value: 'general',        label: 'General'        },
   { value: 'zonas',          label: 'Zonas'          },
   { value: 'predicciones',   label: 'Predicciones'   },
-  { value: 'notificaciones', label: 'Notificaciones' },
   { value: 'cuenta',         label: 'Cuenta'         },
 ]
 
@@ -84,25 +83,6 @@ const faqs: FaqItem[] = [
     category: 'predicciones',
     question: '¿Las predicciones se actualizan automáticamente?',
     answer: 'Sí. El sistema regenera las predicciones periódicamente con los nuevos datos de ocupación, lo que permite que el modelo mejore su exactitud con el tiempo.',
-  },
-  // Notificaciones
-  {
-    id: 11,
-    category: 'notificaciones',
-    question: '¿Qué tipos de alertas puedo recibir?',
-    answer: 'Puedes recibir tres tipos de alertas: Espacio libre disponible (cuando hay espacios libres cerca de ti), Zona saturada (cuando una zona supera el 70% de ocupación) y Fallo de cámara (cuando una cámara queda fuera de línea). Puedes activar o desactivar cada tipo desde tu perfil.',
-  },
-  {
-    id: 12,
-    category: 'notificaciones',
-    question: '¿Cómo configuro el radio de alertas?',
-    answer: 'En la sección Preferencias de tu perfil puedes definir el radio en metros dentro del cual deseas recibir alertas de disponibilidad. Solo las zonas dentro de ese radio te enviarán notificaciones.',
-  },
-  {
-    id: 13,
-    category: 'notificaciones',
-    question: '¿Dónde veo mis notificaciones anteriores?',
-    answer: 'En la sección "Alertas" del menú lateral puedes revisar todas tus notificaciones, filtrarlas entre todas y no leídas, marcarlas como leídas individualmente o todas a la vez, y eliminar las que ya no necesites.',
   },
   // Cuenta
   {
