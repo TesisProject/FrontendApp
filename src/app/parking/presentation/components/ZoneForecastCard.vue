@@ -7,20 +7,16 @@ import OccupancyMeter from './OccupancyMeter.vue'
 import { computed, ref, watch } from 'vue'
 import { predictionApi } from '../../../predictions/infrastructure/prediction-api'
 import { toForecast, toModelMetrics } from '../../../predictions/infrastructure/prediction-assembler'
-import type { DayOfWeek, OccupancyForecast, ZoneModelMetrics } from '../../../predictions/domain/model/prediction.model'
+import type { DayOfWeek, ZoneForecast, ZoneModelMetrics } from '../../../predictions/domain/model/prediction.model'
 import type { ZoneOccupancyHistoryPointResponse } from '../../infrastructure/availability-response'
 
 const props = defineProps<{
   zoneId: number
-  spotIds: number[]
   /** Frames reales de ocupación (el backend guarda los últimos 30 días). */
   history: ZoneOccupancyHistoryPointResponse[]
   /** El historial no se pudo leer (p. ej. 403 para el rol USER): no se puede comparar con la realidad. */
   historyUnavailable?: boolean
 }>()
-
-// Peticiones simultáneas máximas al pedir los pronósticos de cada espacio.
-const BATCH_SIZE = 10
 
 // Una predicción "acierta" si la disponibilidad real de esa hora quedó dentro de este margen (puntos %).
 const HIT_TOLERANCE_PCT = 20
@@ -31,7 +27,7 @@ const JS_TO_BACKEND_DAY: DayOfWeek[] = [
   'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
 ]
 
-const forecasts = ref<OccupancyForecast[]>([])
+const forecasts = ref<ZoneForecast[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -115,7 +111,7 @@ watch(
 
 const modelVersion = computed(() => forecasts.value[0]?.modelVersion ?? null)
 
-/** Promedia las ventanas (15/30 min) de todos los espacios, agrupadas por hora del día elegido. */
+/** Promedia las ventanas (15/30 min) del pronóstico de la zona, agrupadas por hora del día elegido. */
 const rows = computed(() => {
   const byHour = new Map<number, number[]>()
   for (const f of forecasts.value) {
@@ -168,40 +164,20 @@ const rowGrid = computed(() => [
     : 'grid-cols-[44px_1fr_38px]',
 ])
 
-async function fetchAll(spotIds: number[]): Promise<OccupancyForecast[]> {
-  const all: OccupancyForecast[] = []
-  let failed = 0
-  for (let i = 0; i < spotIds.length; i += BATCH_SIZE) {
-    const results = await Promise.allSettled(
-      spotIds.slice(i, i + BATCH_SIZE).map(id => predictionApi.getBySpot(id)),
-    )
-    for (const r of results) {
-      if (r.status === 'fulfilled') all.push(...r.value.map(toForecast))
-      else failed++
-    }
-  }
-  // Si algunos espacios fallan se muestra lo que sí llegó; solo es error si falló todo.
-  if (failed === spotIds.length) throw new Error('all failed')
-  return all
-}
-
-// La clave evita re-consultar cuando el store refresca los espacios (mismos ids, nuevo array).
 watch(
-  () => props.spotIds.join(','),
-  async () => {
-    const spotIds = [...props.spotIds]
+  () => props.zoneId,
+  async zoneId => {
     forecasts.value = []
     error.value = null
-    if (spotIds.length === 0) return
     loading.value = true
     try {
-      const result = await fetchAll(spotIds)
-      // Descarta la respuesta si mientras tanto cambió la lista de espacios.
-      if (spotIds.join(',') === props.spotIds.join(',')) forecasts.value = result
+      const result = (await predictionApi.getZoneForecasts(zoneId)).map(toForecast)
+      // Descarta la respuesta si mientras tanto cambió la zona.
+      if (zoneId === props.zoneId) forecasts.value = result
     } catch {
-      error.value = 'No se pudieron cargar las predicciones.'
+      if (zoneId === props.zoneId) error.value = 'No se pudieron cargar las predicciones.'
     } finally {
-      loading.value = false
+      if (zoneId === props.zoneId) loading.value = false
     }
   },
   { immediate: true },
