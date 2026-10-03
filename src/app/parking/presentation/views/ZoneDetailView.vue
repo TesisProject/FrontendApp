@@ -235,7 +235,6 @@ onUnmounted(() => clearInterval(refreshTimer))
       <template v-if="zoneStore.zone">
         <ZoneForecastCard
           :zone-id="zoneId"
-          :spot-ids="spaces.map((s) => s.id)"
           :history="zoneStore.history"
           :history-unavailable="!!zoneStore.historyError"
         />

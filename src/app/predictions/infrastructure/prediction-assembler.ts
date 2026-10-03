@@ -1,17 +1,30 @@
-import type { OccupancyForecast, ZoneModelMetrics } from '../domain/model/prediction.model'
-import type { OccupancyForecastResponse, ZoneModelMetricsResponse } from './prediction-response'
+import type { ZoneForecast, ZoneForecastSnapshot, ZoneModelMetrics } from '../domain/model/prediction.model'
+import type { ZoneForecastResponse, ZoneForecastSnapshotResponse, ZoneModelMetricsResponse } from './prediction-response'
 
-export function toForecast(res: OccupancyForecastResponse): OccupancyForecast {
+export function toForecast(res: ZoneForecastResponse): ZoneForecast {
   return {
     id:                      res.id,
-    parkingSpotId:           res.parkingSpotId,
+    zoneId:                  res.zoneId,
     dayOfWeek:               res.dayOfWeek,
     startMinuteOfDay:        res.startMinuteOfDay,
     windowSizeMinutes:       res.windowSizeMinutes,
     availabilityProbability: res.availabilityProbability,
+    totalSpots:              res.totalSpots,
+    predictedAvailableSpots: res.predictedAvailableSpots,
+    predictedOccupiedSpots:  res.predictedOccupiedSpots,
     modelVersion:            res.modelVersion,
     createdAt:               res.createdAt,
     updatedAt:               res.updatedAt,
+  }
+}
+
+export function toForecastSnapshot(res: ZoneForecastSnapshotResponse): ZoneForecastSnapshot {
+  return {
+    windowStart:             res.windowStart,
+    windowSizeMinutes:       res.windowSizeMinutes,
+    availabilityProbability: res.availabilityProbability,
+    totalSpots:              res.totalSpots,
+    modelVersion:            res.modelVersion,
   }
 }
 
