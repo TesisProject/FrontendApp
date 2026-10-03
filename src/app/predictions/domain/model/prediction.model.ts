@@ -18,6 +18,18 @@ export interface ZoneForecast {
   updatedAt: string
 }
 
+/**
+ * Lo que estaba publicado para una ventana concreta cuando empezó. Es contra esto que se comparan los
+ * días pasados: el pronóstico semanal se reescribe en cada corrida del modelo.
+ */
+export interface ZoneForecastSnapshot {
+  windowStart: string
+  windowSizeMinutes: number
+  availabilityProbability: number
+  totalSpots: number
+  modelVersion: string | null
+}
+
 /** Métricas del modelo para una zona. Un porcentaje `null` significa que aún no hay datos suficientes. */
 export interface ZoneModelMetrics {
   zoneId: number

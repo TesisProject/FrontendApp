@@ -1,10 +1,15 @@
 import { httpClient } from '../../shared/infrastructure/http-client'
-import type { ZoneForecastResponse, ZoneModelMetricsResponse } from './prediction-response'
+import type { ZoneForecastResponse, ZoneForecastSnapshotResponse, ZoneModelMetricsResponse } from './prediction-response'
 
 export class PredictionApi {
   /** Pronóstico semanal de la zona (7 días × ventanas del día), ordenado de lunes a domingo. */
   getZoneForecasts(zoneId: number): Promise<ZoneForecastResponse[]> {
     return httpClient.get<ZoneForecastResponse[]>(`/prediction/zones/${zoneId}/forecasts`)
+  }
+
+  /** Lo que se había predicho para las ventanas de los últimos 30 días, en orden cronológico. */
+  getZoneForecastHistory(zoneId: number): Promise<ZoneForecastSnapshotResponse[]> {
+    return httpClient.get<ZoneForecastSnapshotResponse[]>(`/prediction/zones/${zoneId}/forecast-history`)
   }
 
   /** Confiabilidad y progreso de entrenamiento del modelo, calculados por el backend con datos reales. */

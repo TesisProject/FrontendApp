@@ -6,8 +6,8 @@ import StateMessage from '../../../shared/presentation/components/StateMessage.v
 import OccupancyMeter from './OccupancyMeter.vue'
 import { computed, ref, watch } from 'vue'
 import { predictionApi } from '../../../predictions/infrastructure/prediction-api'
-import { toForecast, toModelMetrics } from '../../../predictions/infrastructure/prediction-assembler'
-import type { DayOfWeek, ZoneForecast, ZoneModelMetrics } from '../../../predictions/domain/model/prediction.model'
+import { toForecast, toForecastSnapshot, toModelMetrics } from '../../../predictions/infrastructure/prediction-assembler'
+import type { DayOfWeek, ZoneForecast, ZoneForecastSnapshot, ZoneModelMetrics } from '../../../predictions/domain/model/prediction.model'
 import type { ZoneOccupancyHistoryPointResponse } from '../../infrastructure/availability-response'
 
 const props = defineProps<{
@@ -28,6 +28,8 @@ const JS_TO_BACKEND_DAY: DayOfWeek[] = [
 ]
 
 const forecasts = ref<ZoneForecast[]>([])
+// Lo que estaba publicado al empezar cada ventana pasada: la referencia para los días anteriores.
+const history = ref<ZoneForecastSnapshot[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -111,13 +113,24 @@ watch(
 
 const modelVersion = computed(() => forecasts.value[0]?.modelVersion ?? null)
 
-/** Promedia las ventanas (15/30 min) del pronóstico de la zona, agrupadas por hora del día elegido. */
+/**
+ * Probabilidades por hora del día elegido, promediando sus ventanas de 15/30 min. Un día pasado sale del
+ * historial (lo que se predijo antes de que ocurriera); hoy y los días por venir, del pronóstico semanal,
+ * que el modelo no reescribe para las ventanas de hoy que ya empezaron.
+ */
 const rows = computed(() => {
   const byHour = new Map<number, number[]>()
-  for (const f of forecasts.value) {
-    if (f.dayOfWeek !== selectedDay.value) continue
-    const hour = Math.floor(f.startMinuteOfDay / 60)
-    byHour.set(hour, [...(byHour.get(hour) ?? []), f.availabilityProbability])
+  const add = (hour: number, probability: number) =>
+    byHour.set(hour, [...(byHour.get(hour) ?? []), probability])
+  if (isPast.value) {
+    for (const s of history.value) {
+      const start = new Date(s.windowStart)
+      if (toIsoDate(start) === selectedDate.value) add(start.getHours(), s.availabilityProbability)
+    }
+  } else {
+    for (const f of forecasts.value) {
+      if (f.dayOfWeek === selectedDay.value) add(Math.floor(f.startMinuteOfDay / 60), f.availabilityProbability)
+    }
   }
   return [...byHour.entries()]
     .sort(([a], [b]) => a - b)
@@ -168,12 +181,20 @@ watch(
   () => props.zoneId,
   async zoneId => {
     forecasts.value = []
+    history.value = []
     error.value = null
     loading.value = true
     try {
-      const result = (await predictionApi.getZoneForecasts(zoneId)).map(toForecast)
+      const [weekly, past] = await Promise.all([
+        predictionApi.getZoneForecasts(zoneId),
+        // Sin historial (backend anterior o error) los días pasados quedan vacíos; el resto sigue igual.
+        predictionApi.getZoneForecastHistory(zoneId).catch(() => []),
+      ])
       // Descarta la respuesta si mientras tanto cambió la zona.
-      if (zoneId === props.zoneId) forecasts.value = result
+      if (zoneId === props.zoneId) {
+        forecasts.value = weekly.map(toForecast)
+        history.value = past.map(toForecastSnapshot)
+      }
     } catch {
       if (zoneId === props.zoneId) error.value = 'No se pudieron cargar las predicciones.'
     } finally {
@@ -201,7 +222,8 @@ watch(
     <StateMessage v-if="loading" compact>Cargando predicciones...</StateMessage>
     <StateMessage v-else-if="error" tone="error" compact>{{ error }}</StateMessage>
     <StateMessage v-else-if="rows.length === 0" tone="empty" compact>
-      Aún no hay predicciones para {{ isToday ? 'hoy' : 'este día' }} en esta zona.
+      <template v-if="isPast">No quedó registrada la predicción de este día para esta zona.</template>
+      <template v-else>Aún no hay predicciones para {{ isToday ? 'hoy' : 'este día' }} en esta zona.</template>
     </StateMessage>
 
     <template v-else>

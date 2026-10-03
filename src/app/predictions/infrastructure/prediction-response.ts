@@ -15,6 +15,14 @@ export interface ZoneForecastResponse {
   updatedAt: string
 }
 
+export interface ZoneForecastSnapshotResponse {
+  windowStart: string
+  windowSizeMinutes: number
+  availabilityProbability: number
+  totalSpots: number
+  modelVersion: string | null
+}
+
 export interface ZoneModelMetricsResponse {
   zoneId: number
   reliabilityPct: number | null
