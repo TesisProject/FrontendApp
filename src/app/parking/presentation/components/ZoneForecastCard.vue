@@ -169,12 +169,13 @@ function barColor(pct: number): string {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-// Hora · barra · % [· predicción · real · veredicto]; en móvil se oculta "Predicción".
+// Hora · barra · % [· predicción · real · veredicto]. En móvil no caben en una línea: predicción y
+// real bajan a una segunda línea con su etiqueta, y el veredicto se queda junto al porcentaje.
 const rowGrid = computed(() => [
-  'grid items-center gap-3 px-2 py-[5px]',
+  'grid items-center gap-x-3 px-2 py-[5px]',
   showComparison.value
-    ? 'grid-cols-[44px_1fr_38px_128px_20px] md:grid-cols-[44px_1fr_38px_128px_128px_20px] max-md:[&>:nth-child(4)]:hidden'
-    : 'grid-cols-[44px_1fr_38px]',
+    ? 'grid-cols-[44px_minmax(0,1fr)_38px_20px] gap-y-1 md:grid-cols-[44px_minmax(0,1fr)_38px_128px_128px_20px]'
+    : 'grid-cols-[44px_minmax(0,1fr)_38px]',
 ])
 
 watch(
@@ -242,8 +243,11 @@ watch(
           <span role="columnheader">Disponibilidad</span>
           <span />
           <template v-if="showComparison">
-            <span role="columnheader">Predicción</span>
-            <span role="columnheader">Real</span>
+            <!-- En móvil cada fila ya rotula su predicción y su lectura real. -->
+            <span class="max-md:hidden md:contents" role="none">
+              <span role="columnheader">Predicción</span>
+              <span role="columnheader">Real</span>
+            </span>
             <span />
           </template>
         </div>
@@ -260,19 +264,30 @@ watch(
           <span class="text-right text-xs font-bold text-heading tabular-nums" role="cell">{{ row.pct }}%</span>
 
           <template v-if="showComparison">
-            <span class="text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
-              <template v-if="row.predicted">
-                {{ plural(row.predicted.free, 'libre', 'libres') }} · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}
-              </template>
-            </span>
-            <span class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
-              <template v-if="row.actual">
-                {{ plural(row.actual.free, 'libre', 'libres') }} · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}
-              </template>
+            <!-- Escritorio: dos columnas más de la fila. Móvil: segunda línea bajo la barra. -->
+            <span
+              :class="[
+                'md:contents max-md:col-span-3 max-md:col-start-2 max-md:row-start-2 max-md:flex max-md:min-w-0 max-md:flex-wrap max-md:gap-x-4',
+                !row.predicted && !row.actual && 'max-md:hidden',
+              ]"
+              role="none"
+            >
+              <span class="text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
+                <template v-if="row.predicted">
+                  <span class="md:hidden">Predicción: </span>
+                  {{ plural(row.predicted.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}</span>
+                </template>
+              </span>
+              <span class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
+                <template v-if="row.actual">
+                  <span class="text-muted-foreground md:hidden">Real: </span>
+                  {{ plural(row.actual.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}</span>
+                </template>
+              </span>
             </span>
             <span
               v-if="row.verdict"
-              class="inline-flex size-[18px] items-center justify-center rounded-full"
+              class="inline-flex size-[18px] items-center justify-center rounded-full max-md:col-start-4 max-md:row-start-1"
               :class="row.verdict === 'hit' ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
               role="img"
               :aria-label="row.verdict === 'hit' ? 'Acertó' : 'Falló'"
