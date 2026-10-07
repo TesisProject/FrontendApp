@@ -120,16 +120,22 @@ const modelVersion = computed(() => forecasts.value[0]?.modelVersion ?? null)
  */
 const rows = computed(() => {
   const byHour = new Map<number, number[]>()
-  const add = (hour: number, probability: number) =>
+  // Espacios de la zona según el propio pronóstico: permite mostrar la predicción antes de que pase la hora.
+  const totalByHour = new Map<number, number>()
+  const add = (hour: number, probability: number, total: number) => {
     byHour.set(hour, [...(byHour.get(hour) ?? []), probability])
+    totalByHour.set(hour, Math.max(totalByHour.get(hour) ?? 0, total))
+  }
   if (isPast.value) {
     for (const s of history.value) {
       const start = new Date(s.windowStart)
-      if (toIsoDate(start) === selectedDate.value) add(start.getHours(), s.availabilityProbability)
+      if (toIsoDate(start) === selectedDate.value) add(start.getHours(), s.availabilityProbability, s.totalSpots)
     }
   } else {
     for (const f of forecasts.value) {
-      if (f.dayOfWeek === selectedDay.value) add(Math.floor(f.startMinuteOfDay / 60), f.availabilityProbability)
+      if (f.dayOfWeek === selectedDay.value) {
+        add(Math.floor(f.startMinuteOfDay / 60), f.availabilityProbability, f.totalSpots)
+      }
     }
   }
   return [...byHour.entries()]
@@ -140,11 +146,11 @@ const rows = computed(() => {
       const elapsed = isPast.value || (isToday.value && hour < currentHour)
       const actual = elapsed ? actualByHour.value.get(hour) : undefined
       const verdict = actual === undefined ? null : Math.abs(pct - actual.pct) <= HIT_TOLERANCE_PCT ? 'hit' : 'miss'
-      // Espacios libres/ocupados que implica el porcentaje predicho, sobre el total de esa hora.
-      const predictedFree = actual ? Math.round((pct / 100) * actual.total) : null
-      const predicted = actual && predictedFree !== null
-        ? { free: predictedFree, occupied: actual.total - predictedFree }
-        : null
+      // Espacios libres/ocupados que implica el porcentaje predicho, sobre el total de la zona. Si el
+      // pronóstico no trae el total, se usa el de la lectura real de esa hora.
+      const total = totalByHour.get(hour) || actual?.total || 0
+      const predictedFree = Math.round((pct / 100) * total)
+      const predicted = total > 0 ? { free: predictedFree, occupied: total - predictedFree } : null
       return { hour, label: `${String(hour).padStart(2, '0')}:00`, pct, actual, predicted, verdict }
     })
 })
@@ -169,13 +175,13 @@ function barColor(pct: number): string {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-// Hora · barra · % [· predicción · real · veredicto]. En móvil no caben en una línea: predicción y
+// Hora · barra · % · predicción [· real · veredicto]. En móvil no caben en una línea: predicción y
 // real bajan a una segunda línea con su etiqueta, y el veredicto se queda junto al porcentaje.
 const rowGrid = computed(() => [
-  'grid items-center gap-x-3 px-2 py-[5px]',
+  'grid items-center gap-x-3 gap-y-1 px-2 py-[5px]',
   showComparison.value
-    ? 'grid-cols-[44px_minmax(0,1fr)_38px_20px] gap-y-1 md:grid-cols-[44px_minmax(0,1fr)_38px_128px_128px_20px]'
-    : 'grid-cols-[44px_minmax(0,1fr)_38px]',
+    ? 'grid-cols-[44px_minmax(0,1fr)_38px_20px] md:grid-cols-[44px_minmax(0,1fr)_38px_128px_128px_20px]'
+    : 'grid-cols-[44px_minmax(0,1fr)_38px] md:grid-cols-[44px_minmax(0,1fr)_38px_128px]',
 ])
 
 watch(
@@ -242,14 +248,12 @@ watch(
           <span role="columnheader">Hora</span>
           <span role="columnheader">Disponibilidad</span>
           <span />
-          <template v-if="showComparison">
-            <!-- En móvil cada fila ya rotula su predicción y su lectura real. -->
-            <span class="max-md:hidden md:contents" role="none">
-              <span role="columnheader">Predicción</span>
-              <span role="columnheader">Real</span>
-            </span>
-            <span />
-          </template>
+          <!-- En móvil cada fila ya rotula su predicción y su lectura real. -->
+          <span class="max-md:hidden md:contents" role="none">
+            <span role="columnheader">Predicción</span>
+            <span v-if="showComparison" role="columnheader">Real</span>
+          </span>
+          <span v-if="showComparison" class="max-md:hidden" />
         </div>
 
         <div
@@ -263,28 +267,29 @@ watch(
           <span role="cell"><OccupancyMeter :percentage="row.pct" :color="barColor(row.pct)" class="h-2" /></span>
           <span class="text-right text-xs font-bold text-heading tabular-nums" role="cell">{{ row.pct }}%</span>
 
-          <template v-if="showComparison">
-            <!-- Escritorio: dos columnas más de la fila. Móvil: segunda línea bajo la barra. -->
-            <span
-              :class="[
-                'md:contents max-md:col-span-3 max-md:col-start-2 max-md:row-start-2 max-md:flex max-md:min-w-0 max-md:flex-wrap max-md:gap-x-4',
-                !row.predicted && !row.actual && 'max-md:hidden',
-              ]"
-              role="none"
-            >
-              <span class="text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
-                <template v-if="row.predicted">
-                  <span class="md:hidden">Predicción: </span>
-                  {{ plural(row.predicted.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}</span>
-                </template>
-              </span>
-              <span class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
-                <template v-if="row.actual">
-                  <span class="text-muted-foreground md:hidden">Real: </span>
-                  {{ plural(row.actual.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}</span>
-                </template>
-              </span>
+          <!-- Escritorio: columnas de la fila. Móvil: segunda línea bajo la barra. -->
+          <span
+            :class="[
+              'md:contents max-md:col-start-2 max-md:row-start-2 max-md:flex max-md:min-w-0 max-md:flex-wrap max-md:gap-x-4',
+              showComparison ? 'max-md:col-span-3' : 'max-md:col-span-2',
+              !row.predicted && !row.actual && 'max-md:hidden',
+            ]"
+            role="none"
+          >
+            <span class="text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
+              <template v-if="row.predicted">
+                <span class="md:hidden">Predicción: </span>
+                {{ plural(row.predicted.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}</span>
+              </template>
             </span>
+            <span v-if="showComparison" class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
+              <template v-if="row.actual">
+                <span class="text-muted-foreground md:hidden">Real: </span>
+                {{ plural(row.actual.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}</span>
+              </template>
+            </span>
+          </span>
+          <template v-if="showComparison">
             <span
               v-if="row.verdict"
               class="inline-flex size-[18px] items-center justify-center rounded-full max-md:col-start-4 max-md:row-start-1"
@@ -296,7 +301,7 @@ watch(
               <Check v-if="row.verdict === 'hit'" class="size-3" :stroke-width="3.5" />
               <X v-else class="size-3" :stroke-width="3.5" />
             </span>
-            <span v-else />
+            <span v-else class="max-md:col-start-4 max-md:row-start-1" />
           </template>
         </div>
       </div>
