@@ -1,4 +1,4 @@
-export type FaqCategory = 'general' | 'zonas' | 'predicciones' | 'notificaciones' | 'cuenta'
+export type FaqCategory = 'general' | 'zonas' | 'predicciones' | 'cuenta'
 
 export interface FaqItem {
   id: number

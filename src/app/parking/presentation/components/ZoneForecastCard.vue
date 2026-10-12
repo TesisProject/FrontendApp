@@ -6,21 +6,17 @@ import StateMessage from '../../../shared/presentation/components/StateMessage.v
 import OccupancyMeter from './OccupancyMeter.vue'
 import { computed, ref, watch } from 'vue'
 import { predictionApi } from '../../../predictions/infrastructure/prediction-api'
-import { toForecast, toModelMetrics } from '../../../predictions/infrastructure/prediction-assembler'
-import type { DayOfWeek, OccupancyForecast, ZoneModelMetrics } from '../../../predictions/domain/model/prediction.model'
+import { toForecast, toForecastSnapshot, toModelMetrics } from '../../../predictions/infrastructure/prediction-assembler'
+import type { DayOfWeek, ZoneForecast, ZoneForecastSnapshot, ZoneModelMetrics } from '../../../predictions/domain/model/prediction.model'
 import type { ZoneOccupancyHistoryPointResponse } from '../../infrastructure/availability-response'
 
 const props = defineProps<{
   zoneId: number
-  spotIds: number[]
   /** Frames reales de ocupación (el backend guarda los últimos 30 días). */
   history: ZoneOccupancyHistoryPointResponse[]
   /** El historial no se pudo leer (p. ej. 403 para el rol USER): no se puede comparar con la realidad. */
   historyUnavailable?: boolean
 }>()
-
-// Peticiones simultáneas máximas al pedir los pronósticos de cada espacio.
-const BATCH_SIZE = 10
 
 // Una predicción "acierta" si la disponibilidad real de esa hora quedó dentro de este margen (puntos %).
 const HIT_TOLERANCE_PCT = 20
@@ -31,7 +27,9 @@ const JS_TO_BACKEND_DAY: DayOfWeek[] = [
   'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
 ]
 
-const forecasts = ref<OccupancyForecast[]>([])
+const forecasts = ref<ZoneForecast[]>([])
+// Lo que estaba publicado al empezar cada ventana pasada: la referencia para los días anteriores.
+const history = ref<ZoneForecastSnapshot[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -115,13 +113,30 @@ watch(
 
 const modelVersion = computed(() => forecasts.value[0]?.modelVersion ?? null)
 
-/** Promedia las ventanas (15/30 min) de todos los espacios, agrupadas por hora del día elegido. */
+/**
+ * Probabilidades por hora del día elegido, promediando sus ventanas de 15/30 min. Un día pasado sale del
+ * historial (lo que se predijo antes de que ocurriera); hoy y los días por venir, del pronóstico semanal,
+ * que el modelo no reescribe para las ventanas de hoy que ya empezaron.
+ */
 const rows = computed(() => {
   const byHour = new Map<number, number[]>()
-  for (const f of forecasts.value) {
-    if (f.dayOfWeek !== selectedDay.value) continue
-    const hour = Math.floor(f.startMinuteOfDay / 60)
-    byHour.set(hour, [...(byHour.get(hour) ?? []), f.availabilityProbability])
+  // Espacios de la zona según el propio pronóstico: permite mostrar la predicción antes de que pase la hora.
+  const totalByHour = new Map<number, number>()
+  const add = (hour: number, probability: number, total: number) => {
+    byHour.set(hour, [...(byHour.get(hour) ?? []), probability])
+    totalByHour.set(hour, Math.max(totalByHour.get(hour) ?? 0, total))
+  }
+  if (isPast.value) {
+    for (const s of history.value) {
+      const start = new Date(s.windowStart)
+      if (toIsoDate(start) === selectedDate.value) add(start.getHours(), s.availabilityProbability, s.totalSpots)
+    }
+  } else {
+    for (const f of forecasts.value) {
+      if (f.dayOfWeek === selectedDay.value) {
+        add(Math.floor(f.startMinuteOfDay / 60), f.availabilityProbability, f.totalSpots)
+      }
+    }
   }
   return [...byHour.entries()]
     .sort(([a], [b]) => a - b)
@@ -131,11 +146,11 @@ const rows = computed(() => {
       const elapsed = isPast.value || (isToday.value && hour < currentHour)
       const actual = elapsed ? actualByHour.value.get(hour) : undefined
       const verdict = actual === undefined ? null : Math.abs(pct - actual.pct) <= HIT_TOLERANCE_PCT ? 'hit' : 'miss'
-      // Espacios libres/ocupados que implica el porcentaje predicho, sobre el total de esa hora.
-      const predictedFree = actual ? Math.round((pct / 100) * actual.total) : null
-      const predicted = actual && predictedFree !== null
-        ? { free: predictedFree, occupied: actual.total - predictedFree }
-        : null
+      // Espacios libres/ocupados que implica el porcentaje predicho, sobre el total de la zona. Si el
+      // pronóstico no trae el total, se usa el de la lectura real de esa hora.
+      const total = totalByHour.get(hour) || actual?.total || 0
+      const predictedFree = Math.round((pct / 100) * total)
+      const predicted = total > 0 ? { free: predictedFree, occupied: total - predictedFree } : null
       return { hour, label: `${String(hour).padStart(2, '0')}:00`, pct, actual, predicted, verdict }
     })
 })
@@ -160,48 +175,37 @@ function barColor(pct: number): string {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-// Hora · barra · % [· predicción · real · veredicto]; en móvil se oculta "Predicción".
+// Hora · barra · % · predicción [· real · veredicto]. En móvil no caben en una línea: predicción y
+// real bajan a una segunda línea con su etiqueta, y el veredicto se queda junto al porcentaje.
 const rowGrid = computed(() => [
-  'grid items-center gap-3 px-2 py-[5px]',
+  'grid items-center gap-x-3 gap-y-1 px-2 py-[5px]',
   showComparison.value
-    ? 'grid-cols-[44px_1fr_38px_128px_20px] md:grid-cols-[44px_1fr_38px_128px_128px_20px] max-md:[&>:nth-child(4)]:hidden'
-    : 'grid-cols-[44px_1fr_38px]',
+    ? 'grid-cols-[44px_minmax(0,1fr)_38px_20px] md:grid-cols-[44px_minmax(0,1fr)_38px_128px_128px_20px]'
+    : 'grid-cols-[44px_minmax(0,1fr)_38px] md:grid-cols-[44px_minmax(0,1fr)_38px_128px]',
 ])
 
-async function fetchAll(spotIds: number[]): Promise<OccupancyForecast[]> {
-  const all: OccupancyForecast[] = []
-  let failed = 0
-  for (let i = 0; i < spotIds.length; i += BATCH_SIZE) {
-    const results = await Promise.allSettled(
-      spotIds.slice(i, i + BATCH_SIZE).map(id => predictionApi.getBySpot(id)),
-    )
-    for (const r of results) {
-      if (r.status === 'fulfilled') all.push(...r.value.map(toForecast))
-      else failed++
-    }
-  }
-  // Si algunos espacios fallan se muestra lo que sí llegó; solo es error si falló todo.
-  if (failed === spotIds.length) throw new Error('all failed')
-  return all
-}
-
-// La clave evita re-consultar cuando el store refresca los espacios (mismos ids, nuevo array).
 watch(
-  () => props.spotIds.join(','),
-  async () => {
-    const spotIds = [...props.spotIds]
+  () => props.zoneId,
+  async zoneId => {
     forecasts.value = []
+    history.value = []
     error.value = null
-    if (spotIds.length === 0) return
     loading.value = true
     try {
-      const result = await fetchAll(spotIds)
-      // Descarta la respuesta si mientras tanto cambió la lista de espacios.
-      if (spotIds.join(',') === props.spotIds.join(',')) forecasts.value = result
+      const [weekly, past] = await Promise.all([
+        predictionApi.getZoneForecasts(zoneId),
+        // Sin historial (backend anterior o error) los días pasados quedan vacíos; el resto sigue igual.
+        predictionApi.getZoneForecastHistory(zoneId).catch(() => []),
+      ])
+      // Descarta la respuesta si mientras tanto cambió la zona.
+      if (zoneId === props.zoneId) {
+        forecasts.value = weekly.map(toForecast)
+        history.value = past.map(toForecastSnapshot)
+      }
     } catch {
-      error.value = 'No se pudieron cargar las predicciones.'
+      if (zoneId === props.zoneId) error.value = 'No se pudieron cargar las predicciones.'
     } finally {
-      loading.value = false
+      if (zoneId === props.zoneId) loading.value = false
     }
   },
   { immediate: true },
@@ -225,7 +229,8 @@ watch(
     <StateMessage v-if="loading" compact>Cargando predicciones...</StateMessage>
     <StateMessage v-else-if="error" tone="error" compact>{{ error }}</StateMessage>
     <StateMessage v-else-if="rows.length === 0" tone="empty" compact>
-      Aún no hay predicciones para {{ isToday ? 'hoy' : 'este día' }} en esta zona.
+      <template v-if="isPast">No quedó registrada la predicción de este día para esta zona.</template>
+      <template v-else>Aún no hay predicciones para {{ isToday ? 'hoy' : 'este día' }} en esta zona.</template>
     </StateMessage>
 
     <template v-else>
@@ -243,11 +248,12 @@ watch(
           <span role="columnheader">Hora</span>
           <span role="columnheader">Disponibilidad</span>
           <span />
-          <template v-if="showComparison">
+          <!-- En móvil cada fila ya rotula su predicción y su lectura real. -->
+          <span class="max-md:hidden md:contents" role="none">
             <span role="columnheader">Predicción</span>
-            <span role="columnheader">Real</span>
-            <span />
-          </template>
+            <span v-if="showComparison" role="columnheader">Real</span>
+          </span>
+          <span v-if="showComparison" class="max-md:hidden" />
         </div>
 
         <div
@@ -261,20 +267,32 @@ watch(
           <span role="cell"><OccupancyMeter :percentage="row.pct" :color="barColor(row.pct)" class="h-2" /></span>
           <span class="text-right text-xs font-bold text-heading tabular-nums" role="cell">{{ row.pct }}%</span>
 
-          <template v-if="showComparison">
+          <!-- Escritorio: columnas de la fila. Móvil: segunda línea bajo la barra. -->
+          <span
+            :class="[
+              'md:contents max-md:col-start-2 max-md:row-start-2 max-md:flex max-md:min-w-0 max-md:flex-wrap max-md:gap-x-4',
+              showComparison ? 'max-md:col-span-3' : 'max-md:col-span-2',
+              !row.predicted && !row.actual && 'max-md:hidden',
+            ]"
+            role="none"
+          >
             <span class="text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
               <template v-if="row.predicted">
-                {{ plural(row.predicted.free, 'libre', 'libres') }} · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}
+                <span class="md:hidden">Predicción: </span>
+                {{ plural(row.predicted.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}</span>
               </template>
             </span>
-            <span class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
+            <span v-if="showComparison" class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
               <template v-if="row.actual">
-                {{ plural(row.actual.free, 'libre', 'libres') }} · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}
+                <span class="text-muted-foreground md:hidden">Real: </span>
+                {{ plural(row.actual.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}</span>
               </template>
             </span>
+          </span>
+          <template v-if="showComparison">
             <span
               v-if="row.verdict"
-              class="inline-flex size-[18px] items-center justify-center rounded-full"
+              class="inline-flex size-[18px] items-center justify-center rounded-full max-md:col-start-4 max-md:row-start-1"
               :class="row.verdict === 'hit' ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
               role="img"
               :aria-label="row.verdict === 'hit' ? 'Acertó' : 'Falló'"
@@ -283,7 +301,7 @@ watch(
               <Check v-if="row.verdict === 'hit'" class="size-3" :stroke-width="3.5" />
               <X v-else class="size-3" :stroke-width="3.5" />
             </span>
-            <span v-else />
+            <span v-else class="max-md:col-start-4 max-md:row-start-1" />
           </template>
         </div>
       </div>

@@ -142,7 +142,7 @@ export interface PointResponse {
 
 /**
  * MonitoredSpaceResource — /occupancy/spaces/{parkingSpaceId}. El ROI pertenece a la cámara que cubre
- * el espacio y está en coordenadas normalizadas de su foto SIN girar.
+ * el espacio y está en coordenadas normalizadas de su foto YA girada según `rotation`.
  */
 export interface MonitoredSpaceResponse {
   parkingSpaceId: number

@@ -1,15 +1,26 @@
 import type { DayOfWeek } from '../domain/model/prediction.model'
 
-export interface OccupancyForecastResponse {
+export interface ZoneForecastResponse {
   id: number
-  parkingSpotId: number
+  zoneId: number
   dayOfWeek: DayOfWeek
   startMinuteOfDay: number
   windowSizeMinutes: number
   availabilityProbability: number
+  totalSpots: number
+  predictedAvailableSpots: number
+  predictedOccupiedSpots: number
   modelVersion: string
   createdAt: string
   updatedAt: string
+}
+
+export interface ZoneForecastSnapshotResponse {
+  windowStart: string
+  windowSizeMinutes: number
+  availabilityProbability: number
+  totalSpots: number
+  modelVersion: string | null
 }
 
 export interface ZoneModelMetricsResponse {

@@ -34,10 +34,6 @@ const form = ref({
 const prefs = ref({
   darkMode:           false,
   language:           'es',
-  alertFreeSpace:     true,
-  alertSaturated:     true,
-  alertCameraFailure: true,
-  alertRadiusM:       500,
 })
 
 const initials = computed(() => {
@@ -51,12 +47,6 @@ const fullName = computed(() => {
   if (p?.firstName || p?.lastName) return `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim()
   return authStore.user?.email ?? ''
 })
-
-const alertToggles = [
-  { key: 'alertFreeSpace',     label: 'Espacio libre disponible', description: 'Notificar cuando haya espacios libres cerca' },
-  { key: 'alertSaturated',     label: 'Zona saturada',            description: 'Notificar cuando una zona supere el 70% de ocupación' },
-  { key: 'alertCameraFailure', label: 'Fallo de cámara',          description: 'Notificar cuando una cámara quede fuera de línea' },
-] as const
 
 const roleBadge: Record<string, string> = {
   ADMIN:    'Administrador',
@@ -72,7 +62,15 @@ async function handleSaveProfile() {
 }
 
 async function handleSavePreferences() {
-  const ok = await profileStore.updatePreferences(userId.value, { ...prefs.value })
+  // El backend aún exige los campos de alertas: se reenvían los valores guardados sin mostrarlos
+  const saved = profileStore.preferences
+  const ok = await profileStore.updatePreferences(userId.value, {
+    alertFreeSpace:     saved?.alertFreeSpace ?? false,
+    alertSaturated:     saved?.alertSaturated ?? false,
+    alertCameraFailure: saved?.alertCameraFailure ?? false,
+    alertRadiusM:       saved?.alertRadiusM ?? 0,
+    ...prefs.value,
+  })
   if (ok) toast.success('Preferencias guardadas')
 }
 
@@ -95,10 +93,6 @@ onMounted(async () => {
     prefs.value = {
       darkMode:           themeStore.isDark,  // usa el estado activo real, no el del backend
       language:           pr.language,
-      alertFreeSpace:     pr.alertFreeSpace,
-      alertSaturated:     pr.alertSaturated,
-      alertCameraFailure: pr.alertCameraFailure,
-      alertRadiusM:       pr.alertRadiusM,
     }
   }
 })
@@ -189,25 +183,6 @@ onMounted(async () => {
               </div>
             </div>
 
-            <h3 class="border-t border-border/60 pt-3 text-[13px] font-semibold text-foreground/80">Alertas</h3>
-
-            <div class="-mt-2 divide-y divide-border/60">
-              <div v-for="a in alertToggles" :key="a.key" class="flex items-center justify-between gap-4 py-2.5">
-                <Label :for="`pref-${a.key}`" class="flex-col items-start gap-0.5">
-                  <span class="text-sm font-medium text-foreground">{{ a.label }}</span>
-                  <span class="text-xs font-normal text-muted-foreground">{{ a.description }}</span>
-                </Label>
-                <Switch :id="`pref-${a.key}`" v-model="prefs[a.key]" />
-              </div>
-            </div>
-
-            <div class="mt-2 grid gap-1.5">
-              <Label for="pref-radius">Radio de alertas</Label>
-              <div class="flex items-center gap-2">
-                <Input id="pref-radius" v-model.number="prefs.alertRadiusM" type="number" min="0" step="50" class="w-[110px]" />
-                <span class="text-[13px] text-muted-foreground">metros</span>
-              </div>
-            </div>
 
             <FormAlert :message="profileStore.saveError" />
 

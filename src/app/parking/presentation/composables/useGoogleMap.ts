@@ -32,10 +32,33 @@ function createPinElement(zone: Zone): HTMLElement {
   return pin
 }
 
+/** Zonas con coordenadas reales (una zona sin ubicar llega en 0,0). */
+function locatedZones(zones: Zone[]): Zone[] {
+  return zones.filter((z) => z.latitude !== 0 || z.longitude !== 0)
+}
+
 export function useGoogleMap(options: UseGoogleMapOptions) {
   const mapError = ref<string | null>(null)
   let map: google.maps.Map | null = null
   const markers = new Map<number, MarkerEntry>()
+  // El encuadre inicial se hace una sola vez: los refrescos periódicos no deben mover el mapa.
+  let fitted = false
+
+  /** Abre el mapa sobre las zonas: una sola se centra con zoom de calle; varias se encuadran todas. */
+  function fitToZones() {
+    if (!map || fitted) return
+    const zones = locatedZones(options.zones.value)
+    if (zones.length === 0) return
+    fitted = true
+    if (zones.length === 1) {
+      map.setCenter({ lat: zones[0].latitude, lng: zones[0].longitude })
+      map.setZoom(FOCUS_ZOOM)
+      return
+    }
+    const bounds = new google.maps.LatLngBounds()
+    zones.forEach((z) => bounds.extend({ lat: z.latitude, lng: z.longitude }))
+    map.fitBounds(bounds, 64)
+  }
 
   function syncMarkers() {
     if (!map) return
@@ -58,6 +81,7 @@ export function useGoogleMap(options: UseGoogleMapOptions) {
         markers.set(zone.id, createMarker(zone))
       }
     })
+    fitToZones()
   }
 
   function createMarker(zone: Zone): MarkerEntry {

@@ -25,8 +25,8 @@ const DEFAULT_H = 450
 const HANDLE_RADIUS = 6
 
 /**
- * ROI de un espacio. `points` está en coordenadas normalizadas 0–1 de la foto SIN girar de su cámara
- * (así lo usan el Fog y la preview del backend); solo al dibujar se pasan a la foto derecha.
+ * ROI de un espacio. `points` está en coordenadas normalizadas 0–1 de la foto YA girada de su cámara,
+ * tal como se dibuja en el canvas: el Fog gira cada frame según `rotation` y después aplica el ROI.
  */
 interface SpaceRoi {
   points:   PointResponse[]
@@ -81,26 +81,6 @@ function cameraLabel(id: number | null): string {
 
 function spacesCoveredBy(id: number): number {
   return Object.values(rois).filter(r => r.cameraId === id && r.points.length > 0).length
-}
-
-// ── Rotación: foto sin girar (ROI) ↔ foto derecha (canvas) ─────────────────
-
-function toDisplay({ x, y }: PointResponse, r = rotation.value): PointResponse {
-  switch (r) {
-    case 90:  return { x: 1 - y, y: x }
-    case 180: return { x: 1 - x, y: 1 - y }
-    case 270: return { x: y, y: 1 - x }
-    default:  return { x, y }
-  }
-}
-
-function toRaw({ x, y }: PointResponse, r = rotation.value): PointResponse {
-  switch (r) {
-    case 90:  return { x: y, y: 1 - x }
-    case 180: return { x: 1 - x, y: 1 - y }
-    case 270: return { x: 1 - y, y: x }
-    default:  return { x, y }
-  }
 }
 
 function fitCanvasToBackground() {
@@ -166,10 +146,7 @@ function drawPolygon(ctx: CanvasRenderingContext2D, spaceId: number, label: stri
   const roi = rois[spaceId]
   if (!roi || roi.points.length === 0 || roi.cameraId !== cameraId.value) return
 
-  const px = roi.points.map(p => {
-    const d = toDisplay(p)
-    return { x: d.x * CANVAS_W, y: d.y * canvasH.value }
-  })
+  const px = roi.points.map(p => ({ x: p.x * CANVAS_W, y: p.y * canvasH.value }))
   const stroke = selected ? '#38a169' : 'rgba(26, 86, 196, 0.55)'
   const fill   = selected ? 'rgba(56, 161, 105, 0.28)' : 'rgba(26, 86, 196, 0.12)'
 
@@ -228,10 +205,9 @@ function hitPoint(pos: PointResponse): number {
   const roi = selectedRoi.value
   if (!roi || selectedInOtherCamera.value) return -1
   const threshold = HANDLE_RADIUS * 1.8
-  return roi.points.findIndex(p => {
-    const d = toDisplay(p)
-    return Math.hypot((d.x - pos.x) * CANVAS_W, (d.y - pos.y) * canvasH.value) <= threshold
-  })
+  return roi.points.findIndex(p =>
+    Math.hypot((p.x - pos.x) * CANVAS_W, (p.y - pos.y) * canvasH.value) <= threshold,
+  )
 }
 
 function onMouseDown(e: MouseEvent) {
@@ -247,7 +223,7 @@ function onMouseDown(e: MouseEvent) {
   if (idx !== -1) {
     dragIndex = idx
   } else {
-    roi.points.push(toRaw(pos))
+    roi.points.push(pos)
     roi.dirty = true
     dragIndex = roi.points.length - 1
   }
@@ -257,7 +233,7 @@ function onMouseDown(e: MouseEvent) {
 function onMouseMove(e: MouseEvent) {
   const roi = selectedRoi.value
   if (dragIndex === -1 || !roi) return
-  roi.points[dragIndex] = toRaw(canvasPos(e))
+  roi.points[dragIndex] = canvasPos(e)
   roi.dirty = true
 }
 
@@ -335,7 +311,9 @@ function setBackground(bg: CameraBackground) {
   fitCanvasToBackground()
 }
 
-// Giro de la vista (grados, sentido horario). Los ROI no cambian: viven en la foto sin girar.
+// Giro de la foto (grados, sentido horario), p. ej. para enderezar una imagen de referencia subida a
+// mano. El ROI se dibuja sobre la foto tal como se ve, así que tiene que quedar derecha como la ve el
+// Fog; los polígonos ya dibujados no se giran con ella.
 function rotateImage() {
   const bg = background.value
   if (!bg?.image) return
@@ -566,7 +544,7 @@ onMounted(async () => {
                 size="sm"
                 class="text-xs"
                 :disabled="!background?.image"
-                title="Gira la vista 90° en sentido horario (el ROI no cambia)"
+                title="Gira la foto 90° en sentido horario: el ROI se dibuja sobre la foto derecha"
                 @click="rotateImage"
               >
                 <RotateCw /> Girar 90°{{ rotation ? ` (${rotation}°)` : '' }}

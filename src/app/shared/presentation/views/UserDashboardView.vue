@@ -4,22 +4,17 @@ import { RouterLink } from 'vue-router'
 import { ChartNoAxesColumn, Check, ChevronRight, CircleX, House } from '@lucide/vue'
 import { useAuthStore } from '../../../iam/application/auth.store'
 import { useZoneStore } from '../../../parking/application/zone.store'
-import { useNotificationStore } from '../../../notifications/application/notification.store'
 import { CLASSIFICATION_COLOR, CLASSIFICATION_LABEL } from '../../../parking/domain/zone-classification'
-import { NOTIFICATION_META } from '../../../notifications/presentation/notification-ui'
 import type { Zone, ZoneClassification } from '../../../parking/domain/model/zone.model'
 import ClassificationBadge from '../../../parking/presentation/components/ClassificationBadge.vue'
 import OccupancyMeter from '../../../parking/presentation/components/OccupancyMeter.vue'
 import OccupancyRing from '../../../parking/presentation/components/OccupancyRing.vue'
 import SpaceCounts from '../../../parking/presentation/components/SpaceCounts.vue'
 import StateMessage from '../components/StateMessage.vue'
-import { formatRelative } from '../../helpers/date'
 
 const authStore  = useAuthStore()
 const zoneStore  = useZoneStore()
-const notifStore = useNotificationStore()
 
-const userId = computed(() => authStore.user?.id ?? 0)
 const zones  = computed(() => zoneStore.zones as Zone[])
 
 const totalFree     = computed(() => zones.value.reduce((sum, z) => sum + z.freeCount, 0))
@@ -34,8 +29,6 @@ const globalOccupancy = computed(() => {
 const sortedZones = computed(() =>
   [...zones.value].sort((a, b) => a.occupancyPercentage - b.occupancyPercentage),
 )
-
-const recentNotifications = computed(() => notifStore.notifications.slice(0, 5))
 
 const metrics = computed(() => [
   { label: 'Zonas registradas', value: zones.value.length,   icon: House,             accent: '#3182ce', tint: '#ebf8ff' },
@@ -57,7 +50,6 @@ const stagger = (i: number, base = 0) => ({ animationDelay: `${base + Math.min(i
 
 onMounted(() => {
   zoneStore.fetchZones()
-  if (userId.value) notifStore.fetchAll(userId.value)
 })
 </script>
 
@@ -184,32 +176,6 @@ onMounted(() => {
             </div>
           </section>
 
-          <section :class="card" class="p-5">
-            <div class="mb-3.5 flex items-center justify-between">
-              <h2 :class="sectionTitle">Alertas recientes</h2>
-              <RouterLink to="/dashboard/alerts" class="rounded-md text-[13px] font-semibold text-link hover:underline focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none">
-                Ver todas →
-              </RouterLink>
-            </div>
-
-            <StateMessage v-if="notifStore.loading" compact>Cargando alertas...</StateMessage>
-            <p v-else-if="recentNotifications.length === 0" class="py-2 text-[13px] text-muted-foreground">
-              No tienes alertas recientes.
-            </p>
-            <ul v-else class="divide-y divide-border/60">
-              <li v-for="n in recentNotifications" :key="n.id" class="flex items-start gap-2.5 py-[11px]">
-                <span class="mt-1.5 size-2 shrink-0 rounded-full" :class="NOTIFICATION_META[n.type].dot" />
-                <div class="flex min-w-0 flex-col gap-0.5">
-                  <span class="text-[13px] leading-snug" :class="n.isRead ? 'text-foreground/80' : 'font-semibold text-heading'">
-                    {{ n.message }}
-                  </span>
-                  <span class="text-[11px] text-muted-foreground">
-                    {{ NOTIFICATION_META[n.type].label }} · {{ formatRelative(n.createdAt) }}
-                  </span>
-                </div>
-              </li>
-            </ul>
-          </section>
         </div>
       </div>
     </template>

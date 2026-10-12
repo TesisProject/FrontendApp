@@ -2283,6 +2283,7 @@ Cámaras, nodos Fog, ROI de espacios, disponibilidad e historial de ocupación.
 | `PUT` | `/api/v1/occupancy/cameras/{cameraId}` | ADMIN · OPERATOR | Actualizar una cámara (reasignar zona, datos o habilitación) |
 | `DELETE` | `/api/v1/occupancy/cameras/{cameraId}` | ADMIN · OPERATOR | Eliminar una cámara |
 | `GET` | `/api/v1/occupancy/cameras/{cameraId}/config` | FOG · ADMIN · OPERATOR | Descargar la configuración de una cámara (zona + espacios del Cloud) |
+| `GET` | `/api/v1/occupancy/cameras/{cameraId}/screenshot` | ADMIN · OPERATOR | Última screenshot de la cámara (URL presignada temporal de R2) |
 | `POST` | `/api/v1/occupancy/cameras/{cameraId}/events` | API-Key FOG | Registrar en bloque el estado de todos los espacios observados por una cámara |
 | `POST` | `/api/v1/occupancy/events` | API-Key FOG | Registrar un evento de ocupación reportado por un nodo Fog |
 | `POST` | `/api/v1/occupancy/nodes` | ADMIN · OPERATOR | Registrar un nodo Fog |
@@ -2296,7 +2297,8 @@ Cámaras, nodos Fog, ROI de espacios, disponibilidad e historial de ocupación.
 | `PUT` | `/api/v1/occupancy/spaces/{parkingSpaceId}/roi` | ADMIN · OPERATOR | Crear o reemplazar el ROI de un espacio del catálogo |
 | `GET` | `/api/v1/occupancy/zones/availability` | JWT | Disponibilidad viva de todas las zonas con espacios monitoreados |
 | `GET` | `/api/v1/occupancy/zones/{zoneId}/availability` | JWT | Disponibilidad viva de una zona |
-| `GET` | `/api/v1/occupancy/zones/{zoneId}/occupancy/history` | ADMIN · OPERATOR | Historial de ocupación de una zona en un rango de tiempo |
+| `GET` | `/api/v1/occupancy/zones/{zoneId}/views` | JWT | Listar lo que ve cada cámara de una zona (última foto + ROI de sus espacios) |
+| `GET` | `/api/v1/occupancy/zones/{zoneId}/occupancy/history` | JWT | Historial de ocupación de una zona (en bruto o agregado con `bucket`) |
 
 ### `POST` /api/v1/occupancy/cameras
 
@@ -2532,6 +2534,42 @@ _(sin cuerpo)_
       ]
     }
   ]
+}
+```
+
+### `GET` /api/v1/occupancy/cameras/{cameraId}/screenshot
+
+**Última screenshot de la cámara (URL presignada temporal de R2)**
+
+Es la foto más reciente que subió el Fog (una cada 5 minutos). La URL sirve tal cual en un `<img src>`
+y expira en `expiresInSeconds`. Para verla derecha hay que girarla `rotation` grados en sentido horario.
+
+- **Auth:** 🔒 JWT · roles: **ADMIN · OPERATOR**
+- **Path params:** `cameraId` (integer (int64))
+- **Errores:** `404 CAMERA_NOT_FOUND` si la cámara no existe · `404 SCREENSHOT_NOT_FOUND` si aún no subió fotos · `503 IMAGE_STORAGE_UNAVAILABLE` si R2 no está configurado
+
+También existe `GET /api/v1/occupancy/cameras/by-code/{code}/screenshot`, con la misma respuesta.
+
+**Respuesta `200`:** [`CameraScreenshotResource`](#modelo-camerascreenshotresource)
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| `cameraId` | integer (int64) | no |
+| `cameraCode` | string | no |
+| `url` | string | no |
+| `capturedAt` | date-time | no |
+| `rotation` | integer (int32) — 0 · 90 · 180 · 270 | no |
+| `expiresInSeconds` | integer (int64) | no |
+
+
+```json
+{
+  "cameraId": 1,
+  "cameraCode": "CAM-001",
+  "url": "https://…r2…/cameras/1/frames/2026/09/30/20260930T180930Z-….jpg?X-Amz-…",
+  "capturedAt": "2026-09-30T18:09:30Z",
+  "rotation": 0,
+  "expiresInSeconds": 900
 }
 ```
 
@@ -2982,15 +3020,81 @@ Array de [`ZoneAvailabilityResource`](#modelo-zoneavailabilityresource).
 }
 ```
 
+### `GET` /api/v1/occupancy/zones/{zoneId}/views
+
+**Listar lo que ve cada cámara de una zona**
+
+Una vista por cámara **activa** de la zona que cubra al menos un espacio monitoreado, ordenadas por
+`viewId`. No expone datos de la cámara (código, nombre, ubicación, nodo): `viewId` es una clave opaca.
+El estado libre/ocupado **no** viene aquí: se lee de `/zones/{zoneId}/availability`. Los espacios del
+catálogo que ninguna cámara cubre no aparecen.
+
+- **Auth:** 🔒 JWT (ADMIN · OPERATOR · USER)
+- **Path params:** `zoneId` (integer (int64))
+- **Errores:** `404 ZONE_NOT_FOUND` si la zona no existe. Una zona sin cámaras responde `[]`.
+
+Cada respuesta trae URLs presignadas nuevas; si `capturedAt` no cambió, la foto es la misma.
+`imageUrl` es `null` si la cámara aún no subió fotos (o R2 no está configurado); en ese caso
+`capturedAt` y `expiresInSeconds` también pueden venir `null` y `rotation` es `0`.
+
+> **ROI sobre la foto ya girada.** `roi` está en coordenadas normalizadas 0–1 de la foto **después**
+> de girarla `rotation` grados (así la usa el Fog para detectar). Primero se gira la imagen y luego
+> se dibuja el polígono encima, sin transformarlo. Lo mismo aplica a `MonitoredSpaceResource.roi`.
+
+**Respuesta `200`:**
+
+Array de [`ZoneViewResource`](#modelo-zoneviewresource).
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| `viewId` | integer (int64) | no |
+| `imageUrl` | string \| null | no |
+| `capturedAt` | date-time \| null | no |
+| `rotation` | integer (int32) — 0 · 90 · 180 · 270 | no |
+| `expiresInSeconds` | integer (int64) \| null | no |
+| `spaces` | Array&lt;[`SpaceRoi`](#modelo-spaceroi)&gt; | no |
+
+
+```json
+[
+  {
+    "viewId": 1,
+    "imageUrl": "https://…r2…/cameras/1/frames/2026/09/30/20260930T180930Z-….jpg?X-Amz-…",
+    "capturedAt": "2026-09-30T18:09:30Z",
+    "rotation": 0,
+    "expiresInSeconds": 900,
+    "spaces": [
+      {
+        "parkingSpaceId": 11,
+        "roi": [
+          { "x": 0.12, "y": 0.26 },
+          { "x": 0.32, "y": 0.26 },
+          { "x": 0.32, "y": 0.68 },
+          { "x": 0.12, "y": 0.68 }
+        ]
+      }
+    ]
+  }
+]
+```
+
 ### `GET` /api/v1/occupancy/zones/{zoneId}/occupancy/history
 
 **Historial de ocupación de una zona en un rango de tiempo**
 
-- **Auth:** 🔒 JWT · roles: **ADMIN · OPERATOR**
+- **Auth:** 🔒 JWT (ADMIN · OPERATOR · USER)
 - **Path params:** `zoneId` (integer (int64))
-- **Query params:** `from` (string, opcional), `to` (string, opcional)
+- **Query params:** `from` (date-time ISO-8601, opcional), `to` (date-time ISO-8601, opcional),
+  `bucket` (`15m` · `30m` · `3h`, opcional)
+- **Errores:** `400` si `from`/`to` no son ISO-8601 · `400 INVALID_HISTORY_BUCKET` si `bucket` no es uno de los tres
 
-**Respuesta `200`:**
+Sin `from`/`to` devuelve los **últimos 30 días** hasta ahora (`to` por defecto es ahora; `from`, 30 días
+antes de `to`). Los puntos vienen ordenados del más antiguo al más reciente. Cada snapshot es la
+**zona completa**, aunque la cubran varias cámaras: `totalSpots` es el nº de espacios monitoreados de la
+zona en ese momento. Con dos cámaras en la zona hay ~2 snapshots cada 5 min (uno por reporte de cada
+cámara), ambos de la zona entera.
+
+**Respuesta `200` sin `bucket`:**
 
 Array de [`ZoneOccupancyHistoryPointResource`](#modelo-zoneoccupancyhistorypointresource).
 
@@ -3009,6 +3113,37 @@ Array de [`ZoneOccupancyHistoryPointResource`](#modelo-zoneoccupancyhistorypoint
     "totalSpots": 1,
     "freeSpots": 1,
     "occurredAt": "2026-07-03T14:00:00Z"
+  }
+]
+```
+
+**Respuesta `200` con `bucket`:**
+
+Un punto por intervalo **con datos** (los intervalos vacíos no aparecen), alineado a la hora local de
+Lima (UTC−5): con `3h`, 00:00, 03:00, 06:00… hora de Lima. Array de
+[`ZoneOccupancyHistoryBucketResource`](#modelo-zoneoccupancyhistorybucketresource).
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| `bucketStart` | date-time (inclusive) | no |
+| `bucketEnd` | date-time (exclusive) | no |
+| `avgOccupied` | number (double) | no |
+| `minOccupied` | integer (int32) | no |
+| `maxOccupied` | integer (int32) | no |
+| `totalSpots` | integer (int32) — máximo del intervalo | no |
+| `frames` | integer (int32) — nº de snapshots agregados | no |
+
+
+```json
+[
+  {
+    "bucketStart": "2026-09-30T14:00:00Z",
+    "bucketEnd": "2026-09-30T17:00:00Z",
+    "avgOccupied": 7.4,
+    "minOccupied": 5,
+    "maxOccupied": 10,
+    "totalSpots": 12,
+    "frames": 72
   }
 ]
 ```
@@ -3176,6 +3311,55 @@ Array de [`ZoneOccupancyHistoryPointResource`](#modelo-zoneoccupancyhistorypoint
 | `totalSpots` | integer (int32) | no |
 | `freeSpots` | integer (int32) | no |
 | `occurredAt` | date-time | no |
+
+
+<a name="modelo-zoneoccupancyhistorybucketresource"></a>
+**`ZoneOccupancyHistoryBucketResource`**
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| `bucketStart` | date-time | no |
+| `bucketEnd` | date-time | no |
+| `avgOccupied` | number (double) | no |
+| `minOccupied` | integer (int32) | no |
+| `maxOccupied` | integer (int32) | no |
+| `totalSpots` | integer (int32) | no |
+| `frames` | integer (int32) | no |
+
+
+<a name="modelo-zoneviewresource"></a>
+**`ZoneViewResource`**
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| `viewId` | integer (int64) | no |
+| `imageUrl` | string \| null | no |
+| `capturedAt` | date-time \| null | no |
+| `rotation` | integer (int32) | no |
+| `expiresInSeconds` | integer (int64) \| null | no |
+| `spaces` | Array&lt;[`SpaceRoi`](#modelo-spaceroi)&gt; | no |
+
+
+<a name="modelo-spaceroi"></a>
+**`SpaceRoi`**
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| `parkingSpaceId` | integer (int64) | no |
+| `roi` | Array&lt;[`PointResource`](#modelo-pointresource)&gt; — coordenadas de la foto ya girada | no |
+
+
+<a name="modelo-camerascreenshotresource"></a>
+**`CameraScreenshotResource`**
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| `cameraId` | integer (int64) | no |
+| `cameraCode` | string | no |
+| `url` | string | no |
+| `capturedAt` | date-time | no |
+| `rotation` | integer (int32) | no |
+| `expiresInSeconds` | integer (int64) | no |
 
 
 ---
