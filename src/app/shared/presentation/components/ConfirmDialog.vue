@@ -15,7 +15,8 @@ import FormAlert from './FormAlert.vue'
  * ConfirmDialog — confirmación de acciones sensibles (eliminar, revocar,
  * cambiar rol…). No se cierra solo al confirmar: el padre decide cuándo
  * (p. ej. mantenerlo abierto mostrando `error` si la acción falla).
- * El mensaje va en el slot por defecto.
+ * El mensaje va en el slot por defecto; controles adicionales (p. ej. "escribe
+ * el código para confirmar") en el slot `extra`, fuera de la descripción.
  */
 withDefaults(defineProps<{
   open: boolean
@@ -24,6 +25,8 @@ withDefaults(defineProps<{
   destructive?: boolean
   loading?: boolean
   error?: string | null
+  /** Deshabilita solo el botón de confirmar (Cancelar sigue disponible). */
+  confirmDisabled?: boolean
 }>(), { confirmLabel: 'Confirmar' })
 
 const emit = defineEmits<{ confirm: []; cancel: [] }>()
@@ -42,12 +45,13 @@ function onOpenChange(value: boolean) {
           <slot />
         </AlertDialogDescription>
       </AlertDialogHeader>
+      <slot name="extra" />
       <FormAlert :message="error" />
       <AlertDialogFooter>
         <AlertDialogCancel :disabled="loading">Cancelar</AlertDialogCancel>
         <Button
           :variant="destructive ? 'destructive' : 'default'"
-          :disabled="loading"
+          :disabled="loading || confirmDisabled"
           @click="emit('confirm')"
         >
           {{ confirmLabel }}

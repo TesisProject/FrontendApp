@@ -4,12 +4,15 @@ import type { AdminNode, AdminNodeForm } from '../domain/model/admin-node.model'
 import type { AdminNodeCreateRequest, AdminNodeUpdateRequest } from '../infrastructure/admin-response'
 import { adminApi } from '../infrastructure/admin-api'
 import { toAdminNode } from '../infrastructure/admin-assembler'
+import { adminErrorMessage } from './admin-error-messages'
 
 export const useAdminNodesStore = defineStore('admin-nodes', () => {
   const nodes   = ref<AdminNode[]>([])
   const loading = ref(false)
   const error   = ref<string | null>(null)
   const saving  = ref(false)
+  /** Motivo del último create/update/delete fallido, para mostrarlo en la vista. */
+  const actionError = ref<string | null>(null)
 
   async function fetchNodes() {
     loading.value = true
@@ -25,7 +28,8 @@ export const useAdminNodesStore = defineStore('admin-nodes', () => {
   }
 
   async function createNode(form: AdminNodeForm): Promise<boolean> {
-    saving.value = true
+    saving.value      = true
+    actionError.value = null
     try {
       const body: AdminNodeCreateRequest = {
         name:     form.name || undefined,
@@ -34,7 +38,8 @@ export const useAdminNodesStore = defineStore('admin-nodes', () => {
       const res = await adminApi.createNode(body)
       nodes.value.push(toAdminNode(res))
       return true
-    } catch {
+    } catch (e) {
+      actionError.value = adminErrorMessage(e)
       return false
     } finally {
       saving.value = false
@@ -42,7 +47,8 @@ export const useAdminNodesStore = defineStore('admin-nodes', () => {
   }
 
   async function updateNode(id: number, form: AdminNodeForm): Promise<boolean> {
-    saving.value = true
+    saving.value      = true
+    actionError.value = null
     try {
       const body: AdminNodeUpdateRequest = {
         name:     form.name || undefined,
@@ -53,22 +59,26 @@ export const useAdminNodesStore = defineStore('admin-nodes', () => {
       const idx = nodes.value.findIndex(n => n.id === id)
       if (idx !== -1) nodes.value[idx] = toAdminNode(res)
       return true
-    } catch {
+    } catch (e) {
+      actionError.value = adminErrorMessage(e)
       return false
     } finally {
       saving.value = false
     }
   }
 
+  /** 409 NODE_HAS_WIFI_NETWORKS si aún tiene redes: el motivo queda en `actionError`. */
   async function deleteNode(id: number): Promise<boolean> {
+    actionError.value = null
     try {
       await adminApi.deleteNode(id)
       nodes.value = nodes.value.filter(n => n.id !== id)
       return true
-    } catch {
+    } catch (e) {
+      actionError.value = adminErrorMessage(e, 'No se pudo eliminar el nodo')
       return false
     }
   }
 
-  return { nodes, loading, error, saving, fetchNodes, createNode, updateNode, deleteNode }
+  return { nodes, loading, error, saving, actionError, fetchNodes, createNode, updateNode, deleteNode }
 })

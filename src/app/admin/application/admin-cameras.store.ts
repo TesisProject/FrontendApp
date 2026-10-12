@@ -1,17 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { AdminCamera, AdminCameraForm } from '../domain/model/admin-camera.model'
-import type { AdminCameraCreateRequest, AdminCameraUpdateRequest } from '../infrastructure/admin-response'
+import type {
+  AdminCamera, AdminCameraCreateForm, AdminCameraDeviceForm, AdminCameraForm,
+} from '../domain/model/admin-camera.model'
+import type {
+  AdminCameraCreateRequest, AdminCameraDeviceSettingsRequest, AdminCameraUpdateRequest,
+} from '../infrastructure/admin-response'
 import { adminApi } from '../infrastructure/admin-api'
-import { toAdminCamera } from '../infrastructure/admin-assembler'
-import { errorStatus } from '../../shared/infrastructure/http-client'
-
-// 409 CAMERA_HAS_MONITORED_SPACES: la cámara aún cubre espacios con ROI.
-const COVERS_SPACES_MSG = 'La cámara aún cubre espacios monitoreados: reasígnalos a otra cámara o quítales el ROI primero'
-
-function actionErrorMessage(e: unknown, fallback: string): string {
-  return errorStatus(e) === 409 ? COVERS_SPACES_MSG : fallback
-}
+import { toAdminCamera, toAdminCameraFirmware } from '../infrastructure/admin-assembler'
+import type { AdminCameraFirmware } from '../domain/model/admin-firmware.model'
+import { CAPTURE_DEFAULTS, normalizeMac, sameCapture } from '../domain/camera-device'
+import { adminErrorMessage } from './admin-error-messages'
 
 export const useAdminCamerasStore = defineStore('admin-cameras', () => {
   const cameras = ref<AdminCamera[]>([])
@@ -34,21 +33,31 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
     }
   }
 
-  async function createCamera(form: AdminCameraForm): Promise<boolean> {
+  function replaceCamera(camera: AdminCamera) {
+    const idx = cameras.value.findIndex(c => c.id === camera.id)
+    if (idx !== -1) cameras.value[idx] = camera
+  }
+
+  /** La vista ya validó la MAC; aquí solo se normaliza. Rotación y captura se omiten si son las de por defecto. */
+  async function createCamera(form: AdminCameraCreateForm): Promise<boolean> {
     saving.value      = true
     actionError.value = null
     try {
       const body: AdminCameraCreateRequest = {
-        zoneId:   form.zoneId as number,
-        nodeId:   form.nodeId !== '' ? (form.nodeId as number) : undefined,
-        name:     form.name || undefined,
-        location: form.location || undefined,
+        zoneId:        form.zoneId as number,
+        nodeId:        form.nodeId !== '' ? (form.nodeId as number) : undefined,
+        name:          form.name || undefined,
+        location:      form.location || undefined,
+        mac:           normalizeMac(form.mac) ?? form.mac.trim(),
+        rotation:      form.rotation !== 0 ? form.rotation : undefined,
+        wifiNetworkId: form.wifiNetworkId !== '' && form.nodeId !== '' ? form.wifiNetworkId : undefined,
+        capture:       sameCapture(form.capture, CAPTURE_DEFAULTS) ? undefined : { ...form.capture },
       }
       const res = await adminApi.createCamera(body)
       cameras.value.push(toAdminCamera(res))
       return true
     } catch (e) {
-      actionError.value = actionErrorMessage(e, 'Ocurrió un error, intenta de nuevo')
+      actionError.value = adminErrorMessage(e)
       return false
     } finally {
       saving.value = false
@@ -66,12 +75,152 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
         location: form.location || undefined,
         active:   form.active,
       }
-      const res = await adminApi.updateCamera(id, body)
-      const idx = cameras.value.findIndex(c => c.id === id)
-      if (idx !== -1) cameras.value[idx] = toAdminCamera(res)
+      replaceCamera(toAdminCamera(await adminApi.updateCamera(id, body)))
       return true
     } catch (e) {
-      actionError.value = actionErrorMessage(e, 'Ocurrió un error, intenta de nuevo')
+      actionError.value = adminErrorMessage(e)
+      return false
+    } finally {
+      saving.value = false
+    }
+  }
+
+  /**
+   * Cambia la cámara de nodo cuando tiene una red del nodo actual: primero le quita la red (si no,
+   * 409 CAMERA_WIFI_NETWORK_IN_OTHER_NODE) y luego guarda. Si falla el segundo paso, el primero es
+   * inocuo: sin red asignada la placa conserva la WiFi que tiene.
+   */
+  async function moveToNode(camera: AdminCamera, form: AdminCameraForm): Promise<boolean> {
+    if (camera.wifiNetworkId !== null) {
+      saving.value      = true
+      actionError.value = null
+      try {
+        replaceCamera(toAdminCamera(await adminApi.updateCameraDeviceSettings(camera.id, {
+          ...deviceSettingsOf(camera),
+          wifiNetworkId: null,
+        })))
+      } catch (e) {
+        actionError.value = adminErrorMessage(e)
+        saving.value      = false
+        return false
+      }
+    }
+    return updateCamera(camera.id, form)
+  }
+
+  /** Lo que hay que reenviar en device-settings para no cambiar nada (el endpoint reemplaza todo). */
+  function deviceSettingsOf(camera: AdminCamera): AdminCameraDeviceSettingsRequest {
+    return {
+      mac:           camera.mac,
+      rotation:      camera.rotation,
+      wifiNetworkId: camera.wifiNetworkId,
+      capture:       { ...camera.capture },
+    }
+  }
+
+  /**
+   * Reemplaza MAC, rotación, red y captura. MAC vacía solo es posible si la cámara no tenía: se envía
+   * `null` (un `""` daría 400 INVALID_MAC_ADDRESS).
+   */
+  async function updateDeviceSettings(id: number, form: AdminCameraDeviceForm): Promise<boolean> {
+    saving.value      = true
+    actionError.value = null
+    try {
+      const mac = form.mac.trim()
+      const res = await adminApi.updateCameraDeviceSettings(id, {
+        mac:           mac === '' ? null : normalizeMac(mac) ?? mac,
+        rotation:      form.rotation,
+        wifiNetworkId: form.wifiNetworkId === '' ? null : form.wifiNetworkId,
+        capture:       { ...form.capture },
+      })
+      replaceCamera(toAdminCamera(res))
+      return true
+    } catch (e) {
+      actionError.value = adminErrorMessage(e)
+      return false
+    } finally {
+      saving.value = false
+    }
+  }
+
+  /** Vuelve a leer una cámara (p. ej. para ver la generación de alta nueva). */
+  async function refreshCamera(id: number) {
+    try {
+      replaceCamera(toAdminCamera(await adminApi.getCamera(id)))
+    } catch {
+      // La fila se queda con los datos anteriores; no es un fallo de la acción del usuario.
+    }
+  }
+
+  async function resetEnrollment(id: number): Promise<boolean> {
+    saving.value      = true
+    actionError.value = null
+    try {
+      await adminApi.resetCameraEnrollment(id)
+      await refreshCamera(id)
+      return true
+    } catch (e) {
+      actionError.value = adminErrorMessage(e, 'No se pudo reiniciar el alta')
+      return false
+    } finally {
+      saving.value = false
+    }
+  }
+
+  /** Nº de espacios con ROI que cubre la cámara, o `null` si no se pudo saber. */
+  async function countRoiSpaces(id: number): Promise<number | null> {
+    try {
+      return (await adminApi.getCameraConfig(id)).spaces.length
+    } catch {
+      return null
+    }
+  }
+
+  // ── Firmware ──────────────────────────────────────────────────────────
+  /** Fusiona el estado de firmware (el endpoint no devuelve la cámara entera) en la fila. */
+  function mergeFirmware(fw: AdminCameraFirmware) {
+    const camera = cameras.value.find(c => c.id === fw.cameraId)
+    if (!camera) return
+    camera.firmware = { target: fw.target, reported: fw.reported, reportedAt: fw.reportedAt, status: fw.status }
+  }
+
+  /** Estado de firmware con la fecha de asignación, que no viene en el listado. */
+  async function fetchCameraFirmware(id: number): Promise<AdminCameraFirmware | null> {
+    try {
+      const fw = toAdminCameraFirmware(await adminApi.getCameraFirmware(id))
+      mergeFirmware(fw)
+      return fw
+    } catch {
+      return null
+    }
+  }
+
+  /** 409 FIRMWARE_DOWNGRADE_NOT_ALLOWED si es menor que la asignada o que la informada. */
+  async function assignFirmware(id: number, version: number): Promise<AdminCameraFirmware | null> {
+    saving.value      = true
+    actionError.value = null
+    try {
+      const fw = toAdminCameraFirmware(await adminApi.assignCameraFirmware(id, version))
+      mergeFirmware(fw)
+      return fw
+    } catch (e) {
+      actionError.value = adminErrorMessage(e, 'No se pudo asignar la versión')
+      return null
+    } finally {
+      saving.value = false
+    }
+  }
+
+  /** Deja de ofrecerle actualizaciones; no desinstala nada. */
+  async function clearFirmware(id: number): Promise<boolean> {
+    saving.value      = true
+    actionError.value = null
+    try {
+      await adminApi.clearCameraFirmware(id)
+      await fetchCameraFirmware(id)
+      return true
+    } catch (e) {
+      actionError.value = adminErrorMessage(e, 'No se pudo quitar la versión asignada')
       return false
     } finally {
       saving.value = false
@@ -85,7 +234,7 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
       cameras.value = cameras.value.filter(c => c.id !== id)
       return true
     } catch (e) {
-      actionError.value = actionErrorMessage(e, 'No se pudo eliminar la cámara')
+      actionError.value = adminErrorMessage(e, 'No se pudo eliminar la cámara')
       return false
     }
   }
@@ -93,5 +242,7 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
   return {
     cameras, loading, error, saving, actionError,
     fetchCameras, createCamera, updateCamera, deleteCamera,
+    moveToNode, updateDeviceSettings, refreshCamera, resetEnrollment, countRoiSpaces,
+    fetchCameraFirmware, assignFirmware, clearFirmware,
   }
 })

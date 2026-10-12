@@ -23,6 +23,13 @@ export interface AdminZoneRequest {
   totalCapacity: number
 }
 
+/** CaptureSettingsResource / CaptureSettingsRequest — `framesize` ∈ QVGA, VGA, SVGA, XGA. */
+export interface CaptureSettingsDto {
+  intervalSec: number
+  framesize:   string
+  jpegQuality: number
+}
+
 /** CameraResource — /occupancy/cameras (ver API-Frontend.md). */
 export interface AdminCameraResponse {
   id:        number
@@ -32,16 +39,50 @@ export interface AdminCameraResponse {
   name:      string | null
   location:  string | null
   active:    boolean
+  /** MAC STA `AA:BB:CC:DD:EE:FF`; `null` en cámaras anteriores a la MAC obligatoria. */
+  mac:                     string | null
+  rotation:                number
+  wifiNetworkId:           number | null
+  capture:                 CaptureSettingsDto
+  enrollmentGeneration:    number
+  targetFirmwareVersion:   number | null
+  reportedFirmwareVersion: number | null
+  firmwareReportedAt:      string | null
+  firmwareStatus:          string
   createdAt: string
   updatedAt: string
 }
 
-/** RegisterCameraRequest — `zoneId` es obligatorio. El `code` (CAM-001…) lo genera el Cloud. */
+/**
+ * RegisterCameraRequest — `zoneId` y `mac` son obligatorios (la MAC, además, única). El `code`
+ * (CAM-001…) lo genera el Cloud. Sin `rotation`/`capture` el backend pone 0 y 300 s · SVGA · 12.
+ */
 export interface AdminCameraCreateRequest {
-  nodeId?:   number
-  zoneId:    number
-  name?:     string
-  location?: string
+  nodeId?:        number
+  zoneId:         number
+  name?:          string
+  location?:      string
+  mac:            string
+  rotation?:      number
+  wifiNetworkId?: number
+  capture?:       CaptureSettingsDto
+}
+
+/**
+ * UpdateCameraDeviceSettingsRequest — reemplaza los cuatro datos. `mac` solo puede ser `null` si la
+ * cámara aún no tiene; `wifiNetworkId: null` quita la red (la placa conserva la suya).
+ */
+export interface AdminCameraDeviceSettingsRequest {
+  mac:           string | null
+  rotation:      number
+  wifiNetworkId: number | null
+  capture:       CaptureSettingsDto
+}
+
+/** CameraConfigResource — solo lo que usa el panel: los espacios con ROI que cubre la cámara. */
+export interface CameraConfigResponse {
+  cameraId: number
+  spaces:   { parkingSpaceId: number }[]
 }
 
 /** UpdateCameraRequest — `zoneId` y `active` son obligatorios. */
@@ -114,6 +155,8 @@ export interface AdminApiKeyResponse {
   id:         number
   keyId:      string
   name:       string
+  /** Rol de sistema: `FOG` o `PREDICTION`. */
+  role:       string
   nodeId:     number | null
   active:     boolean
   expiresAt:  string | null
@@ -121,11 +164,65 @@ export interface AdminApiKeyResponse {
   createdAt:  string
 }
 
-/** CreateApiKeyRequest — `name` es obligatorio. */
+/**
+ * CreateApiKeyRequest — `name` es obligatorio. `nodeId` es obligatorio con `role: FOG` (la key solo
+ * accede a ese nodo) y prohibido con `PREDICTION`.
+ */
 export interface AdminApiKeyCreateRequest {
   name:       string
+  role:       'FOG' | 'PREDICTION'
   nodeId?:    number
   expiresAt?: string
+}
+
+/** WifiNetworkResource — /occupancy/nodes/{nodeId}/wifi-networks. Nunca trae la contraseña. */
+export interface WifiNetworkResponse {
+  id:                number
+  nodeId:            number
+  ssid:              string
+  cameraCount:       number
+  passwordUpdatedAt: string | null
+  createdAt:         string
+  updatedAt:         string
+}
+
+/** CreateWifiNetworkRequest — los dos obligatorios (no hay redes abiertas). */
+export interface WifiNetworkCreateRequest {
+  ssid:     string
+  password: string
+}
+
+/** UpdateWifiNetworkRequest — `password: null` conserva la actual (nunca `""`: daría 400). */
+export interface WifiNetworkUpdateRequest {
+  ssid:     string
+  password: string | null
+}
+
+/**
+ * FirmwareReleaseResource — /occupancy/firmware-releases. `size` en bytes, `sha256` en hex
+ * minúsculas, `signature` ECDSA P-256 en Base64. El path usa la versión, no el id.
+ */
+export interface FirmwareReleaseResponse {
+  id:           number
+  version:      number
+  hardware:     string
+  size:         number
+  sha256:       string
+  signature:    string
+  signingKeyId: string
+  notes:        string | null
+  createdAt:    string
+}
+
+/** CameraFirmwareResource — /occupancy/cameras/{id}/firmware. */
+export interface CameraFirmwareResponse {
+  cameraId:                 number
+  code:                     string
+  targetFirmwareVersion:    number | null
+  targetFirmwareAssignedAt: string | null
+  reportedFirmwareVersion:  number | null
+  firmwareReportedAt:       string | null
+  status:                   string
 }
 
 /** CreatedApiKeyResource — la key completa se muestra una sola vez. */

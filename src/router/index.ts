@@ -47,6 +47,7 @@ const router = createRouter({
         { path: 'zones',     component: () => import('../app/admin/presentation/views/AdminZonesView.vue') },
         { path: 'cameras',   component: () => import('../app/admin/presentation/views/AdminCamerasView.vue') },
         { path: 'nodes',     component: () => import('../app/admin/presentation/views/AdminNodesView.vue') },
+        { path: 'firmware',  component: () => import('../app/admin/presentation/views/AdminFirmwareView.vue') },
         { path: 'api-keys',  component: () => import('../app/admin/presentation/views/AdminApiKeysView.vue') },
         { path: 'users',     component: () => import('../app/admin/presentation/views/AdminUsersView.vue') },
         { path: 'profile',   component: () => import('../app/admin/presentation/views/AdminProfileView.vue') },

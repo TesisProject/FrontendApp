@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import {
-  CircleUserRound, KeyRound, LayoutGrid, Server, User, Users, Video,
+  CircleUserRound, Cpu, KeyRound, LayoutGrid, Server, User, Users, Video,
 } from '@lucide/vue'
 import { useAuthStore } from '../../../iam/application/auth.store'
 import AppShell from './AppShell.vue'
@@ -15,6 +15,7 @@ const nav: NavItem[] = [
   { to: '/admin/zones',     label: 'Zonas',     icon: CircleUserRound },
   { to: '/admin/cameras',   label: 'Cámaras',   icon: Video },
   { to: '/admin/nodes',     label: 'Nodos',     icon: Server },
+  { to: '/admin/firmware',  label: 'Firmware',  icon: Cpu },
   { to: '/admin/api-keys',  label: 'API Keys',  icon: KeyRound },
   { to: '/admin/users',     label: 'Usuarios',  icon: Users },
 ]

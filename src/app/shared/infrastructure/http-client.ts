@@ -64,9 +64,42 @@ export function errorStatus(error: unknown): number | undefined {
   return typeof status === 'number' ? status : undefined
 }
 
+/**
+ * Código de error del backend (`ApiError.error`, p. ej. `CAMERA_MAC_ALREADY_REGISTERED`). En los
+ * errores por defecto de Spring este campo es la frase HTTP ("Bad Request"), que no casa con ningún
+ * código: quien lo use debe tener un respaldo por `errorStatus`.
+ */
+export function errorCode(error: unknown): string | undefined {
+  const code = (error as { error?: unknown } | null)?.error
+  return typeof code === 'string' ? code : undefined
+}
+
 async function request<T>(config: AxiosRequestConfig, options?: RequestOptions): Promise<T> {
   const response = await api.request<T>({ ...config, ...options } as AppRequestConfig)
   return response.data
+}
+
+interface FormOptions extends RequestOptions {
+  /** Fracción subida, de 0 a 1. */
+  onUploadProgress?: (fraction: number) => void
+}
+
+/**
+ * POST multipart/form-data. La instancia fija `Content-Type: application/json`, y con esa cabecera
+ * axios convierte el FormData a JSON (el File se pierde). Con `multipart/form-data` lo deja tal cual
+ * y, en el navegador, quita la cabecera para que el browser añada el boundary.
+ */
+function postForm<T>(path: string, form: FormData, options?: FormOptions): Promise<T> {
+  const { onUploadProgress, ...rest } = options ?? {}
+  return request<T>({
+    method:  'POST',
+    url:     path,
+    data:    form,
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: onUploadProgress
+      ? (e) => { if (e.total) onUploadProgress(e.loaded / e.total) }
+      : undefined,
+  }, rest)
 }
 
 export const httpClient = {
@@ -75,4 +108,5 @@ export const httpClient = {
   put:    <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>({ method: 'PUT',    url: path, data: body }, options),
   patch:  <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>({ method: 'PATCH',  url: path, data: body }, options),
   delete: <T>(path: string, options?: RequestOptions)                 => request<T>({ method: 'DELETE', url: path },       options),
+  postForm,
 }

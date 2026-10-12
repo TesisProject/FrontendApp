@@ -61,6 +61,14 @@ let dragIndex = -1
 
 const rotation = computed(() => background.value?.rotation ?? 0)
 
+// El giro de la screenshot es el de la foto, no el configurado en la cámara: tras cambiar la
+// rotación, la foto vieja sigue con el giro anterior hasta que llega otra.
+const rotationMismatch = computed(() => {
+  const cam = cameras.value.find(c => c.id === cameraId.value)
+  if (!cam || !background.value?.image || rotation.value === cam.rotation) return null
+  return { camera: cam.rotation, shown: rotation.value }
+})
+
 const selectedRoi = computed(() =>
   selectedId.value !== null ? rois[selectedId.value] : null,
 )
@@ -532,6 +540,10 @@ onMounted(async () => {
               </template>
               <template v-else-if="background?.image">Imagen de referencia propia</template>
               <template v-else>La cámara aún no subió fotos: sube una imagen de referencia.</template>
+            </p>
+            <p v-if="rotationMismatch" class="mt-1 text-center text-[11.5px] text-warning" role="status">
+              La cámara está configurada a {{ rotationMismatch.camera }}° y la foto se ve girada {{ rotationMismatch.shown }}°.
+              El Fog aplica el giro de la cámara: si acabas de cambiarlo, espera a la siguiente foto antes de dibujar.
             </p>
             <div class="mt-2.5 flex flex-wrap items-center gap-2.5">
               <Button as="label" variant="outline" size="sm" class="cursor-pointer text-xs">

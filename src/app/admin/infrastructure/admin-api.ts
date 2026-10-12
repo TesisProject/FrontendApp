@@ -2,10 +2,13 @@ import { httpClient } from '../../shared/infrastructure/http-client'
 import type {
   AdminZoneResponse, AdminZoneRequest,
   AdminCameraResponse, AdminCameraCreateRequest, AdminCameraUpdateRequest,
+  AdminCameraDeviceSettingsRequest, CameraConfigResponse,
   AdminUserResponse, AdminUserProfileResponse, AdminUserProfileRequest,
   AdminNodeResponse, AdminNodeCreateRequest, AdminNodeUpdateRequest,
   AdminApiKeyResponse, AdminApiKeyCreateRequest, AdminCreatedApiKeyResponse,
   MonitoredSpaceResponse, UpdateSpaceRoiRequest, CameraScreenshotResponse,
+  WifiNetworkResponse, WifiNetworkCreateRequest, WifiNetworkUpdateRequest,
+  FirmwareReleaseResponse, CameraFirmwareResponse,
 } from './admin-response'
 import type { AdminSpaceResponse } from './admin-response'
 
@@ -68,6 +71,21 @@ export class AdminApi {
   getCameraScreenshot(id: number): Promise<CameraScreenshotResponse> {
     return httpClient.get(`/occupancy/cameras/${id}/screenshot`)
   }
+  getCamera(id: number): Promise<AdminCameraResponse> {
+    return httpClient.get(`/occupancy/cameras/${id}`)
+  }
+  /** Reemplaza MAC, rotación, red y captura. Cambiar una MAC existente reinicia el alta. */
+  updateCameraDeviceSettings(id: number, body: AdminCameraDeviceSettingsRequest): Promise<AdminCameraResponse> {
+    return httpClient.put(`/occupancy/cameras/${id}/device-settings`, body)
+  }
+  /** El Fog revoca la credencial de la placa y vuelve a admitir su alta por MAC. */
+  resetCameraEnrollment(id: number): Promise<void> {
+    return httpClient.delete(`/occupancy/cameras/${id}/enrollment`)
+  }
+  /** Configuración que descarga el Fog; el panel la usa para saber qué espacios con ROI cubre. */
+  getCameraConfig(id: number): Promise<CameraConfigResponse> {
+    return httpClient.get(`/occupancy/cameras/${id}/config`)
+  }
 
   // Fog nodes — /api/v1/occupancy/nodes
   getNodes(): Promise<AdminNodeResponse[]> {
@@ -81,6 +99,41 @@ export class AdminApi {
   }
   deleteNode(id: number): Promise<void> {
     return httpClient.delete(`/occupancy/nodes/${id}`)
+  }
+
+  // WiFi networks — /api/v1/occupancy/nodes/{nodeId}/wifi-networks (escritura solo ADMIN)
+  getWifiNetworks(nodeId: number): Promise<WifiNetworkResponse[]> {
+    return httpClient.get(`/occupancy/nodes/${nodeId}/wifi-networks`)
+  }
+  createWifiNetwork(nodeId: number, body: WifiNetworkCreateRequest): Promise<WifiNetworkResponse> {
+    return httpClient.post(`/occupancy/nodes/${nodeId}/wifi-networks`, body)
+  }
+  updateWifiNetwork(nodeId: number, networkId: number, body: WifiNetworkUpdateRequest): Promise<WifiNetworkResponse> {
+    return httpClient.put(`/occupancy/nodes/${nodeId}/wifi-networks/${networkId}`, body)
+  }
+  deleteWifiNetwork(nodeId: number, networkId: number): Promise<void> {
+    return httpClient.delete(`/occupancy/nodes/${nodeId}/wifi-networks/${networkId}`)
+  }
+
+  // Firmware releases — /api/v1/occupancy/firmware-releases (publicar solo ADMIN)
+  getFirmwareReleases(): Promise<FirmwareReleaseResponse[]> {
+    return httpClient.get('/occupancy/firmware-releases')
+  }
+  /** multipart: `file` (.bin de la aplicación), `version` y `notes` opcional. */
+  uploadFirmwareRelease(form: FormData, onProgress?: (fraction: number) => void): Promise<FirmwareReleaseResponse> {
+    return httpClient.postForm('/occupancy/firmware-releases', form, { onUploadProgress: onProgress })
+  }
+
+  // Camera firmware — /api/v1/occupancy/cameras/{id}/firmware
+  getCameraFirmware(cameraId: number): Promise<CameraFirmwareResponse> {
+    return httpClient.get(`/occupancy/cameras/${cameraId}/firmware`)
+  }
+  /** 409 FIRMWARE_DOWNGRADE_NOT_ALLOWED si es menor que la asignada o que la informada. */
+  assignCameraFirmware(cameraId: number, version: number): Promise<CameraFirmwareResponse> {
+    return httpClient.put(`/occupancy/cameras/${cameraId}/firmware/target`, { version })
+  }
+  clearCameraFirmware(cameraId: number): Promise<void> {
+    return httpClient.delete(`/occupancy/cameras/${cameraId}/firmware/target`)
   }
 
   // API keys — /api/v1/iam/api-keys (la key completa solo se muestra al crearla)
