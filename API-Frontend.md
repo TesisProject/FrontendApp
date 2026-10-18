@@ -2,6 +2,8 @@
 
 > Documentación técnica de las APIs REST del backend (Cloud). Generada el 2026-07-03 a partir de los specs OpenAPI reales que exponen los servicios en ejecución. Todos los servicios comparten el mismo modelo de autenticación y formato de error.
 
+> **Contrato vigente (2026-10-18):** el MCP `parkvision-api` (`.mcp.json`, código en `cloud-service/tools/api-mcp`) lee el OpenAPI de la nube desplegada: endpoints, roles de cada uno y esquemas. Si este documento y el MCP no coinciden, manda el MCP. Aquí queda lo que el spec no cuenta: reglas de negocio, mensajes de error y notas de cambios.
+
 ## 1. Punto de entrada y entornos
 
 Todo el tráfico del frontend pasa por el **API Gateway**. Nunca llames a los servicios por su puerto individual — usa siempre el gateway como único origen.
@@ -2398,7 +2400,7 @@ la lista; `null` si la cámara nunca envió una (placa sin celda o sin divisor):
 |---|---|
 | `mv` | tensión de la celda en reposo, en mV |
 | `percent` | 0–100, con la curva del firmware: 3300 mV = 0 %, 4200 mV = 100 %. **Orientativo** (±3–5 puntos en la zona plana, 3650–3850 mV): mostrar siempre los mV al lado |
-| `state` | `OK` (≥ 3600 mV, acepta OTA) · `LOW` (3400–3599: captura, pero **no instala OTA**) · `CRITICAL` (< 3400: a punto del corte; a 3300 mV deja de transmitir) |
+| `state` | `OK` (≥ 3550 mV) · `LOW` (3400–3549, ≈ 4–15 %: avisa por correo a ADMIN y OPERATOR) · `CRITICAL` (< 3400: a punto del corte; a 3300 mV deja de transmitir). Por debajo de 3600 mV la cámara ya no instala OTA, aunque siga en `OK` |
 | `capturedAt` | captura de la foto que trajo la lectura |
 | `stale` | `true` si la lectura tiene más de 20 min (`BATTERY_STALE_AFTER_MINUTES` en la nube): la cámara dejó de enviar. `CRITICAL` + `stale` casi siempre es "se quedó sin batería"; no mostrar el % como si fuera actual |
 

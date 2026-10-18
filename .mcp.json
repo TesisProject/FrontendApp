@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "parkvision-api": {
+      "command": "node",
+      "args": ["../cloud-service/tools/api-mcp/src/index.ts"],
+      "env": {
+        "PARKVISION_API_URL": "${PARKVISION_API_URL:-https://parkvision-cloud-service.onrender.com}"
+      }
+    }
+  }
+}
