@@ -1,5 +1,5 @@
 /**
- * Reglas del dispositivo de una cámara (ESP32-CAM): MAC, rotación, captura y estado de firmware.
+ * Reglas del dispositivo de una cámara (ESP32-CAM): MAC, rotación, captura, estado de firmware y batería.
  * Son espejo de las del backend (cloud-service, contexto occupancy) para avisar antes de enviar; el
  * backend sigue siendo la autoridad.
  */
@@ -105,6 +105,35 @@ export const FIRMWARE_STATUS_META: Record<FirmwareStatus, { label: string; varia
 
 export function isFirmwareStatus(value: string): value is FirmwareStatus {
   return (FIRMWARE_STATUSES as readonly string[]).includes(value)
+}
+
+/**
+ * Estado de la celda Li-ion 1S. Lo calcula la nube con los umbrales del firmware (`esp32cam/config.h`),
+ * así que cada estado dice qué hace la placa. `UNKNOWN` no llega aquí: sin lectura válida, `battery` es `null`.
+ */
+export const BATTERY_STATES = ['OK', 'LOW', 'CRITICAL'] as const
+export type BatteryState = typeof BATTERY_STATES[number]
+
+export const BATTERY_STATE_META: Record<BatteryState, { label: string; variant: StatusBadgeVariant; help: string }> = {
+  OK:       { label: 'OK',      variant: 'success', help: '3600 mV o más: funciona y acepta OTA.' },
+  LOW:      { label: 'Baja',    variant: 'warning', help: 'De 3400 a 3599 mV: sigue capturando, pero ya no instala OTA.' },
+  CRITICAL: { label: 'Crítica', variant: 'danger',  help: 'Menos de 3400 mV: a punto del corte; a 3300 mV deja de transmitir.' },
+}
+
+export function isBatteryState(value: string): value is BatteryState {
+  return (BATTERY_STATES as readonly string[]).includes(value)
+}
+
+/**
+ * Etiqueta de una lectura. Si la cámara dejó de enviar, eso manda sobre el estado: el % ya no es el
+ * actual, y si la última era crítica casi siempre es que se quedó sin batería.
+ */
+export function batteryBadge(b: { state: BatteryState; stale: boolean }): { label: string; variant: StatusBadgeVariant; help: string } {
+  if (!b.stale) return BATTERY_STATE_META[b.state]
+  if (b.state === 'CRITICAL') {
+    return { label: 'Agotada', variant: 'danger', help: 'La última lectura era crítica y la cámara dejó de enviar fotos: casi seguro se quedó sin batería.' }
+  }
+  return { label: 'Desactualizada', variant: 'neutral', help: 'La cámara lleva más de 20 min sin enviar fotos: es la última lectura, no la carga actual.' }
 }
 
 /** Menor versión que se puede asignar: no se baja ni de la asignada ni de la informada. */

@@ -2381,6 +2381,30 @@ los errores `WIFI_*`, `NODE_HAS_WIFI_NETWORKS` y `CAMERA_WIFI_NETWORK_IN_OTHER_N
 | `targetFirmwareVersion` / `reportedFirmwareVersion` | int \| null | asignada / informada |
 | `firmwareReportedAt` | date-time \| null | |
 | `firmwareStatus` | `NOT_MANAGED` \| `UNKNOWN` \| `UP_TO_DATE` \| `PENDING` \| `BEHIND` \| `AHEAD` | |
+| `battery` | object \| null | última batería válida; ver [Batería](#bateria-camaras) |
+
+<a name="bateria-camaras"></a>
+
+**Batería** (2026-10-18). Cada cámara lleva una celda Li-ion 18650; la placa mide su tensión en
+reposo al despertar y el Fog la reenvía con cada foto que sube (como mucho una cada 5 min). `battery`
+sale de la foto **más reciente por captura** con una lectura válida, en una sola consulta para toda
+la lista; `null` si la cámara nunca envió una (placa sin celda o sin divisor):
+
+```json
+"battery": { "mv": 3834, "percent": 56, "state": "OK", "capturedAt": "2026-10-18T14:05:12Z", "stale": false }
+```
+
+| Campo | Nota |
+|---|---|
+| `mv` | tensión de la celda en reposo, en mV |
+| `percent` | 0–100, con la curva del firmware: 3300 mV = 0 %, 4200 mV = 100 %. **Orientativo** (±3–5 puntos en la zona plana, 3650–3850 mV): mostrar siempre los mV al lado |
+| `state` | `OK` (≥ 3600 mV, acepta OTA) · `LOW` (3400–3599: captura, pero **no instala OTA**) · `CRITICAL` (< 3400: a punto del corte; a 3300 mV deja de transmitir) |
+| `capturedAt` | captura de la foto que trajo la lectura |
+| `stale` | `true` si la lectura tiene más de 20 min (`BATTERY_STALE_AFTER_MINUTES` en la nube): la cámara dejó de enviar. `CRITICAL` + `stale` casi siempre es "se quedó sin batería"; no mostrar el % como si fuera actual |
+
+En `GET /cameras/{cameraId}/frames`, `telemetry` trae además `batteryPercent` (int \| null) y
+`batteryState` (`OK` \| `LOW` \| `CRITICAL` \| `UNKNOWN`), derivados de `batteryMv` al leer: `null` y
+`UNKNOWN` cuando `batteryValid` no es `true`, nunca 0 %. `batteryLoadMv` llega siempre `null`.
 
 **`PUT /cameras/{cameraId}/device-settings`** — reemplaza los tres datos:
 `{ "mac": "…", "rotation": 90, "capture": {…} }`. `rotation` y `capture`

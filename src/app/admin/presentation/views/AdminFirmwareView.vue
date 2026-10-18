@@ -9,6 +9,7 @@ import type { AdminCamera } from '../../domain/model/admin-camera.model'
 import { toast } from 'vue-sonner'
 import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
 import FirmwareStatusBadge from '../components/FirmwareStatusBadge.vue'
+import CameraBatteryIndicator from '../components/CameraBatteryIndicator.vue'
 import { Button } from '@/app/shared/presentation/components/ui/button'
 import { TableCell, TableRow } from '@/app/shared/presentation/components/ui/table'
 import AdminPage from '../components/AdminPage.vue'
@@ -131,13 +132,14 @@ onMounted(() => Promise.all([store.fetchReleases(), camerasStore.fetchCameras()]
     <section v-if="!store.loading && !store.error && store.releases.length > 0" class="mt-6" aria-labelledby="rollout-title">
       <h2 id="rollout-title" class="mb-1 text-[15px] font-bold text-heading">Despliegue por cámara</h2>
       <p class="mb-3 text-[13px] text-muted-foreground">
-        Despliega primero en una cámara y, cuando informe la versión nueva, en las demás.
+        Despliega primero en una cámara y, cuando informe la versión nueva, en las demás. Una placa con
+        batería baja (menos de 3600 mV) recibe la asignación, pero no instala hasta recargarse.
       </p>
       <AdminStateBox v-if="camerasStore.loading">Cargando cámaras...</AdminStateBox>
       <AdminStateBox v-else-if="camerasStore.error" tone="error">{{ camerasStore.error }}</AdminStateBox>
       <AdminTableCard
         v-else
-        :columns="['Cámara', 'Informa', 'Asignada', 'Estado', 'Acción']"
+        :columns="['Cámara', 'Informa', 'Asignada', 'Estado', 'Batería', 'Acción']"
         :empty="camerasStore.cameras.length === 0"
         empty-text="No hay cámaras registradas"
       >
@@ -150,6 +152,9 @@ onMounted(() => Promise.all([store.fetchReleases(), camerasStore.fetchCameras()]
           <TableCell class="font-mono text-xs">{{ c.firmware.target !== null ? `v${c.firmware.target}` : '—' }}</TableCell>
           <TableCell>
             <FirmwareStatusBadge :status="c.firmware.status" :target="c.firmware.target" :reported="c.firmware.reported" />
+          </TableCell>
+          <TableCell>
+            <CameraBatteryIndicator :battery="c.battery" />
           </TableCell>
           <TableCell>
             <Button

@@ -6,7 +6,9 @@ import { useAdminCamerasStore } from '../../application/admin-cameras.store'
 import { useAdminZonesStore } from '../../application/admin-zones.store'
 import { useAdminNodesStore } from '../../application/admin-nodes.store'
 import type { AdminCamera, AdminCameraDeviceForm, AdminCameraForm } from '../../domain/model/admin-camera.model'
-import { deviceFieldErrors, hasDeviceErrors, normalizeMac, sameCapture } from '../../domain/camera-device'
+import { batteryBadge, deviceFieldErrors, hasDeviceErrors, normalizeMac, sameCapture } from '../../domain/camera-device'
+import { formatRelative } from '@/app/shared/helpers/date'
+import { Badge } from '@/app/shared/presentation/components/ui/badge'
 import { Button } from '@/app/shared/presentation/components/ui/button'
 import { Input } from '@/app/shared/presentation/components/ui/input'
 import { Label } from '@/app/shared/presentation/components/ui/label'
@@ -19,6 +21,7 @@ import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
 import AdminField from './AdminField.vue'
 import CameraDeviceFields from './CameraDeviceFields.vue'
 import CameraFirmwarePanel from './CameraFirmwarePanel.vue'
+import BatteryMeter from './BatteryMeter.vue'
 
 /**
  * CameraDetailSheet — configuración de una cámara en pestañas. Cada pestaña guarda por separado
@@ -36,6 +39,14 @@ const nodesStore = useAdminNodesStore()
 const camera = computed<AdminCamera | null>(() => store.cameras.find(c => c.id === props.cameraId) ?? null)
 
 const tab = ref('general')
+
+// ── Batería (solo lectura: viene con la cámara) ──────────────────────────
+const battery      = computed(() => camera.value?.battery ?? null)
+const batteryState = computed(() => battery.value ? batteryBadge(battery.value) : null)
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })
+}
 
 // ── General ──────────────────────────────────────────────────────────────
 const generalForm  = ref<AdminCameraForm>({ zoneId: '', nodeId: '', name: '', location: '', active: true })
@@ -183,6 +194,30 @@ watch([open, () => props.cameraId], ([isOpen]) => {
       </SheetHeader>
 
       <div v-if="camera" class="px-6 py-5">
+        <section aria-labelledby="camera-battery-title" class="mb-5 rounded-xl border bg-card px-4 py-3.5">
+          <h3 id="camera-battery-title" class="mb-2 text-[11px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">Batería</h3>
+          <template v-if="battery && batteryState">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <BatteryMeter :battery="battery" size="lg" />
+              <span class="font-signage text-[28px] leading-none font-semibold tabular-nums" :class="battery.stale ? 'text-muted-foreground' : 'text-navy'">
+                {{ battery.percent }} %
+              </span>
+              <span class="font-mono text-sm text-muted-foreground">{{ battery.mv }} mV</span>
+              <Badge :variant="batteryState.variant" size="status">{{ batteryState.label }}</Badge>
+            </div>
+            <p class="mt-2 text-[12px] text-muted-foreground">
+              {{ batteryState.help }} Lectura {{ formatRelative(battery.capturedAt) }}
+              ({{ formatDateTime(battery.capturedAt) }}).
+            </p>
+            <p class="mt-1 text-[11px] text-muted-foreground">
+              El % es orientativo (±3–5 puntos entre 3650 y 3850 mV, donde la curva es plana): la medida son los mV.
+            </p>
+          </template>
+          <p v-else class="text-[12px] text-muted-foreground">
+            Sin lectura: la placa nunca envió una válida (sin celda o sin el divisor a GPIO13).
+          </p>
+        </section>
+
         <Tabs v-model="tab" class="gap-5">
           <TabsList aria-label="Secciones de la cámara" class="w-full">
             <TabsTrigger value="general">General</TabsTrigger>

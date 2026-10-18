@@ -1,4 +1,4 @@
-import type { CameraRotation, CaptureSettings, FirmwareStatus } from '../camera-device'
+import type { BatteryState, CameraRotation, CaptureSettings, FirmwareStatus } from '../camera-device'
 
 /** Firmware de la cámara: la versión que le asignó la nube frente a la que informa. */
 export interface AdminCameraFirmwareState {
@@ -6,6 +6,19 @@ export interface AdminCameraFirmwareState {
   reported:   number | null
   reportedAt: string | null
   status:     FirmwareStatus
+}
+
+/**
+ * Última lectura válida de la celda, de la foto más reciente que la trajo. `percent` es orientativo
+ * (±3–5 puntos en la zona plana de la curva): se muestra siempre junto a los mV.
+ */
+export interface AdminCameraBattery {
+  mv:         number
+  percent:    number
+  state:      BatteryState
+  capturedAt: string
+  /** La cámara dejó de enviar (lectura de más de 20 min): el % ya no es actual. */
+  stale:      boolean
 }
 
 export interface AdminCamera {
@@ -22,6 +35,8 @@ export interface AdminCamera {
   capture:              CaptureSettings
   enrollmentGeneration: number
   firmware:             AdminCameraFirmwareState
+  /** `null` si nunca envió una lectura válida (placa sin celda o sin divisor). */
+  battery:              AdminCameraBattery | null
 }
 
 /** Datos generales (PUT /cameras/{id}). */

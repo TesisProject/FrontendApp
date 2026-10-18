@@ -1,15 +1,15 @@
 import type { AdminZone } from '../domain/model/admin-zone.model'
-import type { AdminCamera } from '../domain/model/admin-camera.model'
+import type { AdminCamera, AdminCameraBattery } from '../domain/model/admin-camera.model'
 import type { AdminUser, AdminRole } from '../domain/model/admin-user.model'
 import type { AdminNode } from '../domain/model/admin-node.model'
 import type { AdminApiKey, ApiKeyRole } from '../domain/model/admin-api-key.model'
 import {
-  CAPTURE_DEFAULTS, FRAME_SIZES, isCameraRotation, isFirmwareStatus,
+  CAPTURE_DEFAULTS, FRAME_SIZES, isBatteryState, isCameraRotation, isFirmwareStatus,
   type CaptureSettings, type FrameSize,
 } from '../domain/camera-device'
 import type {
   AdminZoneResponse, AdminCameraResponse, AdminUserResponse,
-  AdminNodeResponse, AdminApiKeyResponse, CaptureSettingsDto,
+  AdminNodeResponse, AdminApiKeyResponse, CaptureSettingsDto, CameraBatteryDto,
   FirmwareReleaseResponse, CameraFirmwareResponse,
 } from './admin-response'
 import type { AdminCameraFirmware, AdminFirmwareRelease } from '../domain/model/admin-firmware.model'
@@ -61,7 +61,14 @@ export function toAdminCamera(r: AdminCameraResponse): AdminCamera {
       reportedAt: r.firmwareReportedAt ?? null,
       status:     isFirmwareStatus(r.firmwareStatus) ? r.firmwareStatus : 'NOT_MANAGED',
     },
+    battery: toAdminCameraBattery(r.battery),
   }
+}
+
+/** Una lectura incompleta o con un estado desconocido se trata como "sin lectura", nunca como 0 %. */
+function toAdminCameraBattery(dto: CameraBatteryDto | null | undefined): AdminCameraBattery | null {
+  if (!dto || dto.mv == null || dto.percent == null || !isBatteryState(dto.state)) return null
+  return { mv: dto.mv, percent: dto.percent, state: dto.state, capturedAt: dto.capturedAt, stale: dto.stale }
 }
 
 export function toAdminNode(r: AdminNodeResponse): AdminNode {

@@ -23,6 +23,7 @@ import AdminField from '../components/AdminField.vue'
 import CameraDeviceFields from '../components/CameraDeviceFields.vue'
 import CameraDetailSheet from '../components/CameraDetailSheet.vue'
 import FirmwareStatusBadge from '../components/FirmwareStatusBadge.vue'
+import CameraBatteryIndicator from '../components/CameraBatteryIndicator.vue'
 
 const store      = useAdminCamerasStore()
 const zonesStore = useAdminZonesStore()
@@ -41,10 +42,13 @@ const filtered = computed(() => {
 })
 
 const withoutMac = computed(() => store.cameras.filter(c => c.mac === null).length)
-const subtitle   = computed(() => {
-  const base = `${store.cameras.length} cámaras registradas`
-  return withoutMac.value ? `${base} · ${withoutMac.value} sin MAC` : base
-})
+// Incluye las que dejaron de enviar: su última lectura sigue siendo la mejor pista.
+const lowBattery = computed(() => store.cameras.filter(c => c.battery && c.battery.state !== 'OK').length)
+const subtitle   = computed(() => [
+  `${store.cameras.length} cámaras registradas`,
+  withoutMac.value ? `${withoutMac.value} sin MAC` : null,
+  lowBattery.value ? `${lowBattery.value} con batería baja` : null,
+].filter(Boolean).join(' · '))
 
 function zoneName(zoneId: number) {
   return zonesStore.zones.find(z => z.id === zoneId)?.name ?? `Zona ${zoneId}`
@@ -135,7 +139,7 @@ onMounted(async () => {
 
     <AdminTableCard
       v-else
-      :columns="['Nombre', 'Zona', 'Código', 'MAC', 'Firmware', 'Estado', 'Acciones']"
+      :columns="['Nombre', 'Zona', 'Código', 'MAC', 'Firmware', 'Batería', 'Estado', 'Acciones']"
       :empty="filtered.length === 0"
       :empty-text="store.cameras.length === 0 ? 'No hay cámaras registradas' : 'No se encontraron cámaras'"
     >
@@ -151,6 +155,9 @@ onMounted(async () => {
         </TableCell>
         <TableCell>
           <FirmwareStatusBadge :status="c.firmware.status" :target="c.firmware.target" :reported="c.firmware.reported" show-versions />
+        </TableCell>
+        <TableCell>
+          <CameraBatteryIndicator :battery="c.battery" />
         </TableCell>
         <TableCell>
           <Badge :variant="c.active ? 'success' : 'neutral'" size="status">

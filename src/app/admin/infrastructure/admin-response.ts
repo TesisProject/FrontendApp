@@ -48,8 +48,19 @@ export interface AdminCameraResponse {
   reportedFirmwareVersion: number | null
   firmwareReportedAt:      string | null
   firmwareStatus:          string
+  /** Última batería válida; `null` si nunca envió una. */
+  battery:                 CameraBatteryDto | null
   createdAt: string
   updatedAt: string
+}
+
+/** CameraResource.Battery — `state` ∈ OK, LOW, CRITICAL; `stale` si tiene más de BATTERY_STALE_AFTER_MINUTES. */
+export interface CameraBatteryDto {
+  mv:         number | null
+  percent:    number | null
+  state:      string
+  capturedAt: string
+  stale:      boolean
 }
 
 /**
