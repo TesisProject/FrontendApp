@@ -3,9 +3,7 @@ import { ref } from 'vue'
 import type {
   AdminCamera, AdminCameraCreateForm, AdminCameraDeviceForm, AdminCameraForm,
 } from '../domain/model/admin-camera.model'
-import type {
-  AdminCameraCreateRequest, AdminCameraDeviceSettingsRequest, AdminCameraUpdateRequest,
-} from '../infrastructure/admin-response'
+import type { AdminCameraCreateRequest, AdminCameraUpdateRequest } from '../infrastructure/admin-response'
 import { adminApi } from '../infrastructure/admin-api'
 import { toAdminCamera, toAdminCameraFirmware } from '../infrastructure/admin-assembler'
 import type { AdminCameraFirmware } from '../domain/model/admin-firmware.model'
@@ -50,7 +48,6 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
         location:      form.location || undefined,
         mac:           normalizeMac(form.mac) ?? form.mac.trim(),
         rotation:      form.rotation !== 0 ? form.rotation : undefined,
-        wifiNetworkId: form.wifiNetworkId !== '' && form.nodeId !== '' ? form.wifiNetworkId : undefined,
         capture:       sameCapture(form.capture, CAPTURE_DEFAULTS) ? undefined : { ...form.capture },
       }
       const res = await adminApi.createCamera(body)
@@ -86,40 +83,7 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
   }
 
   /**
-   * Cambia la cámara de nodo cuando tiene una red del nodo actual: primero le quita la red (si no,
-   * 409 CAMERA_WIFI_NETWORK_IN_OTHER_NODE) y luego guarda. Si falla el segundo paso, el primero es
-   * inocuo: sin red asignada la placa conserva la WiFi que tiene.
-   */
-  async function moveToNode(camera: AdminCamera, form: AdminCameraForm): Promise<boolean> {
-    if (camera.wifiNetworkId !== null) {
-      saving.value      = true
-      actionError.value = null
-      try {
-        replaceCamera(toAdminCamera(await adminApi.updateCameraDeviceSettings(camera.id, {
-          ...deviceSettingsOf(camera),
-          wifiNetworkId: null,
-        })))
-      } catch (e) {
-        actionError.value = adminErrorMessage(e)
-        saving.value      = false
-        return false
-      }
-    }
-    return updateCamera(camera.id, form)
-  }
-
-  /** Lo que hay que reenviar en device-settings para no cambiar nada (el endpoint reemplaza todo). */
-  function deviceSettingsOf(camera: AdminCamera): AdminCameraDeviceSettingsRequest {
-    return {
-      mac:           camera.mac,
-      rotation:      camera.rotation,
-      wifiNetworkId: camera.wifiNetworkId,
-      capture:       { ...camera.capture },
-    }
-  }
-
-  /**
-   * Reemplaza MAC, rotación, red y captura. MAC vacía solo es posible si la cámara no tenía: se envía
+   * Reemplaza MAC, rotación y captura. MAC vacía solo es posible si la cámara no tenía: se envía
    * `null` (un `""` daría 400 INVALID_MAC_ADDRESS).
    */
   async function updateDeviceSettings(id: number, form: AdminCameraDeviceForm): Promise<boolean> {
@@ -128,10 +92,9 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
     try {
       const mac = form.mac.trim()
       const res = await adminApi.updateCameraDeviceSettings(id, {
-        mac:           mac === '' ? null : normalizeMac(mac) ?? mac,
-        rotation:      form.rotation,
-        wifiNetworkId: form.wifiNetworkId === '' ? null : form.wifiNetworkId,
-        capture:       { ...form.capture },
+        mac:      mac === '' ? null : normalizeMac(mac) ?? mac,
+        rotation: form.rotation,
+        capture:  { ...form.capture },
       })
       replaceCamera(toAdminCamera(res))
       return true
@@ -242,7 +205,7 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
   return {
     cameras, loading, error, saving, actionError,
     fetchCameras, createCamera, updateCamera, deleteCamera,
-    moveToNode, updateDeviceSettings, refreshCamera, resetEnrollment, countRoiSpaces,
+    updateDeviceSettings, refreshCamera, resetEnrollment, countRoiSpaces,
     fetchCameraFirmware, assignFirmware, clearFirmware,
   }
 })

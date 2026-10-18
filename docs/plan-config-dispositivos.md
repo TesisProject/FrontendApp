@@ -4,6 +4,13 @@
 (commit `6c2df0b`, ya implementado y con tests en verde) · **Pantallas:** `/admin/cameras`,
 `/admin/nodes`, `/admin/firmware` (nueva), `/admin/api-keys`
 
+> **Revisión 2026-10-18: las redes WiFi se retiraron.** La nube dejó de gestionar la WiFi
+> (`cloud-service` `2d9d0ff`, revisión 3 de `delegacion-cambios-2026-10-11.md`): la WiFi de cada placa
+> se graba por USB y nunca viaja por red. En el panel se borraron el diálogo «Redes WiFi» de Nodos, el
+> selector de red de Cámaras, la columna «Red WiFi» y el paso «Quitar red y mover» al cambiar de nodo
+> (`moveToNode`). Las secciones de WiFi de abajo (R3, §1.1, §2.3, D4 y los mensajes `WIFI_*`) se
+> conservan como registro del diseño descartado; lo que digan de WiFi ya no describe el código.
+
 La nube pasa a ser la dueña de la configuración de las ESP32-CAM (MAC, rotación, red WiFi, captura,
 alta y firmware). Este documento dice qué tiene que hacer el frontend para administrarla y cómo se
 arreglan las dos roturas que provoca el backend nuevo. Todo el contrato se ha comprobado leyendo el

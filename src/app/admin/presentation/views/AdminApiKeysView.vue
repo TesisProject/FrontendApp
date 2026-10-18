@@ -182,7 +182,7 @@ onMounted(() => Promise.all([store.fetchApiKeys(), nodesStore.fetchNodes()]))
             v-slot="{ id }"
             label="Nodo Fog"
             required
-            hint="La key solo podrá leer y escribir los datos de este nodo (incluidas sus contraseñas WiFi)."
+            hint="La key solo podrá leer y escribir los datos de este nodo: sus cámaras, eventos, fotos y firmware."
           >
             <NativeSelect :id="id" v-model="form.nodeId" :disabled="noNodesForFog" required>
               <NativeSelectOption value="" disabled>{{ noNodesForFog ? 'No hay nodos registrados' : 'Elige un nodo' }}</NativeSelectOption>

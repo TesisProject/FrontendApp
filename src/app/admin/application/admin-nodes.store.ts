@@ -67,7 +67,7 @@ export const useAdminNodesStore = defineStore('admin-nodes', () => {
     }
   }
 
-  /** 409 NODE_HAS_WIFI_NETWORKS si aún tiene redes: el motivo queda en `actionError`. */
+  /** Si falla, el motivo queda en `actionError`. */
   async function deleteNode(id: number): Promise<boolean> {
     actionError.value = null
     try {

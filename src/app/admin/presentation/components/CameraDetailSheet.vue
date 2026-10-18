@@ -5,7 +5,6 @@ import { toast } from 'vue-sonner'
 import { useAdminCamerasStore } from '../../application/admin-cameras.store'
 import { useAdminZonesStore } from '../../application/admin-zones.store'
 import { useAdminNodesStore } from '../../application/admin-nodes.store'
-import { useAdminWifiNetworksStore } from '../../application/admin-wifi-networks.store'
 import type { AdminCamera, AdminCameraDeviceForm, AdminCameraForm } from '../../domain/model/admin-camera.model'
 import { deviceFieldErrors, hasDeviceErrors, normalizeMac, sameCapture } from '../../domain/camera-device'
 import { Button } from '@/app/shared/presentation/components/ui/button'
@@ -24,7 +23,7 @@ import CameraFirmwarePanel from './CameraFirmwarePanel.vue'
 /**
  * CameraDetailSheet — configuración de una cámara en pestañas. Cada pestaña guarda por separado
  * porque son endpoints distintos: General = PUT /cameras/{id}; Dispositivo = PUT device-settings
- * (reemplaza los cuatro datos); Firmware = PUT/DELETE firmware/target; Alta = DELETE enrollment.
+ * (reemplaza los tres datos); Firmware = PUT/DELETE firmware/target; Alta = DELETE enrollment.
  */
 const props = defineProps<{ cameraId: number | null }>()
 const open  = defineModel<boolean>('open', { required: true })
@@ -32,7 +31,6 @@ const open  = defineModel<boolean>('open', { required: true })
 const store      = useAdminCamerasStore()
 const zonesStore = useAdminZonesStore()
 const nodesStore = useAdminNodesStore()
-const wifiStore  = useAdminWifiNetworksStore()
 
 // Se lee del store para ver siempre la versión guardada más reciente.
 const camera = computed<AdminCamera | null>(() => store.cameras.find(c => c.id === props.cameraId) ?? null)
@@ -47,43 +45,19 @@ function generalOf(c: AdminCamera): AdminCameraForm {
   return { zoneId: c.zoneId, nodeId: c.nodeId ?? '', name: c.name, location: c.location, active: c.active }
 }
 
-const nodeChanged = computed(() => {
-  const c = camera.value
-  return !!c && (generalForm.value.nodeId === '' ? null : generalForm.value.nodeId) !== c.nodeId
-})
-/** Cambiar de nodo con una red del nodo actual exige quitársela antes (lo hace el store). */
-const movesWithNetwork = computed(() => nodeChanged.value && camera.value?.wifiNetworkId != null)
-const currentSsid = computed(() => {
-  const c = camera.value
-  return c ? wifiStore.ssidOf(c.nodeId, c.wifiNetworkId) ?? `#${c.wifiNetworkId}` : ''
-})
-
 async function saveGeneral() {
   const c = camera.value
   if (!c) return
   generalError.value = null
-  // Se fijan antes de guardar: después, la cámara ya está en el nodo nuevo y sin red.
-  const moving      = movesWithNetwork.value
-  const changedNode = nodeChanged.value
-  const previousNode = c.nodeId
-  const ok = moving
-    ? await store.moveToNode(c, generalForm.value)
-    : await store.updateCamera(c.id, generalForm.value)
-  if (!ok) {
+  if (!(await store.updateCamera(c.id, generalForm.value))) {
     generalError.value = store.actionError
     return
-  }
-  if (changedNode && camera.value) {
-    // La pestaña Dispositivo pasa a ofrecer las redes del nodo nuevo.
-    deviceForm.value = deviceOf(camera.value)
-    if (camera.value.nodeId !== null) void wifiStore.ensureNetworks([camera.value.nodeId])
-    if (moving && previousNode !== null) void wifiStore.fetchNetworks(previousNode)
   }
   toast.success('Cámara actualizada')
 }
 
 // ── Dispositivo ──────────────────────────────────────────────────────────
-const deviceForm   = ref<AdminCameraDeviceForm>({ mac: '', rotation: 0, wifiNetworkId: '', capture: { intervalSec: 300, framesize: 'SVGA', jpegQuality: 12 } })
+const deviceForm   = ref<AdminCameraDeviceForm>({ mac: '', rotation: 0, capture: { intervalSec: 300, framesize: 'SVGA', jpegQuality: 12 } })
 const deviceError  = ref<string | null>(null)
 const deviceTried  = ref(false)
 const checkingRoi  = ref(false)
@@ -91,7 +65,7 @@ const checkingRoi  = ref(false)
 const deviceWarnings = ref<string[]>([])
 
 function deviceOf(c: AdminCamera): AdminCameraDeviceForm {
-  return { mac: c.mac ?? '', rotation: c.rotation, wifiNetworkId: c.wifiNetworkId ?? '', capture: { ...c.capture } }
+  return { mac: c.mac ?? '', rotation: c.rotation, capture: { ...c.capture } }
 }
 
 const deviceDirty = computed(() => {
@@ -100,7 +74,6 @@ const deviceDirty = computed(() => {
   const f = deviceForm.value
   return (normalizeMac(f.mac) ?? f.mac.trim()) !== (c.mac ?? '')
     || f.rotation !== c.rotation
-    || (f.wifiNetworkId === '' ? null : f.wifiNetworkId) !== c.wifiNetworkId
     || !sameCapture(f.capture, c.capture)
 })
 
@@ -150,13 +123,10 @@ async function commitDevice() {
   const c = camera.value
   deviceWarnings.value = []
   if (!c) return
-  const previousNetwork = c.wifiNetworkId
   if (!(await store.updateDeviceSettings(c.id, deviceForm.value))) {
     deviceError.value = store.actionError
     return
   }
-  // cameraCount de las redes cambia al reasignar.
-  if (c.nodeId !== null && previousNetwork !== camera.value?.wifiNetworkId) void wifiStore.fetchNetworks(c.nodeId)
   deviceTried.value = false
   // Muestra lo guardado (p. ej. la MAC ya normalizada).
   if (camera.value) deviceForm.value = deviceOf(camera.value)
@@ -199,7 +169,6 @@ watch([open, () => props.cameraId], ([isOpen]) => {
   if (!isOpen || !c) return
   tab.value = 'general'
   resetForms(c)
-  if (c.nodeId !== null) void wifiStore.ensureNetworks([c.nodeId])
 })
 </script>
 
@@ -242,13 +211,6 @@ watch([open, () => props.cameraId], ([isOpen]) => {
                   <NativeSelectOption v-for="n in nodesStore.nodes" :key="n.id" :value="n.id">{{ n.name }} ({{ n.code }})</NativeSelectOption>
                 </NativeSelect>
               </AdminField>
-              <p v-if="movesWithNetwork" class="flex gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-[12px] text-warning" role="status">
-                <TriangleAlert class="mt-px size-4 shrink-0" />
-                <span>
-                  Esta cámara usa la red «{{ currentSsid }}» del nodo actual. Para moverla se le quitará la red:
-                  la placa conservará la WiFi que tiene y habrá que darle la del nuevo nodo por USB.
-                </span>
-              </p>
               <div class="flex items-center gap-2.5">
                 <Switch id="camera-detail-active" v-model="generalForm.active" />
                 <Label for="camera-detail-active">Cámara activa</Label>
@@ -257,7 +219,7 @@ watch([open, () => props.cameraId], ([isOpen]) => {
               <div class="flex justify-end gap-2">
                 <Button type="button" variant="outline" @click="generalForm = generalOf(camera)">Descartar</Button>
                 <Button type="submit" :disabled="store.saving">
-                  {{ store.saving ? 'Guardando...' : (movesWithNetwork ? 'Quitar red y mover' : 'Guardar') }}
+                  {{ store.saving ? 'Guardando...' : 'Guardar' }}
                 </Button>
               </div>
             </form>
@@ -268,7 +230,6 @@ watch([open, () => props.cameraId], ([isOpen]) => {
             <form class="grid gap-4" @submit.prevent="saveDevice">
               <CameraDeviceFields
                 v-model="deviceForm"
-                :node-id="camera.nodeId"
                 :mac-required="camera.mac !== null"
                 :camera-id="camera.id"
                 :show-errors="deviceTried"
@@ -276,8 +237,9 @@ watch([open, () => props.cameraId], ([isOpen]) => {
               <p class="flex gap-2 rounded-lg bg-navy-soft px-3 py-2 text-[12px] text-foreground">
                 <Info class="mt-px size-4 shrink-0 text-[#1a56c4] dark:text-[#93c5fd]" />
                 <span>
-                  Los cambios se aplican en la Pi en su siguiente sincronización. Red WiFi y captura llegarán a
-                  la placa cuando lleve el firmware nuevo, que lee su configuración cada 12 capturas.
+                  Los cambios se aplican en la Pi en su siguiente sincronización. La captura llegará a la placa
+                  cuando lleve el firmware que lee su configuración del Fog (cada 12 capturas). La WiFi no se
+                  configura aquí: se graba en la placa por USB.
                 </span>
               </p>
               <FormAlert :message="deviceError" />

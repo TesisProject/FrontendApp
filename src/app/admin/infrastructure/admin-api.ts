@@ -7,7 +7,6 @@ import type {
   AdminNodeResponse, AdminNodeCreateRequest, AdminNodeUpdateRequest,
   AdminApiKeyResponse, AdminApiKeyCreateRequest, AdminCreatedApiKeyResponse,
   MonitoredSpaceResponse, UpdateSpaceRoiRequest, CameraScreenshotResponse,
-  WifiNetworkResponse, WifiNetworkCreateRequest, WifiNetworkUpdateRequest,
   FirmwareReleaseResponse, CameraFirmwareResponse,
 } from './admin-response'
 import type { AdminSpaceResponse } from './admin-response'
@@ -74,7 +73,7 @@ export class AdminApi {
   getCamera(id: number): Promise<AdminCameraResponse> {
     return httpClient.get(`/occupancy/cameras/${id}`)
   }
-  /** Reemplaza MAC, rotación, red y captura. Cambiar una MAC existente reinicia el alta. */
+  /** Reemplaza MAC, rotación y captura. Cambiar una MAC existente reinicia el alta. */
   updateCameraDeviceSettings(id: number, body: AdminCameraDeviceSettingsRequest): Promise<AdminCameraResponse> {
     return httpClient.put(`/occupancy/cameras/${id}/device-settings`, body)
   }
@@ -99,20 +98,6 @@ export class AdminApi {
   }
   deleteNode(id: number): Promise<void> {
     return httpClient.delete(`/occupancy/nodes/${id}`)
-  }
-
-  // WiFi networks — /api/v1/occupancy/nodes/{nodeId}/wifi-networks (escritura solo ADMIN)
-  getWifiNetworks(nodeId: number): Promise<WifiNetworkResponse[]> {
-    return httpClient.get(`/occupancy/nodes/${nodeId}/wifi-networks`)
-  }
-  createWifiNetwork(nodeId: number, body: WifiNetworkCreateRequest): Promise<WifiNetworkResponse> {
-    return httpClient.post(`/occupancy/nodes/${nodeId}/wifi-networks`, body)
-  }
-  updateWifiNetwork(nodeId: number, networkId: number, body: WifiNetworkUpdateRequest): Promise<WifiNetworkResponse> {
-    return httpClient.put(`/occupancy/nodes/${nodeId}/wifi-networks/${networkId}`, body)
-  }
-  deleteWifiNetwork(nodeId: number, networkId: number): Promise<void> {
-    return httpClient.delete(`/occupancy/nodes/${nodeId}/wifi-networks/${networkId}`)
   }
 
   // Firmware releases — /api/v1/occupancy/firmware-releases (publicar solo ADMIN)

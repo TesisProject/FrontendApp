@@ -19,8 +19,6 @@ export interface AdminCamera {
   /** MAC STA normalizada; `null` en cámaras anteriores a la MAC obligatoria. */
   mac:                  string | null
   rotation:             CameraRotation
-  /** `null` = la cámara conserva la WiFi que tenga. */
-  wifiNetworkId:        number | null
   capture:              CaptureSettings
   enrollmentGeneration: number
   firmware:             AdminCameraFirmwareState
@@ -37,10 +35,9 @@ export interface AdminCameraForm {
 
 /** Configuración del dispositivo (PUT /cameras/{id}/device-settings). `mac` tal como se escribe. */
 export interface AdminCameraDeviceForm {
-  mac:           string
-  rotation:      CameraRotation
-  wifiNetworkId: number | ''
-  capture:       CaptureSettings
+  mac:      string
+  rotation: CameraRotation
+  capture:  CaptureSettings
 }
 
 /** Alta: datos generales + dispositivo en un solo POST. */

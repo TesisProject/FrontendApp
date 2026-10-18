@@ -9,11 +9,10 @@ import {
 } from '../domain/camera-device'
 import type {
   AdminZoneResponse, AdminCameraResponse, AdminUserResponse,
-  AdminNodeResponse, AdminApiKeyResponse, CaptureSettingsDto, WifiNetworkResponse,
+  AdminNodeResponse, AdminApiKeyResponse, CaptureSettingsDto,
   FirmwareReleaseResponse, CameraFirmwareResponse,
 } from './admin-response'
 import type { AdminCameraFirmware, AdminFirmwareRelease } from '../domain/model/admin-firmware.model'
-import type { AdminWifiNetwork } from '../domain/model/admin-wifi-network.model'
 import type { ZoneAvailabilityResponse } from '../../parking/infrastructure/availability-response'
 
 /** Fusiona la zona estática (parking) con la disponibilidad viva (vision), si existe. */
@@ -54,7 +53,6 @@ export function toAdminCamera(r: AdminCameraResponse): AdminCamera {
     active:   r.active,
     mac:                  r.mac ?? null,
     rotation:             isCameraRotation(r.rotation) ? r.rotation : 0,
-    wifiNetworkId:        r.wifiNetworkId ?? null,
     capture:              toCaptureSettings(r.capture),
     enrollmentGeneration: r.enrollmentGeneration ?? 1,
     firmware: {
@@ -97,16 +95,6 @@ export function toAdminCameraFirmware(r: CameraFirmwareResponse): AdminCameraFir
     reported:   r.reportedFirmwareVersion,
     reportedAt: r.firmwareReportedAt,
     status:     isFirmwareStatus(r.status) ? r.status : 'NOT_MANAGED',
-  }
-}
-
-export function toAdminWifiNetwork(r: WifiNetworkResponse): AdminWifiNetwork {
-  return {
-    id:                r.id,
-    nodeId:            r.nodeId,
-    ssid:              r.ssid,
-    cameraCount:       r.cameraCount,
-    passwordUpdatedAt: r.passwordUpdatedAt,
   }
 }
 

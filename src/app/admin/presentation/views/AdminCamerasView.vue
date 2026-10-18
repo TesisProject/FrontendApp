@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useAdminCamerasStore } from '../../application/admin-cameras.store'
 import { useAdminZonesStore }   from '../../application/admin-zones.store'
 import { useAdminNodesStore }   from '../../application/admin-nodes.store'
-import { useAdminWifiNetworksStore } from '../../application/admin-wifi-networks.store'
 import type { AdminCameraCreateForm } from '../../domain/model/admin-camera.model'
 import { CAPTURE_DEFAULTS, deviceFieldErrors, hasDeviceErrors, normalizeMac } from '../../domain/camera-device'
 import { Plus } from '@lucide/vue'
@@ -28,7 +27,6 @@ import FirmwareStatusBadge from '../components/FirmwareStatusBadge.vue'
 const store      = useAdminCamerasStore()
 const zonesStore = useAdminZonesStore()
 const nodesStore = useAdminNodesStore()
-const wifiStore  = useAdminWifiNetworksStore()
 const search     = ref('')
 
 const filtered = computed(() => {
@@ -56,7 +54,7 @@ function zoneName(zoneId: number) {
 function emptyForm(zoneId: number | ''): AdminCameraCreateForm {
   return {
     zoneId, nodeId: '', name: '', location: '', active: true,
-    mac: '', rotation: 0, wifiNetworkId: '', capture: { ...CAPTURE_DEFAULTS },
+    mac: '', rotation: 0, capture: { ...CAPTURE_DEFAULTS },
   }
 }
 
@@ -70,12 +68,6 @@ function openCreate() {
   formError.value   = null
   createTried.value = false
   showCreate.value  = true
-}
-
-function onNodeChange() {
-  // La red elegida era del nodo anterior.
-  form.value.wifiNetworkId = ''
-  if (form.value.nodeId !== '') void wifiStore.ensureNetworks([form.value.nodeId])
 }
 
 async function handleCreate() {
@@ -93,7 +85,6 @@ async function handleCreate() {
     formError.value = store.actionError ?? 'Ocurrió un error, intenta de nuevo'
     return
   }
-  if (form.value.nodeId !== '' && form.value.wifiNetworkId !== '') void wifiStore.fetchNetworks(form.value.nodeId)
   toast.success('Cámara creada')
   showCreate.value = false
 }
@@ -126,8 +117,6 @@ async function handleDelete(id: number) {
 
 onMounted(async () => {
   await Promise.all([store.fetchCameras(), zonesStore.fetchZones(), nodesStore.fetchNodes()])
-  // Para mostrar el SSID de cada cámara hacen falta las redes de sus nodos.
-  await wifiStore.ensureNetworks(store.cameras.flatMap(c => c.nodeId !== null ? [c.nodeId] : []))
 })
 </script>
 
@@ -146,7 +135,7 @@ onMounted(async () => {
 
     <AdminTableCard
       v-else
-      :columns="['Nombre', 'Zona', 'Código', 'MAC', 'Red WiFi', 'Firmware', 'Estado', 'Acciones']"
+      :columns="['Nombre', 'Zona', 'Código', 'MAC', 'Firmware', 'Estado', 'Acciones']"
       :empty="filtered.length === 0"
       :empty-text="store.cameras.length === 0 ? 'No hay cámaras registradas' : 'No se encontraron cámaras'"
     >
@@ -159,9 +148,6 @@ onMounted(async () => {
           <Badge v-else variant="warning" size="status" title="Cárgala en Configurar → Dispositivo: sin MAC el Fog no podrá dar de alta esta placa">
             Sin MAC
           </Badge>
-        </TableCell>
-        <TableCell class="font-mono text-xs text-muted-foreground">
-          {{ c.wifiNetworkId === null ? '—' : (wifiStore.ssidOf(c.nodeId, c.wifiNetworkId) ?? `#${c.wifiNetworkId}`) }}
         </TableCell>
         <TableCell>
           <FirmwareStatusBadge :status="c.firmware.status" :target="c.firmware.target" :reported="c.firmware.reported" show-versions />
@@ -218,7 +204,7 @@ onMounted(async () => {
               <Input :id="id" v-model="form.location" maxlength="300" placeholder="Poste central" />
             </AdminField>
             <AdminField v-slot="{ id }" label="Nodo Fog" optional>
-              <NativeSelect :id="id" v-model="form.nodeId" @change="onNodeChange">
+              <NativeSelect :id="id" v-model="form.nodeId">
                 <NativeSelectOption value="">Sin nodo</NativeSelectOption>
                 <NativeSelectOption v-for="n in nodesStore.nodes" :key="n.id" :value="n.id">{{ n.name }} ({{ n.code }})</NativeSelectOption>
               </NativeSelect>
@@ -226,7 +212,7 @@ onMounted(async () => {
           </div>
 
           <h3 class="mt-1 text-[11px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">Dispositivo</h3>
-          <CameraDeviceFields v-model="form" :node-id="form.nodeId" mac-required :show-errors="createTried" />
+          <CameraDeviceFields v-model="form" mac-required :show-errors="createTried" />
 
           <FormAlert :message="formError" />
 

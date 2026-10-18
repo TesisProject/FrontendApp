@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useAdminCamerasStore } from '../../application/admin-cameras.store'
-import { useAdminWifiNetworksStore } from '../../application/admin-wifi-networks.store'
 import type { AdminCameraDeviceForm } from '../../domain/model/admin-camera.model'
 import {
   CAMERA_ROTATIONS, CAPTURE_LIMITS, FRAME_SIZES, FRAME_SIZE_LABEL, deviceFieldErrors, normalizeMac,
@@ -13,13 +11,12 @@ import AdminField from './AdminField.vue'
 import AdminSegmented from './AdminSegmented.vue'
 
 /**
- * CameraDeviceFields — campos del dispositivo de una cámara (MAC, rotación, red WiFi y captura).
+ * CameraDeviceFields — campos del dispositivo de una cámara (MAC, rotación y captura). La WiFi no
+ * está: se graba en cada placa por USB y la nube no la conoce.
  * Se usa en el alta y en la pestaña Dispositivo del detalle. Los errores inline salen de
  * `deviceFieldErrors`, la misma función con la que valida quien envía el formulario.
  */
 const props = defineProps<{
-  /** Nodo de la cámara: de él salen las redes WiFi disponibles. */
-  nodeId:      number | null | ''
   /** Falso solo en cámaras antiguas sin MAC. */
   macRequired: boolean
   /** Cámara que se edita (su propia MAC no cuenta como repetida). */
@@ -31,7 +28,6 @@ const props = defineProps<{
 const form = defineModel<AdminCameraDeviceForm>({ required: true })
 
 const camerasStore = useAdminCamerasStore()
-const wifiStore    = useAdminWifiNetworksStore()
 
 const ROTATION_OPTIONS = CAMERA_ROTATIONS.map(value => ({ value, label: `${value}°` }))
 
@@ -45,10 +41,6 @@ const macTakenBy = computed(() => {
   if (!mac) return null
   return camerasStore.cameras.find(c => c.mac === mac && c.id !== props.cameraId)?.code ?? null
 })
-
-const hasNode   = computed(() => props.nodeId !== null && props.nodeId !== '')
-const networks  = computed(() => wifiStore.networksOf(props.nodeId))
-const loadingNetworks = computed(() => hasNode.value && !!wifiStore.loading[props.nodeId as number])
 </script>
 
 <template>
@@ -88,22 +80,6 @@ const loadingNetworks = computed(() => hasNode.value && !!wifiStore.loading[prop
 
     <AdminField label="Rotación" hint="Grados en sentido horario para ver la foto derecha.">
       <AdminSegmented v-model="form.rotation" :options="ROTATION_OPTIONS" label="Rotación de la foto" />
-    </AdminField>
-
-    <AdminField
-      v-slot="{ id }"
-      label="Red WiFi"
-      optional
-      :hint="hasNode ? 'Sin red, la cámara conserva la WiFi que ya tiene.' : 'Elige antes el nodo Fog de la cámara.'"
-    >
-      <NativeSelect :id="id" v-model="form.wifiNetworkId" :disabled="!hasNode || loadingNetworks">
-        <NativeSelectOption value="">Sin red (conserva su WiFi actual)</NativeSelectOption>
-        <NativeSelectOption v-for="n in networks" :key="n.id" :value="n.id">{{ n.ssid }}</NativeSelectOption>
-      </NativeSelect>
-      <p v-if="hasNode && !loadingNetworks && networks.length === 0" class="text-[11px] text-muted-foreground">
-        Este nodo no tiene redes. Añádelas en
-        <RouterLink to="/admin/nodes" class="font-semibold text-link underline-offset-4 hover:underline">Nodos</RouterLink>.
-      </p>
     </AdminField>
 
     <details class="rounded-lg border px-3 py-2" :open="showErrors && !!(errors.intervalSec || errors.jpegQuality)">

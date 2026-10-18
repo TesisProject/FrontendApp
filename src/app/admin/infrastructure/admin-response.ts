@@ -42,7 +42,6 @@ export interface AdminCameraResponse {
   /** MAC STA `AA:BB:CC:DD:EE:FF`; `null` en cámaras anteriores a la MAC obligatoria. */
   mac:                     string | null
   rotation:                number
-  wifiNetworkId:           number | null
   capture:                 CaptureSettingsDto
   enrollmentGeneration:    number
   targetFirmwareVersion:   number | null
@@ -64,19 +63,17 @@ export interface AdminCameraCreateRequest {
   location?:      string
   mac:            string
   rotation?:      number
-  wifiNetworkId?: number
   capture?:       CaptureSettingsDto
 }
 
 /**
- * UpdateCameraDeviceSettingsRequest — reemplaza los cuatro datos. `mac` solo puede ser `null` si la
- * cámara aún no tiene; `wifiNetworkId: null` quita la red (la placa conserva la suya).
+ * UpdateCameraDeviceSettingsRequest — reemplaza los tres datos. `mac` solo puede ser `null` si la
+ * cámara aún no tiene. La WiFi no está aquí: se graba en cada placa por USB.
  */
 export interface AdminCameraDeviceSettingsRequest {
-  mac:           string | null
-  rotation:      number
-  wifiNetworkId: number | null
-  capture:       CaptureSettingsDto
+  mac:      string | null
+  rotation: number
+  capture:  CaptureSettingsDto
 }
 
 /** CameraConfigResource — solo lo que usa el panel: los espacios con ROI que cubre la cámara. */
@@ -173,29 +170,6 @@ export interface AdminApiKeyCreateRequest {
   role:       'FOG' | 'PREDICTION'
   nodeId?:    number
   expiresAt?: string
-}
-
-/** WifiNetworkResource — /occupancy/nodes/{nodeId}/wifi-networks. Nunca trae la contraseña. */
-export interface WifiNetworkResponse {
-  id:                number
-  nodeId:            number
-  ssid:              string
-  cameraCount:       number
-  passwordUpdatedAt: string | null
-  createdAt:         string
-  updatedAt:         string
-}
-
-/** CreateWifiNetworkRequest — los dos obligatorios (no hay redes abiertas). */
-export interface WifiNetworkCreateRequest {
-  ssid:     string
-  password: string
-}
-
-/** UpdateWifiNetworkRequest — `password: null` conserva la actual (nunca `""`: daría 400). */
-export interface WifiNetworkUpdateRequest {
-  ssid:     string
-  password: string | null
 }
 
 /**

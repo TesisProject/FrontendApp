@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAdminNodesStore } from '../../application/admin-nodes.store'
 import type { AdminNode, AdminNodeForm } from '../../domain/model/admin-node.model'
-import { Plus, Wifi } from '@lucide/vue'
+import { Plus } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/app/shared/presentation/components/ui/button'
 import { Badge } from '@/app/shared/presentation/components/ui/badge'
@@ -18,25 +18,9 @@ import AdminSearch from '../components/AdminSearch.vue'
 import AdminStateBox from '../components/AdminStateBox.vue'
 import AdminTableCard from '../components/AdminTableCard.vue'
 import AdminField from '../components/AdminField.vue'
-import WifiNetworksDialog from '../components/WifiNetworksDialog.vue'
-import { useAdminWifiNetworksStore } from '../../application/admin-wifi-networks.store'
 
-const store     = useAdminNodesStore()
-const wifiStore = useAdminWifiNetworksStore()
-const search    = ref('')
-
-const wifiNode = ref<AdminNode | null>(null)
-const showWifi = ref(false)
-
-function openWifi(node: AdminNode) {
-  wifiNode.value = node
-  showWifi.value = true
-}
-
-/** Nº de redes del nodo, o "—" mientras no se han cargado. */
-function networkCount(nodeId: number): string {
-  return wifiStore.byNode[nodeId] ? String(wifiStore.byNode[nodeId].length) : '—'
-}
+const store  = useAdminNodesStore()
+const search = ref('')
 
 const filtered = computed(() =>
   store.nodes.filter(n =>
@@ -93,7 +77,7 @@ function openDelete(id: number) {
   confirmId.value = id
 }
 
-// Si falla (p. ej. 409 NODE_HAS_WIFI_NETWORKS), el diálogo sigue abierto con el motivo.
+// Si falla, el diálogo sigue abierto con el motivo.
 async function handleDelete(id: number) {
   if (await store.deleteNode(id)) {
     confirmId.value = null
@@ -103,9 +87,8 @@ async function handleDelete(id: number) {
   }
 }
 
-onMounted(async () => {
-  await store.fetchNodes()
-  await wifiStore.ensureNetworks(store.nodes.map(n => n.id))
+onMounted(() => {
+  void store.fetchNodes()
 })
 </script>
 
@@ -122,7 +105,7 @@ onMounted(async () => {
 
     <AdminTableCard
       v-else
-      :columns="['Código', 'Nombre', 'Ubicación', 'Redes WiFi', 'Estado', 'Acciones']"
+      :columns="['Código', 'Nombre', 'Ubicación', 'Estado', 'Acciones']"
       :empty="filtered.length === 0"
       :empty-text="store.nodes.length === 0 ? 'No hay nodos registrados' : 'No se encontraron nodos'"
     >
@@ -130,7 +113,6 @@ onMounted(async () => {
         <TableCell class="font-mono text-xs font-semibold text-navy">{{ n.code }}</TableCell>
         <TableCell class="font-semibold text-navy">{{ n.name }}</TableCell>
         <TableCell class="text-xs text-muted-foreground">{{ n.location || '—' }}</TableCell>
-        <TableCell>{{ networkCount(n.id) }}</TableCell>
         <TableCell>
           <Badge :variant="n.active ? 'success' : 'neutral'" size="status">
             {{ n.active ? 'Activo' : 'Inactivo' }}
@@ -138,7 +120,6 @@ onMounted(async () => {
         </TableCell>
         <TableCell>
           <div class="flex flex-wrap gap-1.5">
-            <Button size="sm" variant="outline-primary" @click="openWifi(n)"><Wifi /> Redes WiFi</Button>
             <Button size="sm" variant="outline-primary" @click="openEdit(n)">Editar</Button>
             <Button size="sm" variant="outline-destructive" @click="openDelete(n.id)">Eliminar</Button>
           </div>
@@ -155,10 +136,9 @@ onMounted(async () => {
       @cancel="confirmId = null"
       @confirm="handleDelete(confirmId!)"
     >
-      ¿Eliminar este nodo? Las cámaras asignadas quedarán sin nodo. Si aún tiene redes WiFi, bórralas antes.
+      ¿Eliminar este nodo? Antes, pasa sus cámaras a otro nodo y revoca sus API keys: la nube no las
+      desvincula al borrarlo.
     </ConfirmDialog>
-
-    <WifiNetworksDialog v-model:open="showWifi" :node="wifiNode" />
 
     <Dialog v-model:open="showModal">
       <DialogContent>

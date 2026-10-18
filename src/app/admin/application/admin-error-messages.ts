@@ -12,21 +12,11 @@ const MESSAGES: Record<string, string> = {
   INVALID_ROTATION:                  'La rotación debe ser 0°, 90°, 180° o 270°',
   INVALID_CAPTURE_SETTINGS:          'Parámetros de captura fuera de rango',
   CAMERA_ZONE_NOT_FOUND:             'La zona elegida ya no existe. Recarga la página',
-  WIFI_NETWORK_NOT_IN_CAMERA_NODE:   'La red WiFi elegida no pertenece al nodo de la cámara',
   CAMERA_HAS_MONITORED_SPACES:       'La cámara aún cubre espacios monitoreados: reasígnalos a otra cámara o quítales el ROI primero',
-  CAMERA_WIFI_NETWORK_IN_OTHER_NODE: 'La cámara usa una red WiFi de su nodo actual. Quítale la red antes de cambiarla de nodo',
   CAMERA_NOT_FOUND:                  'La cámara ya no existe. Recarga la página',
 
-  // Nodos y redes WiFi
+  // Nodos
   NODE_NOT_FOUND:                    'El nodo ya no existe. Recarga la página',
-  NODE_HAS_WIFI_NETWORKS:            'Este nodo aún tiene redes WiFi. Bórralas antes en «Redes WiFi»',
-  WIFI_NETWORK_NOT_FOUND:            'La red ya no existe. Recarga la página',
-  INVALID_WIFI_SSID:                 'El SSID no puede estar vacío ni ocupar más de 32 bytes (las tildes y la ñ cuentan doble)',
-  INVALID_WIFI_PASSWORD:             'La contraseña debe tener de 8 a 63 caracteres sin tildes ni ñ, o ser una clave de 64 dígitos hexadecimales. No se admiten redes abiertas',
-  WIFI_NETWORK_SSID_ALREADY_EXISTS:  'Este nodo ya tiene una red con ese SSID',
-  WIFI_NETWORK_IN_USE:               'La usan cámaras de este nodo: asígnales otra red antes de borrarla',
-  WIFI_SECRETS_UNAVAILABLE:          'El servidor no tiene configurada la clave de cifrado de contraseñas WiFi. Avisa al responsable del backend (WIFI_SECRETS_ENCRYPTION_KEY)',
-  WIFI_SECRETS_KEY_MISMATCH:         'La contraseña guardada de esta red no se puede descifrar con la clave actual del servidor. Vuelve a escribirla',
 
   // Firmware
   FIRMWARE_RELEASE_NOT_FOUND_FOR_ASSIGNMENT: 'Esa versión no está publicada. Recarga la lista de versiones',

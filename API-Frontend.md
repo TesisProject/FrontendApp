@@ -162,8 +162,8 @@ Registro, login, usuarios, roles, permisos, perfil, preferencias, favoritos, rat
 }
 ```
 
-Una key `FOG` solo puede leer y escribir los datos de su nodo (incluida la configuración con las
-contraseñas WiFi). Errores: `400 VALIDATION_ERROR` (sin `name`), `400 API_KEY_NODE_REQUIRED` (FOG
+Una key `FOG` solo puede leer y escribir los datos de su nodo (configuración, eventos, fotos y
+firmware de sus cámaras). Errores: `400 VALIDATION_ERROR` (sin `name`), `400 API_KEY_NODE_REQUIRED` (FOG
 sin `nodeId`), `400 API_KEY_NODE_NOT_FOUND` (nodo inexistente), `400 API_KEY_NODE_NOT_ALLOWED`
 (PREDICTION con `nodeId`).
 
@@ -2292,17 +2292,12 @@ Cámaras, nodos Fog, ROI de espacios, disponibilidad e historial de ocupación.
 | `GET` | `/api/v1/occupancy/cameras/{cameraId}` | ADMIN · OPERATOR | Obtener una cámara por su id |
 | `PUT` | `/api/v1/occupancy/cameras/{cameraId}` | ADMIN · OPERATOR | Actualizar una cámara (reasignar zona, datos o habilitación) |
 | `DELETE` | `/api/v1/occupancy/cameras/{cameraId}` | ADMIN · OPERATOR | Eliminar una cámara |
-| `PUT` | `/api/v1/occupancy/cameras/{cameraId}/device-settings` | ADMIN · OPERATOR | Configurar el dispositivo: MAC, rotación, red WiFi y captura ([detalle](#config-dispositivos)) |
+| `PUT` | `/api/v1/occupancy/cameras/{cameraId}/device-settings` | ADMIN · OPERATOR | Configurar el dispositivo: MAC, rotación y captura ([detalle](#config-dispositivos)) |
 | `DELETE` | `/api/v1/occupancy/cameras/{cameraId}/enrollment` | ADMIN · OPERATOR | Reiniciar el alta de la cámara en el Fog |
 | `GET` | `/api/v1/occupancy/cameras/{cameraId}/firmware` | ADMIN · OPERATOR | Firmware de la cámara: versión asignada, informada y estado |
 | `PUT` | `/api/v1/occupancy/cameras/{cameraId}/firmware/target` | ADMIN · OPERATOR | Asignar la versión de firmware que debe instalar (no se baja de versión) |
 | `DELETE` | `/api/v1/occupancy/cameras/{cameraId}/firmware/target` | ADMIN · OPERATOR | Quitar la versión asignada |
 | `GET` | `/api/v1/occupancy/cameras/{cameraId}/firmware/download` | FOG · ADMIN | URL de descarga del firmware asignado (para el Fog; el frontend no la usa) |
-| `GET` | `/api/v1/occupancy/nodes/{nodeId}/wifi-networks` | ADMIN · OPERATOR | Listar las redes WiFi del nodo (sin contraseñas) |
-| `GET` | `/api/v1/occupancy/nodes/{nodeId}/wifi-networks/{networkId}` | ADMIN · OPERATOR | Obtener una red WiFi del nodo |
-| `POST` | `/api/v1/occupancy/nodes/{nodeId}/wifi-networks` | ADMIN | Dar de alta una red WiFi en el nodo |
-| `PUT` | `/api/v1/occupancy/nodes/{nodeId}/wifi-networks/{networkId}` | ADMIN | Editar una red WiFi (`password: null` la conserva) |
-| `DELETE` | `/api/v1/occupancy/nodes/{nodeId}/wifi-networks/{networkId}` | ADMIN | Borrar una red WiFi (409 si alguna cámara la usa) |
 | `GET` | `/api/v1/occupancy/firmware-releases` | ADMIN · OPERATOR | Listar las versiones de firmware (de mayor a menor) |
 | `GET` | `/api/v1/occupancy/firmware-releases/{version}` | ADMIN · OPERATOR | Obtener una versión de firmware |
 | `POST` | `/api/v1/occupancy/firmware-releases` | ADMIN | Publicar una versión de firmware (multipart) |
@@ -2341,7 +2336,6 @@ Cámaras, nodos Fog, ROI de espacios, disponibilidad e historial de ocupación.
 | `name` | string (≤ 200) | no |
 | `location` | string (≤ 300) | no |
 | `rotation` | 0 \| 90 \| 180 \| 270 | no (0) |
-| `wifiNetworkId` | integer (int64) | no — red del nodo de la cámara |
 | `capture` | [`CaptureSettings`](#config-dispositivos) | no (300 s · SVGA · 12) |
 
 
@@ -2353,7 +2347,6 @@ Cámaras, nodos Fog, ROI de espacios, disponibilidad e historial de ocupación.
   "location": "Poste central",
   "mac": "24:6F:28:AB:CD:EF",
   "rotation": 0,
-  "wifiNetworkId": 3,
   "capture": { "intervalSec": 300, "framesize": "SVGA", "jpegQuality": 12 }
 }
 ```
@@ -2362,7 +2355,7 @@ Cámaras, nodos Fog, ROI de espacios, disponibilidad e historial de ocupación.
 
 Errores: `400 VALIDATION_ERROR`, `400 CAMERA_MAC_REQUIRED`, `400 INVALID_MAC_ADDRESS`,
 `400 INVALID_ROTATION`, `400 INVALID_CAPTURE_SETTINGS`, `400 CAMERA_ZONE_NOT_FOUND`,
-`400 WIFI_NETWORK_NOT_IN_CAMERA_NODE`, `409 CAMERA_MAC_ALREADY_REGISTERED`.
+`409 CAMERA_MAC_ALREADY_REGISTERED`.
 
 <a name="config-dispositivos"></a>
 
@@ -2371,6 +2364,11 @@ Errores: `400 VALIDATION_ERROR`, `400 CAMERA_MAC_REQUIRED`, `400 INVALID_MAC_ADD
 La nube es la dueña de la configuración de las ESP32-CAM; el Fog la descarga en su sincronización y
 cada placa la lee del Fog. Plan y mensajes de error en español: `docs/plan-config-dispositivos.md`.
 
+*Actualizado 2026-10-18:* **la nube ya no gestiona la WiFi** (`cloud-service` `2d9d0ff`). La WiFi y el
+host del Fog se graban en cada placa por USB y nunca viajan por red. Se borraron los
+endpoints `/nodes/{nodeId}/wifi-networks`, el campo `wifiNetworkId` de cámaras y `device-settings`, y
+los errores `WIFI_*`, `NODE_HAS_WIFI_NETWORKS` y `CAMERA_WIFI_NETWORK_IN_OTHER_NODE`.
+
 **`CameraResource`** (respuesta de `GET/POST/PUT /cameras…` y de `device-settings`):
 
 | Campo | Tipo | Nota |
@@ -2378,24 +2376,19 @@ cada placa la lee del Fog. Plan y mensajes de error en español: `docs/plan-conf
 | `id`, `code`, `nodeId`, `zoneId`, `name`, `location`, `active` | | como antes |
 | `mac` | string \| null | `AA:BB:CC:DD:EE:FF`; `null` en cámaras anteriores a la MAC obligatoria |
 | `rotation` | 0 \| 90 \| 180 \| 270 | giro que el Fog aplica a la foto; el ROI va en coordenadas de la foto ya girada |
-| `wifiNetworkId` | int64 \| null | `null` = la cámara conserva la WiFi que tenga |
 | `capture` | `{ intervalSec: 30–3600, framesize: QVGA\|VGA\|SVGA\|XGA, jpegQuality: 10–63 }` | |
 | `enrollmentGeneration` | int | sube con cada reinicio de alta |
 | `targetFirmwareVersion` / `reportedFirmwareVersion` | int \| null | asignada / informada |
 | `firmwareReportedAt` | date-time \| null | |
 | `firmwareStatus` | `NOT_MANAGED` \| `UNKNOWN` \| `UP_TO_DATE` \| `PENDING` \| `BEHIND` \| `AHEAD` | |
 
-**`PUT /cameras/{cameraId}/device-settings`** — reemplaza los cuatro datos:
-`{ "mac": "…", "rotation": 90, "wifiNetworkId": null, "capture": {…} }`. `rotation` y `capture`
+**`PUT /cameras/{cameraId}/device-settings`** — reemplaza los tres datos:
+`{ "mac": "…", "rotation": 90, "capture": {…} }`. `rotation` y `capture`
 obligatorios; `mac` obligatoria si la cámara ya tiene una (se puede cambiar, no quitar; vacía se
 envía `null`). Cambiar una MAC existente **reinicia el alta** (`enrollmentGeneration + 1`); la primera
-MAC de una cámara antigua no. `wifiNetworkId` tiene que ser una red del nodo de la cámara. Cambiar la
-rotación descuadra el ROI ya dibujado. Errores: `400 CAMERA_MAC_REQUIRED`, `INVALID_MAC_ADDRESS`,
-`INVALID_ROTATION`, `INVALID_CAPTURE_SETTINGS`, `WIFI_NETWORK_NOT_IN_CAMERA_NODE`;
+MAC de una cámara antigua no. Cambiar la rotación descuadra el ROI ya dibujado. Errores:
+`400 CAMERA_MAC_REQUIRED`, `INVALID_MAC_ADDRESS`, `INVALID_ROTATION`, `INVALID_CAPTURE_SETTINGS`;
 `409 CAMERA_MAC_ALREADY_REGISTERED`.
-
-**`PUT /cameras/{cameraId}`** — sin cambios de forma; nuevo `409 CAMERA_WIFI_NETWORK_IN_OTHER_NODE`
-si se cambia el nodo de una cámara que tiene red asignada (quitarla antes con `device-settings`).
 
 **`DELETE /cameras/{cameraId}/enrollment`** → `204`. El Fog revoca la credencial de la placa y
 vuelve a admitir su alta por MAC. Solo si la placa ya lleva el firmware con alta por MAC; con el
@@ -2407,14 +2400,6 @@ devuelven `CameraFirmwareResource` (`cameraId`, `code`, `targetFirmwareVersion`,
 `CameraResource`. `PUT` da `409 FIRMWARE_DOWNGRADE_NOT_ALLOWED` si la versión es menor que la
 asignada **o** que la informada, y `400 FIRMWARE_RELEASE_NOT_FOUND_FOR_ASSIGNMENT` si no existe; la
 misma versión no cambia nada. `DELETE …/firmware/target` → `204` (no desinstala nada).
-
-**Redes WiFi** — `WifiNetworkResource`: `id`, `nodeId`, `ssid`, `cameraCount`, `passwordUpdatedAt`,
-`createdAt`, `updatedAt`; **nunca** la contraseña. `POST { ssid, password }`, `PUT { ssid, password }`
-con `password: null` para conservarla (`""` da 400). SSID ≤ 32 bytes UTF-8; contraseña WPA2 de 8–63
-caracteres ASCII imprimibles o 64 hex; sin redes abiertas. Errores: `400 INVALID_WIFI_SSID`,
-`INVALID_WIFI_PASSWORD`; `404 NODE_NOT_FOUND`, `WIFI_NETWORK_NOT_FOUND`;
-`409 WIFI_NETWORK_SSID_ALREADY_EXISTS`, `WIFI_NETWORK_IN_USE`; `503 WIFI_SECRETS_UNAVAILABLE`,
-`WIFI_SECRETS_KEY_MISMATCH`. Borrar un nodo con redes: `409 NODE_HAS_WIFI_NETWORKS`.
 
 **Versiones de firmware** — `FirmwareReleaseResource`: `id`, `version`, `hardware`
 (`esp32cam-aithinker`), `size`, `sha256`, `signature`, `signingKeyId`, `notes`, `createdAt`. El path
