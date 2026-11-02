@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Check, Info, X } from '@lucide/vue'
 import { Input } from '@/app/shared/presentation/components/ui/input'
+import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
 import SectionCard from '../../../shared/presentation/components/SectionCard.vue'
 import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
 import OccupancyMeter from './OccupancyMeter.vue'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { predictionApi } from '../../../predictions/infrastructure/prediction-api'
 import { toForecast, toForecastSnapshot, toModelMetrics } from '../../../predictions/infrastructure/prediction-assembler'
 import type { DayOfWeek, ZoneForecast, ZoneForecastSnapshot, ZoneModelMetrics } from '../../../predictions/domain/model/prediction.model'
@@ -18,7 +19,7 @@ const props = defineProps<{
   historyUnavailable?: boolean
 }>()
 
-// Una predicción "acierta" si la disponibilidad real de esa hora quedó dentro de este margen (puntos %).
+// Una predicción "acierta" si la disponibilidad real de esa franja quedó dentro de este margen (puntos %).
 const HIT_TOLERANCE_PCT = 20
 // El historial real del backend cubre 30 días (hoy incluido).
 const HISTORY_DAYS = 30
@@ -33,7 +34,40 @@ const history = ref<ZoneForecastSnapshot[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-const currentHour = new Date().getHours()
+const now = new Date()
+const nowMinute = now.getHours() * 60 + now.getMinutes()
+
+/**
+ * Tamaño de cada fila. El modelo predice en ventanas de 15 min (o 30, según el backend); las franjas más
+ * largas promedian varias ventanas. No se ofrecen franjas más cortas que la ventana del modelo.
+ */
+type Granularity = '15' | '30' | '60'
+const GRANULARITY_OPTIONS: { value: Granularity; label: string }[] = [
+  { value: '15', label: '15 min' },
+  { value: '30', label: '30 min' },
+  { value: '60', label: '1 hora' },
+]
+const granularity = ref<Granularity>('30')
+
+const modelWindow = computed(
+  () => forecasts.value[0]?.windowSizeMinutes ?? history.value[0]?.windowSizeMinutes ?? 15,
+)
+const granularityOptions = computed(() =>
+  GRANULARITY_OPTIONS.filter(o => Number(o.value) % modelWindow.value === 0),
+)
+const bucketMinutes = computed(() => Math.max(Number(granularity.value), modelWindow.value))
+const bucketOf = (minuteOfDay: number) => Math.floor(minuteOfDay / bucketMinutes.value) * bucketMinutes.value
+const minuteOf = (d: Date) => d.getHours() * 60 + d.getMinutes()
+const currentBucket = computed(() => bucketOf(nowMinute))
+
+/** "08:30" para el minuto 510 del día. */
+function formatMinute(minuteOfDay: number): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(Math.floor(minuteOfDay / 60))}:${pad(minuteOfDay % 60)}`
+}
+
+const bucketSub = computed(() => (bucketMinutes.value >= 60 ? 'por hora' : `cada ${bucketMinutes.value} min`))
+const bucketUnit = computed(() => (bucketMinutes.value >= 60 ? 'horas' : `franjas de ${bucketMinutes.value} min`))
 
 /** Fecha local en formato YYYY-MM-DD (el que usa <input type="date">). */
 function toIsoDate(d: Date): string {
@@ -63,27 +97,27 @@ function onDateChange(e: Event) {
   selectedDate.value = value >= earliestDate && value <= maxDate ? value : todayIso
 }
 
-interface ActualHour {
+interface ActualReading {
   pct: number
   free: number
   occupied: number
   total: number
 }
 
-/** Lectura real por hora del día elegido, promediando los frames de las cámaras. */
-const actualByHour = computed(() => {
+/** Lectura real por franja del día elegido (clave: minuto de inicio), promediando los frames de las cámaras. */
+const actualByBucket = computed(() => {
   const acc = new Map<number, { occupied: number; total: number }[]>()
   for (const p of props.history) {
     const at = new Date(p.occurredAt)
     if (toIsoDate(at) !== selectedDate.value || p.totalSpots <= 0) continue
-    const hour = at.getHours()
-    acc.set(hour, [...(acc.get(hour) ?? []), { occupied: p.occupiedSpots, total: p.totalSpots }])
+    const bucket = bucketOf(minuteOf(at))
+    acc.set(bucket, [...(acc.get(bucket) ?? []), { occupied: p.occupiedSpots, total: p.totalSpots }])
   }
-  const result = new Map<number, ActualHour>()
-  for (const [hour, frames] of acc) {
+  const result = new Map<number, ActualReading>()
+  for (const [bucket, frames] of acc) {
     const total = Math.max(...frames.map(f => f.total))
     const occupied = Math.min(total, Math.round(frames.reduce((s, f) => s + f.occupied, 0) / frames.length))
-    result.set(hour, { pct: Math.round(((total - occupied) / total) * 100), free: total - occupied, occupied, total })
+    result.set(bucket, { pct: Math.round(((total - occupied) / total) * 100), free: total - occupied, occupied, total })
   }
   return result
 })
@@ -113,53 +147,69 @@ watch(
 
 const modelVersion = computed(() => forecasts.value[0]?.modelVersion ?? null)
 
+/** La franja ya terminó, así que puede compararse con lo que vieron las cámaras. */
+const isElapsed = (start: number) => isPast.value || (isToday.value && start + bucketMinutes.value <= nowMinute)
+
 /**
- * Probabilidades por hora del día elegido, promediando sus ventanas de 15/30 min. Un día pasado sale del
- * historial (lo que se predijo antes de que ocurriera); hoy y los días por venir, del pronóstico semanal,
- * que el modelo no reescribe para las ventanas de hoy que ya empezaron.
+ * Probabilidades por franja del día elegido, promediando las ventanas del modelo que caen en cada una. Un
+ * día pasado sale del historial (lo que se predijo antes de que ocurriera); hoy y los días por venir, del
+ * pronóstico semanal, que el modelo no reescribe para las ventanas de hoy que ya empezaron.
  */
 const rows = computed(() => {
-  const byHour = new Map<number, number[]>()
-  // Espacios de la zona según el propio pronóstico: permite mostrar la predicción antes de que pase la hora.
-  const totalByHour = new Map<number, number>()
-  const add = (hour: number, probability: number, total: number) => {
-    byHour.set(hour, [...(byHour.get(hour) ?? []), probability])
-    totalByHour.set(hour, Math.max(totalByHour.get(hour) ?? 0, total))
+  const byBucket = new Map<number, number[]>()
+  // Espacios de la zona según el propio pronóstico: permite mostrar la predicción antes de que pase la franja.
+  const totalByBucket = new Map<number, number>()
+  const add = (minuteOfDay: number, probability: number, total: number) => {
+    const bucket = bucketOf(minuteOfDay)
+    byBucket.set(bucket, [...(byBucket.get(bucket) ?? []), probability])
+    totalByBucket.set(bucket, Math.max(totalByBucket.get(bucket) ?? 0, total))
   }
   if (isPast.value) {
     for (const s of history.value) {
       const start = new Date(s.windowStart)
-      if (toIsoDate(start) === selectedDate.value) add(start.getHours(), s.availabilityProbability, s.totalSpots)
+      if (toIsoDate(start) === selectedDate.value) add(minuteOf(start), s.availabilityProbability, s.totalSpots)
     }
   } else {
     for (const f of forecasts.value) {
-      if (f.dayOfWeek === selectedDay.value) {
-        add(Math.floor(f.startMinuteOfDay / 60), f.availabilityProbability, f.totalSpots)
-      }
+      if (f.dayOfWeek === selectedDay.value) add(f.startMinuteOfDay, f.availabilityProbability, f.totalSpots)
     }
   }
-  return [...byHour.entries()]
+  return [...byBucket.entries()]
     .sort(([a], [b]) => a - b)
-    .map(([hour, probs]) => {
+    .map(([start, probs]) => {
       const pct = Math.round((probs.reduce((s, p) => s + p, 0) / probs.length) * 100)
-      // Solo se evalúan horas ya terminadas y con lecturas reales.
-      const elapsed = isPast.value || (isToday.value && hour < currentHour)
-      const actual = elapsed ? actualByHour.value.get(hour) : undefined
+      // Solo se evalúan franjas ya terminadas y con lecturas reales.
+      const actual = isElapsed(start) ? actualByBucket.value.get(start) : undefined
       const verdict = actual === undefined ? null : Math.abs(pct - actual.pct) <= HIT_TOLERANCE_PCT ? 'hit' : 'miss'
       // Espacios libres/ocupados que implica el porcentaje predicho, sobre el total de la zona. Si el
-      // pronóstico no trae el total, se usa el de la lectura real de esa hora.
-      const total = totalByHour.get(hour) || actual?.total || 0
+      // pronóstico no trae el total, se usa el de la lectura real de esa franja.
+      const total = totalByBucket.get(start) || actual?.total || 0
       const predictedFree = Math.round((pct / 100) * total)
       const predicted = total > 0 ? { free: predictedFree, occupied: total - predictedFree } : null
-      return { hour, label: `${String(hour).padStart(2, '0')}:00`, pct, actual, predicted, verdict }
+      return { start, label: formatMinute(start), pct, actual, predicted, verdict }
     })
 })
 
 const showComparison = computed(() => (isPast.value || isToday.value) && !props.historyUnavailable)
 
-/** Hay horas que ya pasaron y que, por tanto, deberían poder compararse con la realidad. */
-const hasElapsedHours = computed(() =>
-  !props.historyUnavailable && rows.value.some(r => isPast.value || (isToday.value && r.hour < currentHour)),
+/** Hay franjas que ya pasaron y que, por tanto, deberían poder compararse con la realidad. */
+const hasElapsedBuckets = computed(() => !props.historyUnavailable && rows.value.some(r => isElapsed(r.start)))
+
+const isCurrentRow = (start: number) => isToday.value && start === currentBucket.value
+
+// Con franjas cortas el día tiene hasta 96 filas: la lista va en su propio scroll y, hoy, arranca en la
+// franja actual en vez de en la madrugada.
+const scrollBox = ref<HTMLElement | null>(null)
+watch(
+  [rows, bucketMinutes, selectedDate],
+  async () => {
+    await nextTick()
+    const box = scrollBox.value
+    if (!box) return
+    const current = box.querySelector<HTMLElement>('[aria-current="time"]')
+    box.scrollTop = current ? Math.max(0, current.offsetTop - box.clientHeight / 3) : 0
+  },
+  { flush: 'post' },
 )
 
 const evaluation = computed(() => {
@@ -213,17 +263,26 @@ watch(
 </script>
 
 <template>
-  <SectionCard title="Predicciones" :sub="`Probabilidad de espacios disponibles por hora (${dateLabel})`">
+  <SectionCard title="Predicciones" :sub="`Probabilidad de espacios disponibles ${bucketSub} (${dateLabel})`">
     <template #actions>
-      <Input
-        type="date"
-        :model-value="selectedDate"
-        :min="earliestDate"
-        :max="maxDate"
-        aria-label="Fecha de la predicción"
-        class="h-8 w-auto cursor-pointer px-2.5 text-[13px] text-heading"
-        @change="onDateChange"
-      />
+      <div class="flex flex-wrap items-center gap-2">
+        <FilterPills
+          v-if="granularityOptions.length > 1"
+          v-model="granularity"
+          :options="granularityOptions"
+          label="Intervalo de la predicción"
+          size="sm"
+        />
+        <Input
+          type="date"
+          :model-value="selectedDate"
+          :min="earliestDate"
+          :max="maxDate"
+          aria-label="Fecha de la predicción"
+          class="h-8 w-auto cursor-pointer px-2.5 text-[13px] text-heading"
+          @change="onDateChange"
+        />
+      </div>
     </template>
 
     <StateMessage v-if="loading" compact>Cargando predicciones...</StateMessage>
@@ -235,15 +294,15 @@ watch(
 
     <template v-else>
       <p v-if="evaluation.total > 0" class="mb-2.5 text-xs text-muted-foreground">
-        Acertó en <strong class="text-heading">{{ evaluation.hits }} de {{ evaluation.total }}</strong> horas con lectura real
+        Acertó en <strong class="text-heading">{{ evaluation.hits }} de {{ evaluation.total }}</strong> {{ bucketUnit }} con lectura real
         <span class="opacity-70">· margen ±{{ HIT_TOLERANCE_PCT }} pts</span>
       </p>
-      <p v-else-if="hasElapsedHours" class="mb-2.5 text-xs text-muted-foreground">
-        Sin lecturas de las cámaras para {{ isToday ? 'las horas ya transcurridas' : 'este día' }}:
+      <p v-else-if="hasElapsedBuckets" class="mb-2.5 text-xs text-muted-foreground">
+        Sin lecturas de las cámaras para {{ isToday ? `las ${bucketUnit} ya transcurridas` : 'este día' }}:
         no se puede comprobar si la predicción acertó.
       </p>
 
-      <div role="table" aria-label="Predicción por hora">
+      <div role="table" :aria-label="`Predicción ${bucketSub}`">
         <div :class="[rowGrid, 'pt-0 pb-1.5 text-[10.5px] font-semibold tracking-[0.4px] text-muted-foreground uppercase']" role="row">
           <span role="columnheader">Hora</span>
           <span role="columnheader">Disponibilidad</span>
@@ -257,52 +316,59 @@ watch(
         </div>
 
         <div
-          v-for="row in rows"
-          :key="row.hour"
-          :class="[rowGrid, 'border-b border-border/50 last:border-b-0', isToday && row.hour === currentHour && 'rounded-md bg-muted']"
-          role="row"
-          :aria-current="isToday && row.hour === currentHour ? 'time' : undefined"
+          ref="scrollBox"
+          class="relative"
+          :class="bucketMinutes < 60 && 'max-h-[26rem] overflow-y-auto overscroll-contain'"
+          role="rowgroup"
         >
-          <span class="text-[12.5px] font-semibold text-heading tabular-nums" role="cell">{{ row.label }}</span>
-          <span role="cell"><OccupancyMeter :percentage="row.pct" :color="barColor(row.pct)" class="h-2" /></span>
-          <span class="text-right text-xs font-bold text-heading tabular-nums" role="cell">{{ row.pct }}%</span>
-
-          <!-- Escritorio: columnas de la fila. Móvil: segunda línea bajo la barra. -->
-          <span
-            :class="[
-              'md:contents max-md:col-start-2 max-md:row-start-2 max-md:flex max-md:min-w-0 max-md:flex-wrap max-md:gap-x-4',
-              showComparison ? 'max-md:col-span-3' : 'max-md:col-span-2',
-              !row.predicted && !row.actual && 'max-md:hidden',
-            ]"
-            role="none"
+          <div
+            v-for="row in rows"
+            :key="row.start"
+            :class="[rowGrid, 'border-b border-border/50 last:border-b-0', isCurrentRow(row.start) && 'rounded-md bg-muted']"
+            role="row"
+            :aria-current="isCurrentRow(row.start) ? 'time' : undefined"
           >
-            <span class="text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
-              <template v-if="row.predicted">
-                <span class="md:hidden">Predicción: </span>
-                {{ plural(row.predicted.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}</span>
-              </template>
-            </span>
-            <span v-if="showComparison" class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
-              <template v-if="row.actual">
-                <span class="text-muted-foreground md:hidden">Real: </span>
-                {{ plural(row.actual.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}</span>
-              </template>
-            </span>
-          </span>
-          <template v-if="showComparison">
+            <span class="text-[12.5px] font-semibold text-heading tabular-nums" role="cell">{{ row.label }}</span>
+            <span role="cell"><OccupancyMeter :percentage="row.pct" :color="barColor(row.pct)" class="h-2" /></span>
+            <span class="text-right text-xs font-bold text-heading tabular-nums" role="cell">{{ row.pct }}%</span>
+  
+            <!-- Escritorio: columnas de la fila. Móvil: segunda línea bajo la barra. -->
             <span
-              v-if="row.verdict"
-              class="inline-flex size-[18px] items-center justify-center rounded-full max-md:col-start-4 max-md:row-start-1"
-              :class="row.verdict === 'hit' ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
-              role="img"
-              :aria-label="row.verdict === 'hit' ? 'Acertó' : 'Falló'"
-              :title="row.verdict === 'hit' ? 'La predicción acertó' : 'La predicción falló'"
+              :class="[
+                'md:contents max-md:col-start-2 max-md:row-start-2 max-md:flex max-md:min-w-0 max-md:flex-wrap max-md:gap-x-4',
+                showComparison ? 'max-md:col-span-3' : 'max-md:col-span-2',
+                !row.predicted && !row.actual && 'max-md:hidden',
+              ]"
+              role="none"
             >
-              <Check v-if="row.verdict === 'hit'" class="size-3" :stroke-width="3.5" />
-              <X v-else class="size-3" :stroke-width="3.5" />
+              <span class="text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
+                <template v-if="row.predicted">
+                  <span class="md:hidden">Predicción: </span>
+                  {{ plural(row.predicted.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}</span>
+                </template>
+              </span>
+              <span v-if="showComparison" class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
+                <template v-if="row.actual">
+                  <span class="text-muted-foreground md:hidden">Real: </span>
+                  {{ plural(row.actual.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}</span>
+                </template>
+              </span>
             </span>
-            <span v-else class="max-md:col-start-4 max-md:row-start-1" />
-          </template>
+            <template v-if="showComparison">
+              <span
+                v-if="row.verdict"
+                class="inline-flex size-[18px] items-center justify-center rounded-full max-md:col-start-4 max-md:row-start-1"
+                :class="row.verdict === 'hit' ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
+                role="img"
+                :aria-label="row.verdict === 'hit' ? 'Acertó' : 'Falló'"
+                :title="row.verdict === 'hit' ? 'La predicción acertó' : 'La predicción falló'"
+              >
+                <Check v-if="row.verdict === 'hit'" class="size-3" :stroke-width="3.5" />
+                <X v-else class="size-3" :stroke-width="3.5" />
+              </span>
+              <span v-else class="max-md:col-start-4 max-md:row-start-1" />
+            </template>
+          </div>
         </div>
       </div>
 
