@@ -51,6 +51,7 @@ const router = createRouter({
         { path: 'api-keys',  component: () => import('../app/admin/presentation/views/AdminApiKeysView.vue') },
         { path: 'users',     component: () => import('../app/admin/presentation/views/AdminUsersView.vue') },
         { path: 'profile',   component: () => import('../app/admin/presentation/views/AdminProfileView.vue') },
+        { path: 'alerts',    component: () => import('../app/notifications/presentation/views/AdminAlertsView.vue') },
       ],
     },
 
