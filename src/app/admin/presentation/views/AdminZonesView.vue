@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, markRaw } from 'vue'
+import { ref, computed, onMounted, markRaw, nextTick } from 'vue'
 import { useAdminZonesStore, ZONE_FIELD_LABELS } from '../../application/admin-zones.store'
 import type { FieldErrors } from '../../application/admin-field-errors'
 import type { ZoneDeletionImpactResponse } from '../../infrastructure/admin-response'
@@ -35,6 +35,9 @@ import AdminStateBox from '../components/AdminStateBox.vue'
 import AdminTableCard from '../components/AdminTableCard.vue'
 import AdminField from '../components/AdminField.vue'
 import OccupancyBar from '../components/OccupancyBar.vue'
+import AdminSectionNav, { type AdminSection } from '../components/AdminSectionNav.vue'
+import AdminFormSection from '../components/AdminFormSection.vue'
+import { useScrollSpy } from '../../../shared/presentation/composables/useScrollSpy'
 
 const store = useAdminZonesStore()
 const spacesStore = useAdminSpacesStore()
@@ -138,6 +141,52 @@ const formError = ref<string | null>(null)
 const fieldErrors = ref<FieldErrors>({})
 const photosSyncing = ref(false)
 const busy = computed(() => store.saving || photosSyncing.value)
+
+// Secciones del formulario: el índice lateral desplaza el contenido, no oculta secciones.
+const ZONE_SECTIONS = [
+  { id: 'general',  label: 'General',   hint: 'Nombre de la zona' },
+  { id: 'location', label: 'Ubicación', hint: 'Dirección y mapa' },
+  { id: 'capacity', label: 'Capacidad', hint: 'Espacios y aforo' },
+  { id: 'hours',    label: 'Horario',   hint: 'Días y horas de atención' },
+  { id: 'photos',   label: 'Fotos',     hint: 'Galería de la zona' },
+] as const satisfies readonly AdminSection[]
+type ZoneSectionId = (typeof ZONE_SECTIONS)[number]['id']
+
+/** Sección donde vive cada campo, para marcarla y llevar al usuario al primer error. */
+const FIELD_SECTION: Record<string, ZoneSectionId> = {
+  name:          'general',
+  street:        'location',
+  district:      'location',
+  city:          'location',
+  latitude:      'location',
+  longitude:     'location',
+  googlePlaceId: 'location',
+  totalSpaces:   'capacity',
+  totalCapacity: 'capacity',
+  openingHours:  'hours',
+}
+
+const formScrollEl = ref<HTMLElement | null>(null)
+const { active: activeSection, scrollTo: scrollToSection } = useScrollSpy(
+  formScrollEl,
+  ZONE_SECTIONS.map((s) => s.id),
+)
+
+const invalidSections = computed(
+  () => new Set(Object.keys(fieldErrors.value).map((field) => FIELD_SECTION[field])),
+)
+const sectionNav = computed<AdminSection[]>(() =>
+  ZONE_SECTIONS.map((s) => ({ ...s, invalid: invalidSections.value.has(s.id) })),
+)
+
+/** Lleva el contenido a la primera sección (en orden visual) que tenga errores. */
+async function revealFirstError() {
+  const first = ZONE_SECTIONS.find((s) => invalidSections.value.has(s.id))
+  if (!first) return
+  await nextTick()
+  scrollToSection(first.id)
+}
+
 const confirmId = ref<number | null>(null)
 /** Segunda confirmación (HU-22): la zona tiene datos asociados y estos son sus conteos. */
 const deleteImpact = ref<ZoneDeletionImpactResponse | null>(null)
@@ -347,6 +396,7 @@ async function handleSubmit() {
   const err = validate()
   if (err) {
     formError.value = err
+    revealFirstError()
     return
   }
 
@@ -358,6 +408,7 @@ async function handleSubmit() {
   if (!saved) {
     fieldErrors.value = store.fieldErrors
     formError.value = store.actionError
+    revealFirstError()
     toast.error(editing ? 'No se pudo actualizar la zona' : 'No se pudo crear la zona')
     return
   }
@@ -368,6 +419,7 @@ async function handleSubmit() {
   toast.success(editing ? 'Zona actualizada' : 'Zona creada')
   if (photoErrors.length) {
     formError.value = `La zona se guardó, pero hubo un problema con las fotos: ${photoErrors.join('. ')}`
+    scrollToSection('photos')
     return
   }
   closeModal()
@@ -485,131 +537,152 @@ onMounted(() => store.fetchZones())
 
     <!-- Create / Edit -->
     <Dialog v-model:open="showModal">
-      <DialogContent class="sm:max-w-[40rem]" @interact-outside="busy && $event.preventDefault()">
-        <DialogHeader>
+      <DialogContent
+        class="flex h-[min(48rem,calc(100dvh-2rem))] max-h-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[60rem]"
+        @interact-outside="busy && $event.preventDefault()"
+      >
+        <DialogHeader class="border-b px-7 pt-6 pb-4 pr-14">
           <DialogTitle>{{ editTarget ? 'Editar zona' : 'Nueva zona' }}</DialogTitle>
+          <DialogDescription>
+            {{ editTarget ? editTarget.name : 'Completa los datos de la nueva zona de estacionamiento.' }}
+          </DialogDescription>
         </DialogHeader>
 
-        <form class="grid gap-3.5" @submit.prevent="handleSubmit">
-          <AdminField v-slot="{ id }" label="Nombre de la zona" hint="Nombre interno con el que identificarás esta zona." :error="fieldErrors.name">
-            <Input :id="id" v-model="form.name" placeholder="Ej: Zona Norte, Zona Centro, Estacionamiento Sur" />
-          </AdminField>
+        <form class="flex min-h-0 flex-1 flex-col" novalidate @submit.prevent="handleSubmit">
+          <div class="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-1">
+            <AdminSectionNav
+              :sections="sectionNav"
+              :active="activeSection"
+              label="Secciones de la zona"
+              class="border-b bg-muted/40 px-3 py-2 md:border-r md:border-b-0 md:px-3 md:py-4"
+              @select="scrollToSection"
+            />
 
-          <div class="my-1 flex items-center gap-2.5 text-caption font-semibold tracking-[0.05em] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
-            Ubicación
-          </div>
+            <div
+              ref="formScrollEl"
+              class="min-h-0 overflow-y-auto overscroll-contain px-5 pt-5 [scrollbar-width:thin] md:px-7 md:pt-6"
+            >
+              <!-- General -->
+              <AdminFormSection section="general" title="General" sub="Cómo se identifica la zona dentro del panel.">
+                <AdminField v-slot="{ id }" label="Nombre de la zona" hint="Nombre interno con el que identificarás esta zona." :error="fieldErrors.name">
+                  <Input :id="id" v-model="form.name" placeholder="Ej: Zona Norte, Zona Centro, Estacionamiento Sur" />
+                </AdminField>
+              </AdminFormSection>
 
-          <!-- Places autocomplete -->
-          <AdminField
-            v-slot="{ id }"
-            label="Buscar dirección"
-            hint="Al seleccionar, se rellenan automáticamente los campos de abajo."
-            class="relative"
-          >
-            <div class="relative">
-              <Search class="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground/70" />
-              <Input
-                :id="id"
-                v-model="addrQuery"
-                role="combobox"
-                :aria-expanded="showAddrDrop"
-                aria-autocomplete="list"
-                autocomplete="off"
-                class="pl-8"
-                placeholder="Escribe la dirección y selecciona una sugerencia"
-                @input="onAddrInput"
-                @blur="hideAddrDrop"
-                @focus="addrSuggestions.length > 0 && (showAddrDrop = true)"
-              />
-              <ul
-                v-if="showAddrDrop"
-                role="listbox"
-                class="absolute inset-x-0 top-[calc(100%+4px)] z-50 max-h-[200px] overflow-y-auto rounded-lg border bg-popover py-1 shadow-[var(--pv-shadow-md)]"
-              >
-                <li
-                  v-for="(s, i) in addrSuggestions"
-                  :key="i"
-                  role="option"
-                  :aria-selected="false"
-                  class="flex cursor-pointer flex-col gap-px px-3.5 py-2 transition-colors hover:bg-accent"
-                  @mousedown.prevent="selectAddr(s)"
+              <!-- Ubicación -->
+              <AdminFormSection section="location" title="Ubicación" sub="Busca la dirección y ajusta el pin en el mapa si hace falta.">
+                <!-- Places autocomplete -->
+                <AdminField
+                  v-slot="{ id }"
+                  label="Buscar dirección"
+                  hint="Al seleccionar, se rellenan automáticamente los campos de abajo."
+                  class="relative"
                 >
-                  <span class="text-body font-medium text-navy">{{ s.mainText }}</span>
-                  <span class="text-caption text-muted-foreground">{{ s.secondaryText }}</span>
-                </li>
-              </ul>
+                  <div class="relative">
+                    <Search class="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground/70" />
+                    <Input
+                      :id="id"
+                      v-model="addrQuery"
+                      role="combobox"
+                      :aria-expanded="showAddrDrop"
+                      aria-autocomplete="list"
+                      autocomplete="off"
+                      class="pl-8"
+                      placeholder="Escribe la dirección y selecciona una sugerencia"
+                      @input="onAddrInput"
+                      @blur="hideAddrDrop"
+                      @focus="addrSuggestions.length > 0 && (showAddrDrop = true)"
+                    />
+                    <ul
+                      v-if="showAddrDrop"
+                      role="listbox"
+                      class="absolute inset-x-0 top-[calc(100%+4px)] z-50 max-h-[200px] overflow-y-auto rounded-lg border bg-popover py-1 shadow-[var(--pv-shadow-md)]"
+                    >
+                      <li
+                        v-for="(s, i) in addrSuggestions"
+                        :key="i"
+                        role="option"
+                        :aria-selected="false"
+                        class="flex cursor-pointer flex-col gap-px px-3.5 py-2 transition-colors hover:bg-accent"
+                        @mousedown.prevent="selectAddr(s)"
+                      >
+                        <span class="text-body font-medium text-navy">{{ s.mainText }}</span>
+                        <span class="text-caption text-muted-foreground">{{ s.secondaryText }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </AdminField>
+
+                <ZoneLocationPicker
+                  v-model:latitude="form.latitude"
+                  v-model:longitude="form.longitude"
+                />
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <AdminField v-slot="{ id }" label="Ciudad" :error="fieldErrors.city">
+                    <Input :id="id" v-model="form.city" placeholder="Lima" />
+                  </AdminField>
+                  <AdminField v-slot="{ id }" label="Distrito" :error="fieldErrors.district">
+                    <Input :id="id" v-model="form.district" placeholder="San Miguel" />
+                  </AdminField>
+                </div>
+
+                <AdminField v-slot="{ id }" label="Calle" :error="fieldErrors.street">
+                  <Input :id="id" v-model="form.street" placeholder="Av. Ejemplo 123" />
+                </AdminField>
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <AdminField v-slot="{ id }" label="Latitud" :error="fieldErrors.latitude">
+                    <Input :id="id" v-model.number="form.latitude" type="number" step="0.000001" />
+                  </AdminField>
+                  <AdminField v-slot="{ id }" label="Longitud" :error="fieldErrors.longitude">
+                    <Input :id="id" v-model.number="form.longitude" type="number" step="0.000001" />
+                  </AdminField>
+                </div>
+              </AdminFormSection>
+
+              <!-- Capacidad -->
+              <AdminFormSection section="capacity" title="Capacidad" sub="Espacios de estacionamiento y aforo total de la zona.">
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <AdminField v-slot="{ id }" label="Total de espacios" :error="fieldErrors.totalSpaces">
+                    <Input :id="id" v-model.number="form.totalSpaces" type="number" min="1" />
+                  </AdminField>
+                  <AdminField v-slot="{ id }" label="Capacidad total" :error="fieldErrors.totalCapacity">
+                    <Input :id="id" v-model.number="form.totalCapacity" type="number" min="1" />
+                  </AdminField>
+                </div>
+              </AdminFormSection>
+
+              <!-- Horario -->
+              <AdminFormSection section="hours" title="Horario de atención" sub="Días y horas en que la zona está disponible.">
+                <OpeningHoursEditor v-model="form.openingHours" />
+                <p v-if="fieldErrors.openingHours" class="text-caption font-medium text-destructive" role="alert">{{ fieldErrors.openingHours }}</p>
+              </AdminFormSection>
+
+              <!-- Fotos -->
+              <AdminFormSection section="photos" title="Fotos" sub="Imágenes que acompañan la ficha de la zona.">
+                <ZonePhotosField
+                  v-model:pending="pendingFiles"
+                  v-model:removed="removedPhotoIds"
+                  :existing="existingPhotos"
+                  :google-photos="googlePhotos"
+                  :google-loading="googlePhotosLoading"
+                  :has-google-place="!!form.googlePlaceId"
+                  @unlink-google="unlinkGoogle"
+                />
+              </AdminFormSection>
             </div>
-          </AdminField>
-
-          <ZoneLocationPicker
-            v-model:latitude="form.latitude"
-            v-model:longitude="form.longitude"
-          />
-
-          <div class="grid gap-3 sm:grid-cols-2">
-            <AdminField v-slot="{ id }" label="Ciudad" :error="fieldErrors.city">
-              <Input :id="id" v-model="form.city" placeholder="Lima" />
-            </AdminField>
-            <AdminField v-slot="{ id }" label="Distrito" :error="fieldErrors.district">
-              <Input :id="id" v-model="form.district" placeholder="San Miguel" />
-            </AdminField>
           </div>
 
-          <AdminField v-slot="{ id }" label="Calle" :error="fieldErrors.street">
-            <Input :id="id" v-model="form.street" placeholder="Av. Ejemplo 123" />
-          </AdminField>
-
-          <div class="grid gap-3 sm:grid-cols-2">
-            <AdminField v-slot="{ id }" label="Latitud" :error="fieldErrors.latitude">
-              <Input :id="id" v-model.number="form.latitude" type="number" step="0.000001" />
-            </AdminField>
-            <AdminField v-slot="{ id }" label="Longitud" :error="fieldErrors.longitude">
-              <Input :id="id" v-model.number="form.longitude" type="number" step="0.000001" />
-            </AdminField>
+          <div class="grid gap-3 border-t px-5 py-4 md:px-7">
+            <FormAlert :message="formError" />
+            <DialogFooter class="mt-0">
+              <Button type="button" variant="outline" :disabled="busy" @click="closeModal">Cancelar</Button>
+              <Button type="submit" :disabled="busy">
+                {{ photosSyncing ? 'Subiendo fotos...' : store.saving ? 'Guardando...' : editTarget ? 'Actualizar' : 'Crear zona' }}
+              </Button>
+            </DialogFooter>
           </div>
-
-          <div class="my-1 flex items-center gap-2.5 text-caption font-semibold tracking-[0.05em] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
-            Capacidad
-          </div>
-
-          <div class="grid gap-3 sm:grid-cols-2">
-            <AdminField v-slot="{ id }" label="Total de espacios" :error="fieldErrors.totalSpaces">
-              <Input :id="id" v-model.number="form.totalSpaces" type="number" min="1" />
-            </AdminField>
-            <AdminField v-slot="{ id }" label="Capacidad total" :error="fieldErrors.totalCapacity">
-              <Input :id="id" v-model.number="form.totalCapacity" type="number" min="1" />
-            </AdminField>
-          </div>
-
-          <div class="my-1 flex items-center gap-2.5 text-caption font-semibold tracking-[0.05em] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
-            Horario de atención
-          </div>
-
-          <OpeningHoursEditor v-model="form.openingHours" />
-          <p v-if="fieldErrors.openingHours" class="text-caption font-medium text-destructive" role="alert">{{ fieldErrors.openingHours }}</p>
-
-          <div class="my-1 flex items-center gap-2.5 text-caption font-semibold tracking-[0.05em] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
-            Fotos
-          </div>
-
-          <ZonePhotosField
-            v-model:pending="pendingFiles"
-            v-model:removed="removedPhotoIds"
-            :existing="existingPhotos"
-            :google-photos="googlePhotos"
-            :google-loading="googlePhotosLoading"
-            :has-google-place="!!form.googlePlaceId"
-            @unlink-google="unlinkGoogle"
-          />
-
-          <FormAlert :message="formError" />
-
-          <DialogFooter>
-            <Button type="button" variant="outline" :disabled="busy" @click="closeModal">Cancelar</Button>
-            <Button type="submit" :disabled="busy">
-              {{ photosSyncing ? 'Subiendo fotos...' : store.saving ? 'Guardando...' : editTarget ? 'Actualizar' : 'Crear zona' }}
-            </Button>
-          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
