@@ -6,6 +6,14 @@
 
 > **Cambios 2026-11-03:** HU-09 — `ZoneResource` agrega `openingHours` (estructurado), `googlePlaceId` y `photos`; nuevos endpoints de fotos de zona (ver [Horario y fotos](#reglas-horario)). HU-08/20 — la captura por defecto pasa de 300 s a **30 s** y el panel admin refresca la ocupación cada 30 s.
 
+> **Cambios 2026-11-04 (iteración 2):** el detalle de cada cambio de contrato está en `docs/`, por área:
+> - [Fundaciones](docs/api-iter2-fundaciones.md): log de auditoría (`/audit/logs`, export CSV), `POST /iam/auth/sign-out` y revocación de tokens, formato CSV, errores 400/403 con `ApiError`.
+> - [A · Cuenta y privacidad](docs/api-iter2-A.md): política de contraseña, `forgot-password` 202 genérico, intentos de OTP, avatar en R2, favoritos con nombre y estado, propiedad por `userId`.
+> - [B · Administración](docs/api-iter2-B.md): borrado de zona con `deletion-impact` y `?confirm=true`, búsqueda de usuarios `?q=&role=`, último admin, errores de cámaras, reentrenamiento (`/prediction/model/*`).
+> - [C · Mapa y estado en vivo](docs/api-iter2-C.md): clasificación 40/80 + `SIN_DATOS`, `lastUpdatedAt`/`stale`, `/parking/zones/nearby`, `/prediction/recommendations`.
+> - [D · Analítica](docs/api-iter2-D.md): `/occupancy/zones/{id}/statistics`, `/occupancy/analytics/peaks` (+CSV), `/occupancy/zones/availability/export.csv`.
+> - [E · Alertas de cámara](docs/api-iter2-E.md): `CAMERA_OFFLINE` automático, `/notifications/camera-alerts/mine`, heartbeat del nodo, roles en camera-alerts.
+
 ## 1. Punto de entrada y entornos
 
 Todo el tráfico del frontend pasa por el **API Gateway**. Nunca llames a los servicios por su puerto individual — usa siempre el gateway como único origen.
