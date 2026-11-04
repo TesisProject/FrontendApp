@@ -4,6 +4,11 @@ import { tokenRepository } from './token-repository'
 
 interface RequestOptions {
   skipAuth?: boolean
+  /**
+   * Token a enviar en lugar del guardado. Lo usa el cierre de sesión, que borra la sesión local antes
+   * de que salga la petición. Un 401 con este token no redirige: la sesión ya se cerró.
+   */
+  authToken?: string
 }
 
 // Axios config extended with our per-request options.
@@ -17,7 +22,7 @@ const api = axios.create({
 // Request interceptor: attach the Bearer token unless the caller opted out.
 api.interceptors.request.use((config: AppRequestConfig) => {
   if (!config.skipAuth) {
-    const token = tokenRepository.getAccessToken()
+    const token = config.authToken ?? tokenRepository.getAccessToken()
     if (token) config.headers.set('Authorization', `Bearer ${token}`)
   }
   return config
@@ -33,7 +38,7 @@ api.interceptors.response.use(
     const config = error.config as AppRequestConfig | undefined
     const status = error.response?.status
 
-    if (status === 401 && !config?.skipAuth) {
+    if (status === 401 && !config?.skipAuth && !config?.authToken) {
       redirectToLogin()
     }
 

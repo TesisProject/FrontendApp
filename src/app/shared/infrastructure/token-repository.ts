@@ -3,6 +3,17 @@ import { jwtDecode } from 'jwt-decode'
 const ACCESS_TOKEN_KEY = 'pv_access_token'
 const USER_KEY         = 'pv_user'
 
+/** `true` si el JWT venció (o no trae `exp` legible). Exportado para los tests. */
+export function isExpired(token: string, nowMs = Date.now(), skewSeconds = 0): boolean {
+  try {
+    const { exp } = jwtDecode<{ exp?: number }>(token)
+    if (typeof exp !== 'number') return true
+    return exp - skewSeconds <= Math.floor(nowMs / 1000)
+  } catch {
+    return true
+  }
+}
+
 export const tokenRepository = {
   save(token: string): void {
     localStorage.setItem(ACCESS_TOKEN_KEY, token)
@@ -31,7 +42,14 @@ export const tokenRepository = {
     return token ? jwtDecode<T>(token) : null
   },
 
-  isAuthenticated(): boolean {
-    return !!this.getAccessToken()
+  /**
+   * Hay token y su `exp` no pasó. Un token que no se puede decodificar cuenta como vencido. Con
+   * `skewSeconds` se da por vencido un poco antes, para no navegar a una pantalla cuyas peticiones
+   * van a dar 401.
+   */
+  isAuthenticated(nowMs = Date.now(), skewSeconds = 5): boolean {
+    const token = this.getAccessToken()
+    if (!token) return false
+    return !isExpired(token, nowMs, skewSeconds)
   },
 }

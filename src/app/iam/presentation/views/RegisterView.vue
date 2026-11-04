@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
+import { toast } from 'vue-sonner'
 import { useRouter } from 'vue-router'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
@@ -11,6 +12,8 @@ import AuthCard from '../components/AuthCard.vue'
 import AuthField from '../components/AuthField.vue'
 import AuthSelect from '../components/AuthSelect.vue'
 import AuthInput from '../components/AuthInput.vue'
+import PasswordChecklist from '../components/PasswordChecklist.vue'
+import { isStrongPassword, passwordPolicyMessage } from '../../domain/password-policy'
 import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
 import SubmitButton from '../components/SubmitButton.vue'
 import TextLink from '../../../shared/presentation/components/TextLink.vue'
@@ -34,7 +37,10 @@ const schema = toTypedSchema(z.object({
   documentNumber:  compact('Ingresa tu número de documento', /^[A-Za-z0-9]+$/),
   phonePrefix:     z.string().regex(/^\+\d{1,4}$/, 'Prefijo inválido'),
   phone:           compact('Ingresa un celular válido (6-15 dígitos)', /^\d{6,15}$/),
-  password:        req('Mínimo 8 caracteres', 8),
+  password:        z.preprocess(val => val ?? '', z.string().superRefine((pw, ctx) => {
+    const message = passwordPolicyMessage(pw)
+    if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, message })
+  })),
   confirmPassword: req('Confirma tu contraseña', 1),
 }).refine(data => data.password === data.confirmPassword, {
   message: 'Las contraseñas no coinciden',
@@ -74,9 +80,15 @@ const touched = reactive({
   documentNumber: false, phone: false, password: false, confirmPassword: false,
 })
 
+// HU-02 E3: el envío queda bloqueado hasta que la contraseña cumpla todos los requisitos.
+const passwordOk = computed(() => isStrongPassword(password.value))
+
 const onSubmit = handleSubmit(async (values) => {
   const ok = await authStore.register(values)
-  if (ok) router.push('/dashboard')
+  if (ok) {
+    toast.success('Cuenta creada', { description: 'Tu registro fue exitoso. ¡Bienvenido a ParkVision!' })
+    router.push('/dashboard')
+  }
 })
 </script>
 
@@ -174,7 +186,6 @@ const onSubmit = handleSubmit(async (values) => {
       <AuthField
         label="Contraseña"
         :error="errors.password"
-        :hint="!touched.password ? 'Mínimo 8 caracteres' : ''"
       >
         <AuthInput
           v-model="password"
@@ -187,6 +198,7 @@ const onSubmit = handleSubmit(async (values) => {
           @blur="touched.password = true"
         />
       </AuthField>
+      <PasswordChecklist :password="password" />
 
       <AuthField label="Confirmar contraseña" :error="errors.confirmPassword">
         <AuthInput
@@ -205,6 +217,7 @@ const onSubmit = handleSubmit(async (values) => {
 
       <SubmitButton
         :loading="authStore.registerLoading"
+        :disabled="!passwordOk"
         label="Crear cuenta"
         loading-label="Creando cuenta..."
       />

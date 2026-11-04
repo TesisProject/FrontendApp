@@ -12,6 +12,11 @@ export class AuthApi {
     return httpClient.post<SignInResponse>(`${this.base}/auth/sign-up`, payload, { skipAuth: true })
   }
 
+  /** Revoca en el backend el token indicado (HU-05). */
+  signOut(token: string): Promise<void> {
+    return httpClient.post<void>(`${this.base}/auth/sign-out`, undefined, { authToken: token })
+  }
+
   forgotPassword(email: string): Promise<void> {
     return httpClient.post<void>(`${this.base}/auth/forgot-password`, { email }, { skipAuth: true })
   }

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authGuard }  from '../app/iam/infrastructure/auth.guard'
+import { sessionGuard } from '../app/iam/infrastructure/auth.guard'
 import { adminGuard } from '../app/iam/infrastructure/admin.guard'
 import { useThemeStore, type Surface } from '../app/shared/application/theme.store'
 
@@ -72,6 +73,9 @@ const router = createRouter({
     { path: '/:pathMatch(.*)*', component: () => import('../app/shared/presentation/views/NotFoundView.vue') },
   ],
 })
+
+// HU-05: la sesión se revisa en cada navegación dentro de un área protegida, no solo al entrar.
+router.beforeEach(sessionGuard)
 
 router.afterEach((to) => {
   useThemeStore().setSurface(to.meta.surface ?? 'auth')

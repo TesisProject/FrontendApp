@@ -6,6 +6,10 @@ import type { Favorite } from '../domain/model/favorite.model'
 
 const favoriteApi = new FavoriteApi()
 
+/**
+ * Favoritos del usuario (HU-28). Agregar y quitar actualizan la lista en el momento con la
+ * respuesta del backend, sin recargar; devuelven `true`/`false` para que la vista muestre el toast.
+ */
 export const useFavoriteStore = defineStore('favorite', () => {
   const favorites = ref<Favorite[]>([])
   const loading   = ref(false)
@@ -23,28 +27,30 @@ export const useFavoriteStore = defineStore('favorite', () => {
     try {
       const responses = await favoriteApi.getByUser(userId)
       favorites.value = responses.map(toFavorite)
-    } catch (err: any) {
-      error.value = err?.message ?? 'Error al cargar favoritos'
+    } catch {
+      error.value = 'No se pudieron cargar tus favoritos.'
     } finally {
       loading.value = false
     }
   }
 
-  async function addFavorite(userId: number, zoneId: number) {
+  async function addFavorite(userId: number, zoneId: number): Promise<boolean> {
     try {
-      await favoriteApi.add(userId, zoneId)
-      favorites.value.push({ userId, zoneId, savedAt: new Date().toISOString() })
-    } catch (err: any) {
-      error.value = err?.message ?? 'Error al agregar favorito'
+      const saved = toFavorite(await favoriteApi.add(userId, zoneId))
+      favorites.value = [saved, ...favorites.value.filter(f => f.zoneId !== zoneId)]
+      return true
+    } catch {
+      return false
     }
   }
 
-  async function removeFavorite(userId: number, zoneId: number) {
+  async function removeFavorite(userId: number, zoneId: number): Promise<boolean> {
     try {
       await favoriteApi.remove(userId, zoneId)
       favorites.value = favorites.value.filter(f => f.zoneId !== zoneId)
-    } catch (err: any) {
-      error.value = err?.message ?? 'Error al eliminar favorito'
+      return true
+    } catch {
+      return false
     }
   }
 

@@ -20,11 +20,11 @@ export interface UserPreferencesResponse {
   updatedAt:          string
 }
 
+/** La foto no va aquí: se sube aparte con `POST /iam/users/{id}/avatar` (HU-04). */
 export interface UpdateProfileRequest {
   firstName: string
   lastName:  string
   phone:     string
-  avatarUrl: string
   bio:       string
 }
 

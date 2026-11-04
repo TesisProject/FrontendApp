@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import RemoveFavoriteDialog from '../../../favorites/presentation/components/RemoveFavoriteDialog.vue'
+import { useFavoriteToggle } from '../../../favorites/presentation/composables/useFavoriteToggle'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ArrowLeft, Heart, Loader2, MapPin } from '@lucide/vue'
@@ -36,12 +38,10 @@ const userId = computed(() => authStore.user?.id ?? 0)
 const isFav = computed(() => favoriteStore.isFavorite(zoneId.value))
 const spaces = computed(() => zoneStore.spaces as ParkingSpace[])
 
+// HU-28: quitar pide confirmación; guardar es inmediato. Ambos con toast.
+const favoriteToggle = useFavoriteToggle()
 async function toggleFavorite() {
-  if (isFav.value) {
-    await favoriteStore.removeFavorite(userId.value, zoneId.value)
-  } else {
-    await favoriteStore.addFavorite(userId.value, zoneId.value)
-  }
+  await favoriteToggle.toggle(zoneId.value, zoneStore.zone?.name ?? 'Zona')
 }
 
 const occupancyPct = computed(() =>
@@ -247,5 +247,12 @@ onUnmounted(() => clearInterval(refreshTimer))
         <ZoneRating :zone-id="zoneId" />
       </template>
     </template>
+    <RemoveFavoriteDialog
+      :open="favoriteToggle.confirmOpen.value"
+      :zone-name="favoriteToggle.pending.value?.zoneName"
+      :loading="favoriteToggle.removing.value"
+      @confirm="favoriteToggle.confirmRemove"
+      @cancel="favoriteToggle.cancelRemove"
+    />
   </div>
 </template>

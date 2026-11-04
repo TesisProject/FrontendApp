@@ -10,8 +10,9 @@ export class FavoriteApi {
     return httpClient.get<FavoriteResponse[]>(this.base(userId))
   }
 
-  add(userId: number, zoneId: number): Promise<void> {
-    return httpClient.post<void>(this.base(userId), { zoneId })
+  /** 201 con el favorito ya enriquecido (nombre y estado actual). */
+  add(userId: number, zoneId: number): Promise<FavoriteResponse> {
+    return httpClient.post<FavoriteResponse>(this.base(userId), { zoneId })
   }
 
   remove(userId: number, zoneId: number): Promise<void> {

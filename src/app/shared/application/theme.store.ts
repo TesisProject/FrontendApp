@@ -13,6 +13,11 @@ export function applyThemeToDocument(surface: Surface, dark: boolean) {
   root.classList.toggle('dark', dark && surface === 'user')
 }
 
+/**
+ * Último valor conocido del modo oscuro. Es solo una caché para pintar sin parpadeo antes de que
+ * responda el backend: la preferencia real vive en la cuenta (`UserPreferences.darkMode`, HU-30) y
+ * se aplica al iniciar sesión, así sigue al usuario en cualquier dispositivo.
+ */
 export function storedDarkPreference(): boolean {
   return localStorage.getItem(DARK_KEY) === '1'
 }
@@ -30,10 +35,18 @@ export const useThemeStore = defineStore('theme', () => {
     apply()
   }
 
+  /** Aplica el modo y actualiza la caché local. Guardarlo en la cuenta lo hace `profile.store`. */
   function setDark(dark: boolean) {
+    localStorage.setItem(DARK_KEY, dark ? '1' : '0')
     if (isDark.value === dark) return
     isDark.value = dark
-    localStorage.setItem(DARK_KEY, dark ? '1' : '0')
+    apply()
+  }
+
+  /** Al cerrar sesión: la caché no debe arrastrar la preferencia de esta cuenta a la siguiente. */
+  function forget() {
+    localStorage.removeItem(DARK_KEY)
+    isDark.value = false
     apply()
   }
 
@@ -42,5 +55,5 @@ export const useThemeStore = defineStore('theme', () => {
     apply()
   }
 
-  return { isDark, surface, init, setDark, setSurface }
+  return { isDark, surface, init, setDark, forget, setSurface }
 })

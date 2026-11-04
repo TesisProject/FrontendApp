@@ -4,6 +4,7 @@ import router from './router'
 import App from './App.vue'
 import './style.css'
 import { applyThemeToDocument, storedDarkPreference } from './app/shared/application/theme.store'
+import { reloadRestoredPagesWithoutSession } from './app/iam/infrastructure/auth.guard'
 
 // Apply surface + dark mode before mount to avoid a flash; the router keeps it
 // in sync afterwards (see router.afterEach).
@@ -17,3 +18,5 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 app.mount('#app')
+
+reloadRestoredPagesWithoutSession()

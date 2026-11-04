@@ -14,6 +14,8 @@ import SpaceCounts from '../components/SpaceCounts.vue'
 import { useGoogleMap } from '../composables/useGoogleMap'
 import { usePlacesAutocomplete } from '../composables/usePlacesAutocomplete'
 import ZoneCard from '../components/ZoneCard.vue'
+import RemoveFavoriteDialog from '../../../favorites/presentation/components/RemoveFavoriteDialog.vue'
+import { useFavoriteToggle } from '../../../favorites/presentation/composables/useFavoriteToggle'
 import type { Zone, ZoneClassification } from '../../domain/model/zone.model'
 
 const SEARCH_PAN_ZOOM = 15
@@ -26,13 +28,10 @@ const authStore = useAuthStore()
 
 const userId = computed(() => authStore.user?.id ?? 0)
 
+// HU-28: quitar pide confirmación; guardar es inmediato. Ambos con toast.
+const favoriteToggle = useFavoriteToggle()
 async function toggleFavorite(zone: Zone) {
-  if (!userId.value) return
-  if (favoriteStore.isFavorite(zone.id)) {
-    await favoriteStore.removeFavorite(userId.value, zone.id)
-  } else {
-    await favoriteStore.addFavorite(userId.value, zone.id)
-  }
+  await favoriteToggle.toggle(zone.id, zone.name)
 }
 
 const mapRef = ref<HTMLElement | null>(null)
@@ -211,5 +210,12 @@ onUnmounted(() => clearInterval(refreshTimer))
         </div>
       </Transition>
     </div>
+    <RemoveFavoriteDialog
+      :open="favoriteToggle.confirmOpen.value"
+      :zone-name="favoriteToggle.pending.value?.zoneName"
+      :loading="favoriteToggle.removing.value"
+      @confirm="favoriteToggle.confirmRemove"
+      @cancel="favoriteToggle.cancelRemove"
+    />
   </div>
 </template>
