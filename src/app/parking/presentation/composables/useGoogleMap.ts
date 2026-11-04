@@ -2,6 +2,7 @@ import { ref, watch, onUnmounted, type Ref } from 'vue'
 import { loadGoogleMaps } from '../../../shared/infrastructure/maps-loader'
 import { classificationColor } from '../../domain/zone-classification'
 import type { Zone } from '../../domain/model/zone.model'
+import type { LatLng } from '../../domain/geo'
 
 const LIMA_CENTER = { lat: -12.0464, lng: -77.0428 }
 const DEFAULT_ZOOM = 12
@@ -18,6 +19,13 @@ interface UseGoogleMapOptions {
   zones: Ref<Zone[]>
   onMarkerEnter: (zone: Zone, event: MouseEvent) => void
   onMarkerLeave: (zone: Zone) => void
+  /**
+   * Click o tap en el marcador (HU-06): en pantallas táctiles no hay hover, así que el tap es la
+   * única forma de abrir el resumen de la zona.
+   */
+  onMarkerClick?: (zone: Zone, event: MouseEvent) => void
+  /** Click/tap en el mapa fuera de un marcador (p. ej. para cerrar el resumen). */
+  onMapClick?: () => void
 }
 
 function createPinElement(zone: Zone): HTMLElement {
@@ -100,6 +108,11 @@ export function useGoogleMap(options: UseGoogleMapOptions) {
       options.onMarkerEnter(entry.zone, e),
     )
     pin.addEventListener('mouseleave', () => options.onMarkerLeave(entry.zone))
+    // `click` también se dispara con un tap; se detiene para que el mapa no lo tome como click propio.
+    pin.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation()
+      options.onMarkerClick?.(entry.zone, e)
+    })
 
     return entry
   }
@@ -130,6 +143,7 @@ export function useGoogleMap(options: UseGoogleMapOptions) {
           position: google.maps.ControlPosition.RIGHT_CENTER,
         },
       })
+      map.addListener('click', () => options.onMapClick?.())
       syncMarkers()
     } catch (err: unknown) {
       console.error('[Map] error al cargar Google Maps:', err)
@@ -151,10 +165,57 @@ export function useGoogleMap(options: UseGoogleMapOptions) {
     panTo({ lat: zone.latitude, lng: zone.longitude }, FOCUS_ZOOM)
   }
 
+  let userMarker: google.maps.marker.AdvancedMarkerElement | null = null
+  let radiusCircle: google.maps.Circle | null = null
+
+  /**
+   * Muestra la posición del usuario y, si hay filtro de distancia, el círculo del radio (HU-07/10).
+   * Con `fit` encuadra el círculo; `null` quita ambos.
+   */
+  function showUserArea(position: LatLng | null, radiusKm: number | null, fit = false) {
+    if (!map) return
+    if (!position) {
+      if (userMarker) userMarker.map = null
+      radiusCircle?.setMap(null)
+      userMarker = null
+      radiusCircle = null
+      return
+    }
+    if (!userMarker) {
+      const dot = document.createElement('div')
+      dot.style.cssText = `
+        width: 16px; height: 16px; border-radius: 50%; background: #2b6cb0;
+        border: 3px solid white; box-shadow: 0 0 0 6px rgba(43,108,176,0.22);
+      `
+      userMarker = new google.maps.marker.AdvancedMarkerElement({ map, content: dot, title: 'Tu ubicación', zIndex: 1000 })
+    }
+    userMarker.position = position
+    if (radiusKm == null) {
+      radiusCircle?.setMap(null)
+      radiusCircle = null
+      return
+    }
+    if (!radiusCircle) {
+      radiusCircle = new google.maps.Circle({
+        map, clickable: false, strokeColor: '#2b6cb0', strokeOpacity: 0.5, strokeWeight: 1.5,
+        fillColor: '#2b6cb0', fillOpacity: 0.06,
+      })
+    }
+    radiusCircle.setCenter(position)
+    radiusCircle.setRadius(radiusKm * 1000)
+    if (fit) {
+      const bounds = radiusCircle.getBounds()
+      if (bounds) map.fitBounds(bounds, 32)
+    }
+  }
+
   // Reconciliación incremental ante cualquier cambio del listado filtrado.
   watch(options.zones, syncMarkers)
 
-  onUnmounted(clearMarkers)
+  onUnmounted(() => {
+    clearMarkers()
+    showUserArea(null, null)
+  })
 
-  return { mapError, init, panTo, focusZone }
+  return { mapError, init, panTo, focusZone, showUserArea }
 }

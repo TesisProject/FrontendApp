@@ -44,9 +44,9 @@ const metrics = computed<Metric[]>(() => [
 ])
 
 const classifications = computed(() => [
-  { label: 'Libre (<30%)',       count: countByClassification('LIBRE'),    dot: 'bg-zone-libre' },
-  { label: 'Moderado (30-70%)',  count: countByClassification('MODERADO'), dot: 'bg-zone-moderado' },
-  { label: 'Ocupado (>70%)',     count: countByClassification('OCUPADO'),  dot: 'bg-zone-ocupado' },
+  { label: 'Libre (<40%)',       count: countByClassification('LIBRE'),    dot: 'bg-zone-libre' },
+  { label: 'Moderado (40-80%)',  count: countByClassification('MODERADO'), dot: 'bg-zone-moderado' },
+  { label: 'Ocupado (>80%)',     count: countByClassification('OCUPADO'),  dot: 'bg-zone-ocupado' },
 ])
 
 const shortcuts = [

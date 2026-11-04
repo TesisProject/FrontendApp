@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Clock, ImageOff, LocateFixed, MapPin, Navigation, SquareParking, CircleCheck } from '@lucide/vue'
+import { Clock, ImageOff, LocateFixed, MapPin, Navigation, Route, SquareParking, CircleCheck } from '@lucide/vue'
 import type { Zone } from '../../domain/model/zone.model'
 import type { GooglePlacePhoto } from '../../domain/model/zone-photo.model'
 import { describeOpeningHours } from '../../domain/opening-hours'
@@ -10,12 +10,14 @@ import { fetchGooglePlacePhotos } from '../../infrastructure/google-place-photos
 import { useUserLocation } from '../composables/useUserLocation'
 import { UNKNOWN_TEXT, orUnknown } from '../../../shared/helpers/text'
 import SectionCard from '../../../shared/presentation/components/SectionCard.vue'
+import ZoneDirections from './ZoneDirections.vue'
 import GooglePhotoAttribution from '../../../shared/presentation/components/GooglePhotoAttribution.vue'
 import { Skeleton } from '@/app/shared/presentation/components/ui/skeleton'
 
 /**
  * ZoneInfoCard — HU-09: dirección, capacidad, disponibles, distancia al usuario, horario y galería
  * (primero las fotos subidas por el administrador, luego las de Google Places con su atribución).
+ * HU-29: "Cómo llegar" con la ruta estimada y los enlaces a Waze y Google Maps.
  * Todo dato que falte se muestra como "Sin información".
  */
 const props = defineProps<{ zone: Zone }>()
@@ -112,6 +114,13 @@ const thumb = 'block aspect-[4/3] overflow-hidden rounded-lg border bg-muted'
                 No se pudo obtener tu ubicación. Revisa que el GPS esté activo e inténtalo de nuevo.
               </span>
             </template>
+          </dd>
+        </div>
+
+        <div class="grid gap-1">
+          <dt :class="label"><Route class="size-3.5" aria-hidden="true" /> Cómo llegar</dt>
+          <dd>
+            <ZoneDirections :latitude="zone.latitude" :longitude="zone.longitude" :origin="position" />
           </dd>
         </div>
 

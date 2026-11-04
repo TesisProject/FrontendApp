@@ -20,3 +20,38 @@ export function formatDistance(meters: number): string {
   const km = meters / 1000
   return `${km.toLocaleString('es-PE', { maximumFractionDigits: km < 10 ? 1 : 0 })} km`
 }
+
+/** Radios del filtro de distancia (HU-10), en km. */
+export const RADIUS_OPTIONS_KM = [0.5, 1, 2, 5] as const
+
+/** Radio con el que arranca "Cerca de mí" (HU-07). */
+export const DEFAULT_RADIUS_KM = 2
+
+/** El siguiente radio más amplio para "ampliar la búsqueda", o `null` si ya es el mayor. */
+export function widerRadius(km: number): number | null {
+  return RADIUS_OPTIONS_KM.find(r => r > km) ?? null
+}
+
+/** "500 m", "1 km", "2 km". */
+export function formatRadius(km: number): string {
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toLocaleString('es-PE')} km`
+}
+
+/**
+ * Filtra y ordena por distancia cualquier lista con coordenadas: es el respaldo en el navegador de
+ * `GET /parking/zones/nearby` (mismo haversine) si el backend no responde.
+ */
+export function withinRadius<T extends { id: number; latitude: number; longitude: number }>(
+  items: T[],
+  origin: LatLng,
+  radiusKm: number,
+): Map<number, number> {
+  const distances = new Map<number, number>()
+  items
+    .filter(i => i.latitude !== 0 || i.longitude !== 0)
+    .map(i => [i.id, haversineMeters(origin, { lat: i.latitude, lng: i.longitude })] as const)
+    .filter(([, d]) => d <= radiusKm * 1000)
+    .sort((a, b) => a[1] - b[1])
+    .forEach(([id, d]) => distances.set(id, d))
+  return distances
+}

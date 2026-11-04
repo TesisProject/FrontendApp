@@ -7,6 +7,8 @@ import { toZone } from '../infrastructure/zone-assembler'
 import { toSpace } from '../infrastructure/space-assembler'
 import { toZoneView } from '../infrastructure/zone-view-assembler'
 import type { Zone } from '../domain/model/zone.model'
+import { toClassification } from '../domain/zone-classification'
+import { withinRadius, type LatLng } from '../domain/geo'
 import type { ParkingSpace } from '../domain/model/space.model'
 import type { ZoneView } from '../domain/model/zone-view.model'
 import type {
@@ -70,14 +72,45 @@ export const useZoneStore = defineStore('zone', () => {
   // Solo se aplica la respuesta de la última petición: si se cambia de periodo rápido, las viejas se descartan.
   let historyBucketsRequest = 0
 
-  async function fetchZones() {
-    zonesState.setLoading()
+  /**
+   * Catálogo + disponibilidad. Con `silent` (refresco del timer) no pasa por "Cargando" ni borra la
+   * lista si falla: se conserva lo último que se mostró, para que la lista no parpadee (HU-08).
+   */
+  async function fetchZones(options?: { silent?: boolean }) {
+    if (!options?.silent) zonesState.setLoading()
     try {
       const [responses] = await Promise.all([zoneApi.getAll(), loadAllAvailability()])
       zonesState.setData(responses.map(r => toZone(r, availabilityByZone.get(r.id))))
     } catch (err: any) {
-      zonesState.setError(err?.message ?? 'Error al cargar zonas')
+      if (!options?.silent) zonesState.setError(err?.message ?? 'Error al cargar zonas')
     }
+  }
+
+  // Búsqueda por cercanía (HU-07/10): distancia en metros por id de zona, ya ordenada.
+  const nearbyState = useAsyncState<Map<number, number> | null>(null)
+  let nearbyRequest = 0
+
+  /**
+   * Zonas a menos de `radiusKm` de `origin` según el backend. Si el backend falla, se calcula en el
+   * navegador con el mismo haversine sobre las zonas ya cargadas, para no dejar al usuario sin
+   * resultados. Solo se aplica la respuesta de la última petición.
+   */
+  async function fetchNearby(origin: LatLng, radiusKm: number, options?: { silent?: boolean }) {
+    const request = ++nearbyRequest
+    if (!options?.silent) nearbyState.setLoading()
+    try {
+      const results = await zoneApi.getNearby(origin.lat, origin.lng, radiusKm)
+      if (request !== nearbyRequest) return
+      nearbyState.setData(new Map(results.map(r => [r.zone.id, r.distanceMeters])))
+    } catch {
+      if (request !== nearbyRequest) return
+      nearbyState.setData(withinRadius(zonesState.data.value, origin, radiusKm))
+    }
+  }
+
+  function clearNearby() {
+    nearbyRequest++
+    nearbyState.reset()
   }
 
   async function fetchZone(id: number) {
@@ -180,7 +213,9 @@ export const useZoneStore = defineStore('zone', () => {
         occupiedCount:       availability.occupied,
         freeCount:           availability.available,
         occupancyPercentage: availability.occupancyPercentage,
-        classification:      availability.classification as Zone['classification'],
+        classification:      toClassification(availability.classification),
+        lastUpdatedAt:       availability.lastUpdatedAt ?? null,
+        stale:               availability.stale ?? false,
       })
     }
     const occupied = occupiedSetOf(availability)
@@ -209,7 +244,11 @@ export const useZoneStore = defineStore('zone', () => {
     historyBucketsError: historyBucketsState.error,
     views: viewsState.data,
     viewsLoading: viewsState.loading,
+    nearbyDistances: nearbyState.data,
+    nearbyLoading: nearbyState.loading,
     fetchZones,
+    fetchNearby,
+    clearNearby,
     fetchZone,
     fetchSpacesByZone,
     fetchHistory,

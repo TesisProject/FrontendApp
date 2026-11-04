@@ -30,3 +30,9 @@ export interface ZoneResponse {
   photos?:        ZonePhotoResponse[] | null
   active:        boolean
 }
+
+/** Una zona de `GET /parking/zones/nearby` (HU-07): la zona completa y su distancia en metros. */
+export interface NearbyZoneResponse {
+  zone:           ZoneResponse
+  distanceMeters: number
+}

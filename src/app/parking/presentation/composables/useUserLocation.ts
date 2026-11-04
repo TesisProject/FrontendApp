@@ -1,4 +1,4 @@
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import type { LatLng } from '../../domain/geo'
 
 /**
@@ -13,13 +13,33 @@ export type UserLocationStatus = 'idle' | 'locating' | 'ready' | 'denied' | 'una
 
 const GEO_OPTIONS: PositionOptions = { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 }
 
+interface UseUserLocationOptions {
+  /**
+   * Sigue la posición con `watchPosition` después de obtenerla (HU-13: las recomendaciones se
+   * recalculan al moverse). Por defecto se lee una sola vez.
+   */
+  watch?: boolean
+}
+
 /**
  * Ubicación del usuario con `navigator.geolocation`. Al montar solo se consulta si el permiso ya
  * está concedido (no se abre el aviso del navegador sin que el usuario lo pida); `request()` lo pide.
  */
-export function useUserLocation() {
+export function useUserLocation(options: UseUserLocationOptions = {}) {
   const position = ref<LatLng | null>(null)
   const status = ref<UserLocationStatus>('idle')
+  let watchId: number | null = null
+
+  function onSuccess(pos: GeolocationPosition) {
+    position.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+    status.value = 'ready'
+  }
+
+  function onError(err: GeolocationPositionError) {
+    // Si ya había posición, un fallo puntual del seguimiento no la invalida.
+    if (watchId != null && position.value && err.code !== err.PERMISSION_DENIED) return
+    status.value = err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable'
+  }
 
   function request() {
     if (!('geolocation' in navigator)) {
@@ -29,12 +49,12 @@ export function useUserLocation() {
     status.value = 'locating'
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        position.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-        status.value = 'ready'
+        onSuccess(pos)
+        if (options.watch && watchId == null) {
+          watchId = navigator.geolocation.watchPosition(onSuccess, onError, GEO_OPTIONS)
+        }
       },
-      (err) => {
-        status.value = err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable'
-      },
+      onError,
       GEO_OPTIONS,
     )
   }
@@ -51,6 +71,10 @@ export function useUserLocation() {
     } catch {
       // Permissions API no disponible (algunos Safari): se espera a que el usuario lo pida.
     }
+  })
+
+  onUnmounted(() => {
+    if (watchId != null) navigator.geolocation.clearWatch(watchId)
   })
 
   return { position, status, request }

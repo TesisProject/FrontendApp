@@ -1,4 +1,5 @@
-import type { Zone, ZoneClassification } from '../domain/model/zone.model'
+import type { Zone } from '../domain/model/zone.model'
+import { toClassification } from '../domain/zone-classification'
 import type { OpeningHoursEntry } from '../domain/model/opening-hours.model'
 import type { ZonePhoto } from '../domain/model/zone-photo.model'
 import { isIsoDayOfWeek, normalizeTime } from '../domain/opening-hours'
@@ -8,7 +9,7 @@ import type { ZoneAvailabilityResponse } from './availability-response'
 /**
  * Fusiona la zona estática (parking) con la disponibilidad viva (vision) en el mismo `Zone` que ya
  * consumen las vistas. Sin disponibilidad (vision caído o zona sin espacios monitoreados) la zona se
- * muestra como libre.
+ * muestra "Sin datos" (gris, HU-12), nunca como libre.
  */
 export function toZone(r: ZoneResponse, availability?: ZoneAvailabilityResponse): Zone {
   return {
@@ -24,7 +25,9 @@ export function toZone(r: ZoneResponse, availability?: ZoneAvailabilityResponse)
     occupiedCount:       availability?.occupied ?? 0,
     freeCount:           availability?.available ?? r.totalSpaces,
     occupancyPercentage: availability?.occupancyPercentage ?? 0,
-    classification:      (availability?.classification ?? 'LIBRE') as ZoneClassification,
+    classification:      toClassification(availability?.classification),
+    lastUpdatedAt:       availability?.lastUpdatedAt ?? null,
+    stale:               availability?.stale ?? false,
     openingHours:        toOpeningHours(r.openingHours),
     googlePlaceId:       r.googlePlaceId?.trim() || null,
     photos:              (r.photos ?? []).map(toZonePhoto),

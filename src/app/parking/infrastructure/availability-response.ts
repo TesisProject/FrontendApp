@@ -5,7 +5,12 @@ export interface ZoneAvailabilityResponse {
   occupied:            number
   available:           number
   occupancyPercentage: number
+  /** LIBRE | MODERADO | OCUPADO | SIN_DATOS (umbrales 40/80). */
   classification:      string
+  /** Detección más reciente (ISO-8601) o `null` si nunca llegó una. */
+  lastUpdatedAt?:      string | null
+  /** `true` si `lastUpdatedAt` tiene más de 90 s. */
+  stale?:              boolean
   spaces:              SpaceAvailabilityResponse[]
 }
 
