@@ -52,6 +52,8 @@ const router = createRouter({
         { path: 'api-keys',  component: () => import('../app/admin/presentation/views/AdminApiKeysView.vue') },
         { path: 'users',     component: () => import('../app/admin/presentation/views/AdminUsersView.vue') },
         { path: 'profile',   component: () => import('../app/admin/presentation/views/AdminProfileView.vue') },
+        { path: 'statistics', component: () => import('../app/analytics/presentation/views/AdminStatisticsView.vue') },
+        { path: 'demand',     component: () => import('../app/analytics/presentation/views/AdminDemandView.vue') },
         { path: 'audit',     component: () => import('../app/admin/presentation/views/AdminAuditView.vue') },
         { path: 'model',     component: () => import('../app/admin/presentation/views/AdminModelView.vue') },
       ],

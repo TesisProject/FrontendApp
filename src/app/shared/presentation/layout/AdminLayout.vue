@@ -4,6 +4,7 @@ import {
   BrainCircuit, ScrollText,
   CircleUserRound, Cpu, KeyRound, LayoutGrid, Server, User, Users, Video,
 } from '@lucide/vue'
+import { ChartColumnBig, Flame } from '@lucide/vue'
 import { useAuthStore } from '../../../iam/application/auth.store'
 import AppShell from './AppShell.vue'
 import type { NavItem } from './nav-item'
@@ -19,6 +20,8 @@ const nav: NavItem[] = [
   { to: '/admin/firmware',  label: 'Firmware',  icon: Cpu },
   { to: '/admin/api-keys',  label: 'API Keys',  icon: KeyRound },
   { to: '/admin/users',     label: 'Usuarios',  icon: Users },
+  { to: '/admin/statistics', label: 'Estadísticas', icon: ChartColumnBig },
+  { to: '/admin/demand',     label: 'Demanda',      icon: Flame },
   { to: '/admin/audit',     label: 'Auditoría', icon: ScrollText },
   { to: '/admin/model',     label: 'Modelo IA', icon: BrainCircuit },
 ]
