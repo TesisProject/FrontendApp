@@ -67,7 +67,7 @@ function formatDateTime(iso: string): string {
 
 // Chip sobre la foto: siempre oscuro para leerse sobre cualquier imagen, así que sus colores son fijos
 // (no tokens de tema); el aviso de foto vieja usa un ámbar claro pensado para ese fondo.
-const overlayChip = 'inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm'
+const overlayChip = 'inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-caption font-semibold text-white backdrop-blur-sm'
 </script>
 
 <template>
@@ -126,7 +126,7 @@ const overlayChip = 'inline-flex items-center gap-1 rounded-full bg-black/65 px-
       class="flex flex-wrap items-center gap-x-3 gap-y-2"
       :class="layout.cards.length > 0 && 'rounded-xl border border-dashed px-3.5 py-3'"
     >
-      <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span class="flex items-center gap-1.5 text-body text-muted-foreground">
         <CameraOff v-if="layout.cards.length" class="size-3.5" aria-hidden="true" />
         <template v-if="layout.cards.length">Sin foto ·</template>
         <strong class="font-semibold text-heading tabular-nums">{{ freeLabel(layout.uncovered) }}</strong>

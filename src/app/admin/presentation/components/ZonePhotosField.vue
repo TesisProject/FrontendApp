@@ -76,25 +76,25 @@ const thumb = 'relative aspect-[4/3] overflow-hidden rounded-md border bg-muted'
     <!-- Google Places -->
     <div class="grid gap-1.5">
       <div class="flex items-center justify-between gap-2">
-        <p class="text-[11px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">De Google</p>
+        <p class="text-caption font-semibold tracking-[0.04em] text-muted-foreground uppercase">De Google</p>
         <Button
           v-if="hasGooglePlace"
           type="button"
           size="sm"
           variant="ghost"
-          class="h-7 text-xs text-muted-foreground"
+          class="h-7 text-caption text-muted-foreground"
           @click="emit('unlink-google')"
         >
           No usar las fotos de Google
         </Button>
       </div>
-      <p v-if="!hasGooglePlace" class="text-[11px] text-muted-foreground">
+      <p v-if="!hasGooglePlace" class="text-caption text-muted-foreground">
         Elige la dirección en «Buscar dirección» para mostrar las fotos de Google del lugar.
       </p>
-      <p v-else-if="googleLoading" class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <p v-else-if="googleLoading" class="flex items-center gap-1.5 text-caption text-muted-foreground">
         <Loader2 class="size-3.5 animate-spin" aria-hidden="true" /> Cargando fotos de Google...
       </p>
-      <p v-else-if="googlePhotos.length === 0" class="text-[11px] text-muted-foreground">
+      <p v-else-if="googlePhotos.length === 0" class="text-caption text-muted-foreground">
         Google no tiene fotos de este lugar.
       </p>
       <ul v-else class="grid grid-cols-3 gap-2">
@@ -110,7 +110,7 @@ const thumb = 'relative aspect-[4/3] overflow-hidden rounded-md border bg-muted'
     <!-- Subidas -->
     <div class="grid gap-1.5">
       <div class="flex items-center justify-between gap-2">
-        <p class="text-[11px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">
+        <p class="text-caption font-semibold tracking-[0.04em] text-muted-foreground uppercase">
           Subidas <span class="font-normal normal-case tracking-normal">({{ total }}/{{ ZONE_PHOTOS_MAX }})</span>
         </p>
         <Button type="button" size="sm" variant="outline" :disabled="full" @click="fileInput?.click()">
@@ -126,8 +126,8 @@ const thumb = 'relative aspect-[4/3] overflow-hidden rounded-md border bg-muted'
           @change="onFiles"
         />
       </div>
-      <p class="text-[11px] text-muted-foreground">JPG, PNG o WebP de hasta 5 MB. Se suben al guardar la zona.</p>
-      <p v-if="fileError" class="text-[11px] text-destructive" role="alert">{{ fileError }}</p>
+      <p class="text-caption text-muted-foreground">JPG, PNG o WebP de hasta 5 MB. Se suben al guardar la zona.</p>
+      <p v-if="fileError" class="text-caption text-destructive" role="alert">{{ fileError }}</p>
 
       <ul v-if="existing.length || pending.length" class="grid grid-cols-3 gap-2">
         <li v-for="p in existing" :key="p.id" :class="thumb">
@@ -144,7 +144,7 @@ const thumb = 'relative aspect-[4/3] overflow-hidden rounded-md border bg-muted'
           </span>
           <span
             v-if="removed.includes(p.id)"
-            class="absolute inset-x-0 bottom-0 bg-destructive/85 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white"
+            class="absolute inset-x-0 bottom-0 bg-destructive/85 px-1.5 py-0.5 text-center text-micro font-semibold text-white"
           >Se eliminará</span>
           <Button
             type="button"
@@ -160,7 +160,7 @@ const thumb = 'relative aspect-[4/3] overflow-hidden rounded-md border bg-muted'
         </li>
         <li v-for="(f, i) in pending" :key="`${f.name}-${i}`" :class="thumb">
           <img :src="previews[i]" :alt="f.name" class="size-full object-cover" />
-          <span class="absolute inset-x-0 bottom-0 bg-primary/85 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white">Nueva</span>
+          <span class="absolute inset-x-0 bottom-0 bg-primary/85 px-1.5 py-0.5 text-center text-micro font-semibold text-white">Nueva</span>
           <Button
             type="button"
             size="icon-sm"

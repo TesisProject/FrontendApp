@@ -2,14 +2,14 @@
 import RemoveFavoriteDialog from '../../../favorites/presentation/components/RemoveFavoriteDialog.vue'
 import { useFavoriteToggle } from '../../../favorites/presentation/composables/useFavoriteToggle'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { ArrowLeft, Heart, Loader2, MapPin } from '@lucide/vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { ArrowLeft, ChartLine, Heart, Loader2, MessageSquareText, Sparkles } from '@lucide/vue'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/shared/presentation/components/ui/tabs'
 import { Button } from '@/app/shared/presentation/components/ui/button'
 import { Skeleton } from '@/app/shared/presentation/components/ui/skeleton'
 import { useZoneStore } from '../../application/zone.store'
 import { useFavoriteStore } from '../../../favorites/application/favorite.store'
 import { useAuthStore } from '../../../iam/application/auth.store'
-import { classificationColor } from '../../domain/zone-classification'
 import type { ParkingSpace } from '../../domain/model/space.model'
 import ZoneRating from '../../../ratings/presentation/components/ZoneRating.vue'
 import SectionCard from '../../../shared/presentation/components/SectionCard.vue'
@@ -17,13 +17,11 @@ import StateMessage from '../../../shared/presentation/components/StateMessage.v
 import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
 import OccupancyHistoryChart from '../components/OccupancyHistoryChart.vue'
 import ZoneForecastCard from '../components/ZoneForecastCard.vue'
-import ZoneInfoCard from '../components/ZoneInfoCard.vue'
-import { formatZoneAddress } from '../../domain/zone-address'
+import ZoneOverviewAside from '../components/ZoneOverviewAside.vue'
 import ClassificationBadge from '../components/ClassificationBadge.vue'
 import StaleBadge from '../components/StaleBadge.vue'
 import ConnectivityNotice from '../components/ConnectivityNotice.vue'
 import { useNetworkStatus } from '../../../shared/presentation/composables/useNetworkStatus'
-import OccupancyMeter from '../components/OccupancyMeter.vue'
 import ZoneSpacesPanel from '../components/ZoneSpacesPanel.vue'
 import ZoneSpacesSkeleton from '../components/ZoneSpacesSkeleton.vue'
 import OccupancyHistorySkeleton from '../components/OccupancyHistorySkeleton.vue'
@@ -48,18 +46,17 @@ async function toggleFavorite() {
   await favoriteToggle.toggle(zoneId.value, zoneStore.zone?.name ?? 'Zona')
 }
 
-const occupancyPct = computed(() =>
-  zoneStore.zone ? Math.round(zoneStore.zone.occupancyPercentage) : 0,
-)
-
-const stats = computed(() => {
-  const z = zoneStore.zone
-  if (!z) return []
-  return [
-    { label: 'Total',    value: z.totalSpaces,   tone: 'text-heading' },
-    { label: 'Libres',   value: z.freeCount,     tone: 'text-success' },
-    { label: 'Ocupados', value: z.occupiedCount, tone: 'text-destructive' },
-  ]
+// Pestaña activa en ?tab=: sobrevive a recargar y se puede compartir; "Atrás" no la recorre (replace).
+const DETAIL_TABS = [
+  { value: 'history',  label: 'Historial',    icon: ChartLine },
+  { value: 'forecast', label: 'Predicciones', icon: Sparkles },
+  { value: 'reviews',  label: 'Reseñas',      icon: MessageSquareText },
+] as const
+type DetailTab = typeof DETAIL_TABS[number]['value']
+const router = useRouter()
+const activeTab = computed<DetailTab>({
+  get: () => DETAIL_TABS.find(t => t.value === route.query.tab)?.value ?? 'history',
+  set: (tab) => { router.replace({ query: { ...route.query, tab: tab === 'history' ? undefined : tab } }) },
 })
 
 const historyRange = ref<HistoryRange>('12h')
@@ -86,8 +83,6 @@ async function loadHistoryBuckets(options?: { silent?: boolean }) {
 }
 
 watch(historyRange, () => loadHistoryBuckets())
-
-const statCard ='flex flex-col gap-1 rounded-xl border bg-card px-5 py-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)]'
 
 const REFRESH_MS = 30_000
 // Los frames crudos (30 días, solo para comparar el pronóstico por hora) pesan mucho más que el resto:
@@ -119,7 +114,7 @@ onUnmounted(() => clearInterval(refreshTimer))
 </script>
 
 <template>
-  <div class="flex flex-col gap-5">
+  <div class="mx-auto flex w-full max-w-page flex-col gap-5">
     <div>
       <Button as-child variant="ghost" class="h-auto px-2.5 py-1.5 text-sm font-medium text-heading">
         <RouterLink to="/dashboard/zones"><ArrowLeft class="size-[18px]" :stroke-width="2.5" /> Zonas</RouterLink>
@@ -144,20 +139,14 @@ onUnmounted(() => clearInterval(refreshTimer))
         </div>
       </div>
       <div v-else class="flex flex-wrap items-start justify-between gap-4">
-        <div class="min-w-0">
-          <h1 class="mb-1.5 font-display text-2xl font-bold text-heading">{{ zoneStore.zone.name }}</h1>
-          <p class="flex items-center gap-1 text-[13px] text-muted-foreground">
-            <MapPin class="size-[13px] shrink-0" aria-hidden="true" />
-            {{ formatZoneAddress(zoneStore.zone) }}
-          </p>
-        </div>
+        <h1 class="min-w-0 font-display text-page font-bold text-balance text-heading">{{ zoneStore.zone.name }}</h1>
         <div class="mt-1 flex shrink-0 items-center gap-2.5">
-          <StaleBadge :freshness="zoneStore.zone" class="px-3 py-[5px] text-xs" />
-          <ClassificationBadge :classification="zoneStore.zone.classification" class="px-3.5 py-[5px] text-xs" />
+          <StaleBadge :freshness="zoneStore.zone" class="px-3 py-[5px] text-caption" />
+          <ClassificationBadge :classification="zoneStore.zone.classification" class="px-3.5 py-[5px] text-caption" />
           <Button
             variant="outline"
             size="sm"
-            class="rounded-full px-3.5 text-xs font-semibold hover:border-primary hover:bg-primary/10 hover:text-link"
+            class="rounded-full px-3.5 text-caption font-semibold hover:border-primary hover:bg-primary/10 hover:text-link"
             :class="isFav && 'border-primary bg-primary/10 text-link'"
             :aria-pressed="isFav"
             @click="toggleFavorite"
@@ -168,41 +157,32 @@ onUnmounted(() => clearInterval(refreshTimer))
         </div>
       </div>
 
-      <!-- Stats -->
-      <div v-if="!zoneStore.zone" class="grid grid-cols-2 gap-3.5 md:grid-cols-4">
-        <div v-for="i in 4" :key="i" :class="statCard">
-          <Skeleton class="h-[26px] w-14" />
-          <Skeleton class="h-3 w-16" />
-        </div>
-      </div>
-      <div v-else class="grid grid-cols-2 gap-3.5 md:grid-cols-4">
-        <div v-for="s in stats" :key="s.label" :class="statCard">
-          <span class="font-display text-[26px] leading-none font-bold tabular-nums" :class="s.tone">{{ s.value }}</span>
-          <span class="text-xs font-medium text-muted-foreground">{{ s.label }}</span>
-        </div>
-        <div :class="statCard">
-          <div class="flex flex-col gap-1.5">
-            <span class="font-display text-[26px] leading-none font-bold text-heading tabular-nums">{{ occupancyPct }}%</span>
-            <OccupancyMeter
-              :percentage="occupancyPct"
-              :color="classificationColor(zoneStore.zone.classification)"
-              class="h-1"
-            />
+      <!-- Dos columnas en desktop: a la izquierda, fija al hacer scroll, lo que se mira de un vistazo
+           (foto, libres, dirección, cómo llegar); a la derecha, lo que se consulta en detalle. -->
+      <div class="grid gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[22rem_minmax(0,1fr)]">
+        <aside
+          class="lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:overflow-y-auto lg:[scrollbar-width:thin]"
+        >
+          <ZoneOverviewAside v-if="zoneStore.zone" :zone="zoneStore.zone" />
+          <div v-else class="overflow-hidden rounded-xl border bg-card" role="status" aria-label="Cargando resumen">
+            <Skeleton class="aspect-[16/10] w-full rounded-none" />
+            <div class="grid gap-3 p-4">
+              <Skeleton class="h-9 w-40" />
+              <Skeleton class="h-1.5 w-full" />
+              <Skeleton class="h-4 w-3/4" />
+              <Skeleton class="h-4 w-2/3" />
+            </div>
           </div>
-          <span class="text-xs font-medium text-muted-foreground">Ocupación</span>
-        </div>
-      </div>
+        </aside>
 
-      <!-- HU-09: dirección, capacidad, disponibles, distancia, horario y fotos -->
-      <ZoneInfoCard v-if="zoneStore.zone" :zone="zoneStore.zone" />
-
+        <div class="flex min-w-0 flex-col gap-5">
       <!-- Spaces, agrupados por lo que ve cada cámara -->
       <SectionCard
         title="Espacios"
         :sub="zoneStore.views.length ? 'Pasa el cursor por un espacio para ubicarlo en la foto.' : undefined"
       >
         <template #actions>
-          <div class="flex shrink-0 flex-wrap items-center gap-4 pt-0.5 text-xs text-muted-foreground">
+          <div class="flex shrink-0 flex-wrap items-center gap-4 pt-0.5 text-body text-muted-foreground">
             <StaleBadge v-if="zoneStore.zone" :freshness="zoneStore.zone" />
             <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-libre" /> Libre</span>
             <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-ocupado" /> Ocupado</span>
@@ -214,46 +194,63 @@ onUnmounted(() => clearInterval(refreshTimer))
         <ZoneSpacesPanel v-else :spaces="spaces" :views="zoneStore.views" />
       </SectionCard>
 
-      <!-- Occupancy history -->
-      <SectionCard title="Historial de ocupación" :sub="historySub">
-        <template #actions>
-          <div class="flex items-center gap-2">
-            <!-- Recarga al cambiar de periodo: el gráfico actual queda atenuado; el hueco del spinner
-                 está siempre reservado para que los filtros no se muevan. -->
-            <Loader2
-              class="size-4 animate-spin text-muted-foreground"
-              :class="!(historySeries && zoneStore.historyBucketsLoading) && 'invisible'"
-              aria-hidden="true"
-            />
-            <FilterPills v-model="historyRange" :options="HISTORY_RANGE_OPTIONS" label="Periodo del historial" size="sm" />
-          </div>
-        </template>
-        <StateMessage v-if="zoneStore.historyBucketsError" tone="error" compact>
-          {{ zoneStore.historyBucketsError }}
-        </StateMessage>
-        <OccupancyHistorySkeleton v-else-if="!historySeries" />
-        <div
-          v-else
-          class="transition-opacity"
-          :class="zoneStore.historyBucketsLoading && 'opacity-50'"
-          :aria-busy="zoneStore.historyBucketsLoading"
-        >
-          <StateMessage v-if="historySeries.buckets.length === 0" tone="empty" compact>
-            Sin registros de ocupación en este periodo.
-          </StateMessage>
-          <OccupancyHistoryChart v-else :series="historySeries" :range="shownHistory!.range" />
+      <!-- Historial, predicciones y reseñas en pestañas: la página no crece hacia abajo con tres
+           secciones largas. Se montan una vez y quedan vivas (unmount-on-hide=false) para no
+           volver a pedir datos ni perder el periodo elegido al cambiar de pestaña. -->
+      <Tabs v-model="activeTab" :unmount-on-hide="false" class="gap-3.5">
+        <TabsList aria-label="Más sobre esta zona" class="w-full sm:w-fit">
+          <TabsTrigger v-for="t in DETAIL_TABS" :key="t.value" :value="t.value">
+            <component :is="t.icon" aria-hidden="true" /> {{ t.label }}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="history">
+          <SectionCard title="Historial de ocupación" :sub="historySub">
+            <template #actions>
+              <div class="flex items-center gap-2">
+                <!-- Recarga al cambiar de periodo: el gráfico actual queda atenuado; el hueco del spinner
+                     está siempre reservado para que los filtros no se muevan. -->
+                <Loader2
+                  class="size-4 animate-spin text-muted-foreground"
+                  :class="!(historySeries && zoneStore.historyBucketsLoading) && 'invisible'"
+                  aria-hidden="true"
+                />
+                <FilterPills v-model="historyRange" :options="HISTORY_RANGE_OPTIONS" label="Periodo del historial" size="sm" />
+              </div>
+            </template>
+            <StateMessage v-if="zoneStore.historyBucketsError" tone="error" compact>
+              {{ zoneStore.historyBucketsError }}
+            </StateMessage>
+            <OccupancyHistorySkeleton v-else-if="!historySeries" />
+            <div
+              v-else
+              class="transition-opacity"
+              :class="zoneStore.historyBucketsLoading && 'opacity-50'"
+              :aria-busy="zoneStore.historyBucketsLoading"
+            >
+              <StateMessage v-if="historySeries.buckets.length === 0" tone="empty" compact>
+                Sin registros de ocupación en este periodo.
+              </StateMessage>
+              <OccupancyHistoryChart v-else :series="historySeries" :range="shownHistory!.range" />
+            </div>
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="forecast">
+          <ZoneForecastCard
+            v-if="zoneStore.zone"
+            :zone-id="zoneId"
+            :history="zoneStore.history"
+            :history-unavailable="!!zoneStore.historyError"
+          />
+        </TabsContent>
+
+        <TabsContent value="reviews">
+          <ZoneRating v-if="zoneStore.zone" :zone-id="zoneId" />
+        </TabsContent>
+      </Tabs>
         </div>
-      </SectionCard>
-
-      <template v-if="zoneStore.zone">
-        <ZoneForecastCard
-          :zone-id="zoneId"
-          :history="zoneStore.history"
-          :history-unavailable="!!zoneStore.historyError"
-        />
-
-        <ZoneRating :zone-id="zoneId" />
-      </template>
+      </div>
     </template>
     <RemoveFavoriteDialog
       :open="favoriteToggle.confirmOpen.value"

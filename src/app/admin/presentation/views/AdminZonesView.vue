@@ -427,10 +427,10 @@ onMounted(() => store.fetchZones())
       empty-text="No se encontraron zonas"
     >
       <TableRow v-for="z in filtered" :key="z.id">
-        <TableCell class="font-mono text-xs text-muted-foreground">#{{ z.id }}</TableCell>
+        <TableCell class="font-mono text-body text-muted-foreground">#{{ z.id }}</TableCell>
         <TableCell class="font-semibold text-navy">{{ z.name }}</TableCell>
         <TableCell class="text-muted-foreground">{{ formatZoneAddress({ street: z.street, district: z.district }) }}</TableCell>
-        <TableCell class="max-w-[220px] text-xs text-muted-foreground">
+        <TableCell class="max-w-[13.75rem] text-body text-muted-foreground">
           <span class="line-clamp-2" :title="formatOpeningHours(z.openingHours)">{{ formatOpeningHours(z.openingHours) }}</span>
         </TableCell>
         <TableCell>{{ z.totalSpaces }}</TableCell>
@@ -485,7 +485,7 @@ onMounted(() => store.fetchZones())
 
     <!-- Create / Edit -->
     <Dialog v-model:open="showModal">
-      <DialogContent class="sm:max-w-[640px]" @interact-outside="busy && $event.preventDefault()">
+      <DialogContent class="sm:max-w-[40rem]" @interact-outside="busy && $event.preventDefault()">
         <DialogHeader>
           <DialogTitle>{{ editTarget ? 'Editar zona' : 'Nueva zona' }}</DialogTitle>
         </DialogHeader>
@@ -495,7 +495,7 @@ onMounted(() => store.fetchZones())
             <Input :id="id" v-model="form.name" placeholder="Ej: Zona Norte, Zona Centro, Estacionamiento Sur" />
           </AdminField>
 
-          <div class="my-1 flex items-center gap-2.5 text-[11px] font-semibold tracking-[0.5px] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+          <div class="my-1 flex items-center gap-2.5 text-caption font-semibold tracking-[0.05em] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
             Ubicación
           </div>
 
@@ -534,8 +534,8 @@ onMounted(() => store.fetchZones())
                   class="flex cursor-pointer flex-col gap-px px-3.5 py-2 transition-colors hover:bg-accent"
                   @mousedown.prevent="selectAddr(s)"
                 >
-                  <span class="text-[13px] font-medium text-navy">{{ s.mainText }}</span>
-                  <span class="text-[11px] text-muted-foreground">{{ s.secondaryText }}</span>
+                  <span class="text-body font-medium text-navy">{{ s.mainText }}</span>
+                  <span class="text-caption text-muted-foreground">{{ s.secondaryText }}</span>
                 </li>
               </ul>
             </div>
@@ -568,7 +568,7 @@ onMounted(() => store.fetchZones())
             </AdminField>
           </div>
 
-          <div class="my-1 flex items-center gap-2.5 text-[11px] font-semibold tracking-[0.5px] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+          <div class="my-1 flex items-center gap-2.5 text-caption font-semibold tracking-[0.05em] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
             Capacidad
           </div>
 
@@ -581,14 +581,14 @@ onMounted(() => store.fetchZones())
             </AdminField>
           </div>
 
-          <div class="my-1 flex items-center gap-2.5 text-[11px] font-semibold tracking-[0.5px] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+          <div class="my-1 flex items-center gap-2.5 text-caption font-semibold tracking-[0.05em] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
             Horario de atención
           </div>
 
           <OpeningHoursEditor v-model="form.openingHours" />
-          <p v-if="fieldErrors.openingHours" class="text-[11px] font-medium text-destructive" role="alert">{{ fieldErrors.openingHours }}</p>
+          <p v-if="fieldErrors.openingHours" class="text-caption font-medium text-destructive" role="alert">{{ fieldErrors.openingHours }}</p>
 
-          <div class="my-1 flex items-center gap-2.5 text-[11px] font-semibold tracking-[0.5px] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+          <div class="my-1 flex items-center gap-2.5 text-caption font-semibold tracking-[0.05em] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
             Fotos
           </div>
 
@@ -616,7 +616,7 @@ onMounted(() => store.fetchZones())
 
     <!-- Spaces -->
     <Dialog :open="showSpaces" @update:open="(v: boolean) => !v && closeSpaces()">
-      <DialogContent class="flex max-h-[80vh] flex-col sm:max-w-[460px]">
+      <DialogContent class="flex max-h-[80vh] flex-col sm:max-w-[28.75rem]">
         <DialogHeader>
           <DialogTitle>Espacios</DialogTitle>
           <DialogDescription>{{ spaceZoneName }}</DialogDescription>
@@ -637,8 +637,8 @@ onMounted(() => store.fetchZones())
 
         <FormAlert :message="spacesStore.error" />
 
-        <p v-if="spacesStore.loading" class="py-6 text-center text-[13px] text-muted-foreground">Cargando espacios...</p>
-        <p v-else-if="spacesStore.spaces.length === 0" class="py-6 text-center text-[13px] text-muted-foreground">
+        <p v-if="spacesStore.loading" class="py-6 text-center text-body text-muted-foreground">Cargando espacios...</p>
+        <p v-else-if="spacesStore.spaces.length === 0" class="py-6 text-center text-body text-muted-foreground">
           Sin espacios registrados
         </p>
         <ul v-else class="-mr-2 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-2 [scrollbar-width:thin]">
@@ -648,7 +648,7 @@ onMounted(() => store.fetchZones())
             class="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2"
           >
             <div class="flex items-center gap-2.5">
-              <span class="font-mono text-[13px] font-semibold tracking-[0.5px] text-foreground">{{ s.spaceNumber }}</span>
+              <span class="font-mono text-body font-semibold tracking-[0.05em] text-foreground">{{ s.spaceNumber }}</span>
               <Badge :variant="s.occupied ? 'danger' : 'success'" size="status">{{ s.occupied ? 'Ocupado' : 'Libre' }}</Badge>
               <Badge :variant="s.monitored ? 'info' : 'neutral'" size="status">{{ s.monitored ? 'Monitoreado' : 'Sin ROI' }}</Badge>
             </div>
@@ -666,7 +666,7 @@ onMounted(() => store.fetchZones())
         </ul>
 
         <DialogFooter class="items-center border-t pt-3 sm:justify-between">
-          <span class="text-xs text-muted-foreground">
+          <span class="text-body text-muted-foreground">
             {{ spacesStore.spaces.length }} espacio{{ spacesStore.spaces.length !== 1 ? 's' : '' }}
           </span>
           <Button variant="outline" @click="closeSpaces">Cerrar</Button>

@@ -190,7 +190,7 @@ onMounted(() => Promise.all([load(), store.refreshActiveAdminCount()]))
       :empty-text="isFiltering ? 'Ningún usuario coincide con la búsqueda' : 'No hay usuarios registrados'"
     >
       <TableRow v-for="u in filtered" :key="u.id">
-        <TableCell class="font-mono text-xs text-muted-foreground">#{{ u.id }}</TableCell>
+        <TableCell class="font-mono text-body text-muted-foreground">#{{ u.id }}</TableCell>
         <TableCell>{{ u.fullName ?? '—' }}</TableCell>
         <TableCell class="font-semibold text-navy">{{ u.email }}</TableCell>
         <TableCell>
@@ -198,7 +198,7 @@ onMounted(() => Promise.all([load(), store.refreshActiveAdminCount()]))
             :model-value="u.role"
             :aria-label="`Rol de ${u.email}`"
             wrapper-class="w-fit"
-            class="h-8 w-auto py-1 pr-8 pl-2.5 text-xs font-semibold"
+            class="h-8 w-auto py-1 pr-8 pl-2.5 text-caption font-semibold"
             :class="roleClass[u.role]"
             @update:model-value="requestRoleChange(u.id, u.role, $event as AdminRole)"
           >
@@ -208,7 +208,7 @@ onMounted(() => Promise.all([load(), store.refreshActiveAdminCount()]))
         <TableCell>
           <button
             type="button"
-            class="rounded-full px-3 py-1 text-[11px] font-bold transition-opacity hover:opacity-75 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+            class="rounded-full px-3 py-1 text-caption font-bold transition-opacity hover:opacity-75 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
             :class="u.active ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
             :aria-label="`${u.active ? 'Desactivar' : 'Activar'} a ${u.email}`"
             @click="requestStatusToggle(u.id, u.active)"

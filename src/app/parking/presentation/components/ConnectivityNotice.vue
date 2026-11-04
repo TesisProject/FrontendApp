@@ -35,7 +35,7 @@ const locationMessage = computed(() => {
   }
 })
 
-const box = 'flex items-start gap-2.5 rounded-[10px] border px-3 py-2.5 text-[12.5px] leading-snug'
+const box = 'flex items-start gap-2.5 rounded-[10px] border px-3 py-2.5 text-body leading-snug'
 </script>
 
 <template>

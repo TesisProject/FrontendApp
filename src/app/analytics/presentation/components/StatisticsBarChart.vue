@@ -83,7 +83,7 @@ function label(p: StatisticsPoint) {
           :stroke-opacity="t === 80 ? 0.6 : 1"
           stroke-width="1"
         />
-        <text :x="PAD.left - 8" :y="yOf(t) + 3.5" text-anchor="end" class="fill-muted-foreground text-[11px] tabular-nums">
+        <text :x="PAD.left - 8" :y="yOf(t) + 3.5" text-anchor="end" class="fill-muted-foreground text-caption tabular-nums">
           {{ t }}%
         </text>
       </g>
@@ -109,7 +109,7 @@ function label(p: StatisticsPoint) {
         />
         <text
           v-if="i % labelEvery === 0"
-          :x="b.cx" :y="H - 10" text-anchor="middle" class="fill-muted-foreground text-[11px] tabular-nums"
+          :x="b.cx" :y="H - 10" text-anchor="middle" class="fill-muted-foreground text-caption tabular-nums"
         >{{ bucketAxisLabel(b.point.start, statistics.granularity) }}</text>
       </g>
     </svg>
@@ -119,17 +119,17 @@ function label(p: StatisticsPoint) {
       class="pointer-events-none absolute z-[5] flex -translate-x-1/2 -translate-y-[calc(100%+10px)] flex-col gap-0.5 rounded-lg bg-navy px-[11px] py-[7px] whitespace-nowrap text-white shadow-[0_4px_14px_rgba(9,44,76,0.25)] dark:border dark:bg-popover"
       :style="tooltipStyle"
     >
-      <span class="text-[11px] font-semibold text-[#bcd3ea] dark:text-muted-foreground">{{ label(hovered.point) }}</span>
+      <span class="text-caption font-semibold text-[#bcd3ea] dark:text-muted-foreground">{{ label(hovered.point) }}</span>
       <template v-if="hovered.point.samples > 0">
-        <span class="text-xs tabular-nums"><span class="font-bold">Promedio {{ formatPct(hovered.point.avgPct) }}</span> · máx. {{ formatPct(hovered.point.maxPct) }}</span>
-        <span class="text-[11px] text-[#bcd3ea] tabular-nums dark:text-muted-foreground">
+        <span class="text-body tabular-nums"><span class="font-bold">Promedio {{ formatPct(hovered.point.avgPct) }}</span> · máx. {{ formatPct(hovered.point.maxPct) }}</span>
+        <span class="text-caption text-[#bcd3ea] tabular-nums dark:text-muted-foreground">
           {{ hovered.point.avgOccupied?.toLocaleString('es-PE') }} de {{ hovered.point.totalSpots }} ocupados en promedio
         </span>
       </template>
-      <span v-else class="text-xs">Sin datos en este intervalo</span>
+      <span v-else class="text-body">Sin datos en este intervalo</span>
     </div>
 
-    <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
+    <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-caption text-muted-foreground">
       <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-chart-1" /> Ocupación promedio</span>
       <span class="inline-flex items-center gap-1.5"><span class="h-0.5 w-3 rounded bg-zone-ocupado" /> Máximo observado</span>
       <span class="inline-flex items-center gap-1.5"><span class="h-0 w-3 border-t border-dashed border-zone-ocupado" /> Umbral de ocupado (80 %)</span>

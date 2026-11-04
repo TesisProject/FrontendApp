@@ -94,7 +94,7 @@ function handleResend() {
             :index="i"
             :aria-label="`Dígito ${i + 1} de ${CODE_LENGTH}`"
             :aria-invalid="!!authStore.recoveryError || undefined"
-            class="h-14 w-auto min-w-0 flex-1 rounded-lg border-[1.5px] bg-card font-display text-[22px] font-bold text-ink first:rounded-l-lg last:rounded-r-lg focus:border-ring focus:ring-4 focus:ring-ring/15 aria-invalid:ring-4 aria-invalid:ring-destructive/12"
+            class="h-14 w-auto min-w-0 flex-1 rounded-lg border-[1.5px] bg-card font-display text-page font-bold text-ink first:rounded-l-lg last:rounded-r-lg focus:border-ring focus:ring-4 focus:ring-ring/15 aria-invalid:ring-4 aria-invalid:ring-destructive/12"
           />
         </PinInputGroup>
       </PinInput>
@@ -103,7 +103,7 @@ function handleResend() {
         <Button
           variant="link"
           type="button"
-          class="h-auto p-0 text-[13px] font-medium disabled:text-muted-foreground disabled:opacity-100"
+          class="h-auto p-0 text-body font-medium disabled:text-muted-foreground disabled:opacity-100"
           :disabled="countdown > 0"
           @click="handleResend"
         >
@@ -132,7 +132,7 @@ function handleResend() {
       />
     </form>
 
-    <p class="text-center text-[13px] text-muted-foreground">
+    <p class="text-center text-body text-muted-foreground">
       <TextLink to="/login">← Volver a iniciar sesión</TextLink>
     </p>
   </AuthCard>

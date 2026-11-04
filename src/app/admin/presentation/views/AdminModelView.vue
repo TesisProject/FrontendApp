@@ -71,7 +71,7 @@ onBeforeUnmount(() => clearInterval(timer))
       <Button :disabled="store.requesting" @click="retrainError = null; confirmOpen = true">Reentrenar</Button>
     </template>
 
-    <h2 class="mb-2 text-sm font-semibold text-navy">Corridas del reentrenamiento</h2>
+    <h2 class="mb-2 text-title font-semibold text-navy">Corridas del reentrenamiento</h2>
     <AdminStateBox v-if="store.runsLoading && store.runs.length === 0">Cargando corridas...</AdminStateBox>
     <AdminStateBox v-else-if="store.runsError" tone="error">{{ store.runsError }}</AdminStateBox>
     <AdminTableCard
@@ -81,33 +81,33 @@ onBeforeUnmount(() => clearInterval(timer))
       empty-text="Todavía no hay corridas del reentrenamiento"
     >
       <TableRow v-for="r in store.runs" :key="r.id">
-        <TableCell class="font-mono text-xs">#{{ r.runNumber ?? r.id }}</TableCell>
-        <TableCell class="text-xs">{{ runTriggerLabel(r.trigger) }}</TableCell>
+        <TableCell class="font-mono text-body">#{{ r.runNumber ?? r.id }}</TableCell>
+        <TableCell class="text-body">{{ runTriggerLabel(r.trigger) }}</TableCell>
         <TableCell>
           <Badge :variant="runStatus(r).tone" size="status">{{ runStatus(r).label }}</Badge>
         </TableCell>
-        <TableCell class="text-xs whitespace-nowrap">{{ fmt(r.startedAt) }}</TableCell>
-        <TableCell class="text-xs whitespace-nowrap">{{ fmt(r.finishedAt) }}</TableCell>
+        <TableCell class="text-body whitespace-nowrap">{{ fmt(r.startedAt) }}</TableCell>
+        <TableCell class="text-body whitespace-nowrap">{{ fmt(r.finishedAt) }}</TableCell>
         <TableCell>
           <a
             v-if="r.logsUrl"
             :href="r.logsUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            class="inline-flex items-center gap-1 text-body font-medium text-primary hover:underline"
           >
             Ver logs <ExternalLink class="size-3" />
           </a>
-          <span v-else class="text-xs text-muted-foreground">—</span>
+          <span v-else class="text-body text-muted-foreground">—</span>
         </TableCell>
       </TableRow>
     </AdminTableCard>
-    <p class="mt-2 mb-6 text-[11px] text-muted-foreground">
+    <p class="mt-2 mb-6 text-caption text-muted-foreground">
       Si una corrida falla, los administradores reciben un correo y una notificación, y el modelo publicado
       sigue siendo el anterior.
     </p>
 
-    <h2 class="mb-2 text-sm font-semibold text-navy">Versiones publicadas</h2>
+    <h2 class="mb-2 text-title font-semibold text-navy">Versiones publicadas</h2>
     <AdminStateBox v-if="store.versionsError" tone="error">{{ store.versionsError }}</AdminStateBox>
     <AdminTableCard
       v-else
@@ -116,11 +116,11 @@ onBeforeUnmount(() => clearInterval(timer))
       empty-text="Todavía no se publicó ninguna versión del modelo"
     >
       <TableRow v-for="v in store.versions" :key="v.id">
-        <TableCell class="text-xs whitespace-nowrap">{{ fmt(v.publishedAt) }}</TableCell>
-        <TableCell class="font-mono text-xs font-semibold text-navy">{{ v.modelVersion }}</TableCell>
-        <TableCell class="font-mono text-xs">{{ v.runId ?? '—' }}</TableCell>
-        <TableCell class="text-xs">{{ v.zonesPublished }}</TableCell>
-        <TableCell class="text-xs whitespace-nowrap">{{ fmt(v.lastPublishedAt) }}</TableCell>
+        <TableCell class="text-body whitespace-nowrap">{{ fmt(v.publishedAt) }}</TableCell>
+        <TableCell class="font-mono text-body font-semibold text-navy">{{ v.modelVersion }}</TableCell>
+        <TableCell class="font-mono text-body">{{ v.runId ?? '—' }}</TableCell>
+        <TableCell class="text-body">{{ v.zonesPublished }}</TableCell>
+        <TableCell class="text-body whitespace-nowrap">{{ fmt(v.lastPublishedAt) }}</TableCell>
       </TableRow>
     </AdminTableCard>
 

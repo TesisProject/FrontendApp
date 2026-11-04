@@ -39,17 +39,17 @@ defineEmits<{
           <!-- Stretched button: the whole card focuses the zone on the map. -->
           <button
             type="button"
-            class="mb-1 text-left text-[15px] leading-tight font-bold text-heading after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-3 focus-visible:after:ring-ring/40"
+            class="mb-1 text-left text-title leading-tight font-bold text-heading after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-3 focus-visible:after:ring-ring/40"
             :aria-pressed="selected"
             @click="$emit('focus')"
           >
             {{ zone.name }}
           </button>
-          <p class="flex items-center gap-[5px] text-xs text-muted-foreground">
+          <p class="flex items-center gap-[5px] text-body text-muted-foreground">
             <MapPin class="size-[11px] shrink-0 opacity-70" aria-hidden="true" />
             <span class="truncate">{{ zone.street }}, {{ zone.district }}</span>
           </p>
-          <p v-if="distanceMeters != null" class="mt-1 flex items-center gap-[5px] text-xs font-semibold text-heading">
+          <p v-if="distanceMeters != null" class="mt-1 flex items-center gap-[5px] text-body font-semibold text-heading">
             <Navigation class="size-[11px] shrink-0" aria-hidden="true" />
             a {{ formatDistance(distanceMeters) }}
           </p>
@@ -70,12 +70,12 @@ defineEmits<{
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-baseline gap-2">
           <span
-            class="font-display text-[28px] leading-none font-bold tracking-[-0.02em] tabular-nums"
+            class="font-display text-display leading-none font-bold tracking-[-0.02em] tabular-nums"
             :style="{ color: classificationColor(zone.classification) }"
           >{{ noReading ? '—' : zone.freeCount }}</span>
           <span class="flex flex-col leading-tight">
-            <span class="text-xs font-semibold text-foreground/80">{{ noReading ? 'sin lecturas' : 'libres' }}</span>
-            <span class="text-[11px] text-muted-foreground">de {{ zone.totalSpaces }} espacios</span>
+            <span class="text-body font-semibold text-foreground/80">{{ noReading ? 'sin lecturas' : 'libres' }}</span>
+            <span class="text-caption text-muted-foreground">de {{ zone.totalSpaces }} espacios</span>
           </span>
         </div>
         <ClassificationBadge :classification="zone.classification" />
@@ -89,14 +89,14 @@ defineEmits<{
           :color="classificationColor(zone.classification)"
           class="h-[7px] flex-1"
         />
-        <span class="text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
+        <span class="text-caption font-semibold whitespace-nowrap text-muted-foreground">
           {{ Math.round(zone.occupancyPercentage) }}% ocupado
         </span>
       </div>
 
       <button
         type="button"
-        class="group relative z-10 inline-flex items-center gap-[5px] self-start rounded-sm text-xs font-semibold text-link transition-[gap] hover:gap-2 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+        class="group relative z-10 inline-flex items-center gap-[5px] self-start rounded-sm text-body font-semibold text-link transition-[gap] hover:gap-2 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
         @click="$emit('view-detail')"
       >
         Ver detalle

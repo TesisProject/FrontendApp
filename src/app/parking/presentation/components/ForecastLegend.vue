@@ -25,7 +25,7 @@ defineProps<{
 
 <template>
   <ul
-    class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11.5px] text-muted-foreground"
+    class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-caption text-muted-foreground"
     aria-label="Leyenda de la tabla de predicciones"
   >
     <li class="font-semibold text-heading">Disponibilidad predicha:</li>

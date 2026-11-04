@@ -84,7 +84,7 @@ onMounted(() => Promise.all([store.fetchReleases(), camerasStore.fetchCameras()]
       <Button @click="showUpload = true"><Upload /> Publicar versión</Button>
     </template>
 
-    <p class="mb-4 flex gap-2 rounded-xl border bg-card px-4 py-3 text-[13px] text-muted-foreground">
+    <p class="mb-4 flex gap-2 rounded-xl border bg-card px-4 py-3 text-body text-muted-foreground">
       <Info class="mt-0.5 size-4 shrink-0 text-[#1a56c4] dark:text-[#93c5fd]" />
       <span>
         El Fog ya descarga y guarda la versión asignada a cada cámara; las placas la instalarán cuando lleven el
@@ -103,13 +103,13 @@ onMounted(() => Promise.all([store.fetchReleases(), camerasStore.fetchCameras()]
     >
       <TableRow v-for="r in store.releases" :key="r.id">
         <TableCell class="font-mono text-sm font-semibold text-navy">v{{ r.version }}</TableCell>
-        <TableCell class="text-xs text-muted-foreground">{{ formatDate(r.createdAt) }}</TableCell>
-        <TableCell class="text-xs">
+        <TableCell class="text-body text-muted-foreground">{{ formatDate(r.createdAt) }}</TableCell>
+        <TableCell class="text-body">
           {{ formatSize(r.size) }} <span class="text-muted-foreground">({{ otaSlotPercent(r.size) }} %)</span>
         </TableCell>
         <TableCell>
           <div class="flex items-center gap-1.5">
-            <code class="font-mono text-xs" :title="`${r.sha256}\nClave de firma: ${r.signingKeyId}`">{{ shortSha(r.sha256) }}</code>
+            <code class="font-mono text-body" :title="`${r.sha256}\nClave de firma: ${r.signingKeyId}`">{{ shortSha(r.sha256) }}</code>
             <Button
               size="icon-xs"
               variant="ghost"
@@ -120,18 +120,18 @@ onMounted(() => Promise.all([store.fetchReleases(), camerasStore.fetchCameras()]
             </Button>
           </div>
         </TableCell>
-        <TableCell class="text-xs">
+        <TableCell class="text-body">
           {{ usage(r.version).assigned }} asig. · {{ usage(r.version).installed }} inst.
         </TableCell>
-        <TableCell class="max-w-[220px] truncate text-xs text-muted-foreground" :title="r.notes ?? undefined">
+        <TableCell class="max-w-[13.75rem] truncate text-body text-muted-foreground" :title="r.notes ?? undefined">
           {{ r.notes ?? '—' }}
         </TableCell>
       </TableRow>
     </AdminTableCard>
 
     <section v-if="!store.loading && !store.error && store.releases.length > 0" class="mt-6" aria-labelledby="rollout-title">
-      <h2 id="rollout-title" class="mb-1 text-[15px] font-bold text-heading">Despliegue por cámara</h2>
-      <p class="mb-3 text-[13px] text-muted-foreground">
+      <h2 id="rollout-title" class="mb-1 text-title font-bold text-heading">Despliegue por cámara</h2>
+      <p class="mb-3 text-body text-muted-foreground">
         Despliega primero en una cámara y, cuando informe la versión nueva, en las demás. Una placa con
         batería baja (menos de 3600 mV) recibe la asignación, pero no instala hasta recargarse.
       </p>
@@ -145,11 +145,11 @@ onMounted(() => Promise.all([store.fetchReleases(), camerasStore.fetchCameras()]
       >
         <TableRow v-for="c in camerasStore.cameras" :key="c.id">
           <TableCell>
-            <span class="font-mono text-xs font-semibold text-navy">{{ c.code }}</span>
+            <span class="font-mono text-body font-semibold text-navy">{{ c.code }}</span>
             <span class="ml-1.5 text-muted-foreground">{{ c.name }}</span>
           </TableCell>
-          <TableCell class="font-mono text-xs">{{ c.firmware.reported !== null ? `v${c.firmware.reported}` : '—' }}</TableCell>
-          <TableCell class="font-mono text-xs">{{ c.firmware.target !== null ? `v${c.firmware.target}` : '—' }}</TableCell>
+          <TableCell class="font-mono text-body">{{ c.firmware.reported !== null ? `v${c.firmware.reported}` : '—' }}</TableCell>
+          <TableCell class="font-mono text-body">{{ c.firmware.target !== null ? `v${c.firmware.target}` : '—' }}</TableCell>
           <TableCell>
             <FirmwareStatusBadge :status="c.firmware.status" :target="c.firmware.target" :reported="c.firmware.reported" />
           </TableCell>

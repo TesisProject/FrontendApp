@@ -193,9 +193,9 @@ watch([open, () => props.cameraId], ([isOpen]) => {
 
 <template>
   <Sheet v-model:open="open">
-    <SheetContent class="w-full gap-0 overflow-y-auto sm:max-w-[560px]">
+    <SheetContent class="w-full gap-0 overflow-y-auto sm:max-w-[35rem]">
       <SheetHeader class="border-b px-6 py-5">
-        <SheetTitle class="font-signage text-[22px] text-navy">
+        <SheetTitle class="font-signage text-page text-navy">
           <span class="font-mono">{{ camera?.code }}</span> · {{ camera?.name }}
         </SheetTitle>
         <SheetDescription>Configuración de la cámara y de su placa ESP32-CAM.</SheetDescription>
@@ -203,25 +203,25 @@ watch([open, () => props.cameraId], ([isOpen]) => {
 
       <div v-if="camera" class="px-6 py-5">
         <section aria-labelledby="camera-battery-title" class="mb-5 rounded-xl border bg-card px-4 py-3.5">
-          <h3 id="camera-battery-title" class="mb-2 text-[11px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">Batería</h3>
+          <h3 id="camera-battery-title" class="mb-2 text-caption font-semibold tracking-[0.04em] text-muted-foreground uppercase">Batería</h3>
           <template v-if="battery && batteryState">
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <BatteryMeter :battery="battery" size="lg" />
-              <span class="font-signage text-[28px] leading-none font-semibold tabular-nums" :class="battery.stale ? 'text-muted-foreground' : 'text-navy'">
+              <span class="font-signage text-display leading-none font-semibold tabular-nums" :class="battery.stale ? 'text-muted-foreground' : 'text-navy'">
                 {{ battery.percent }} %
               </span>
               <span class="font-mono text-sm text-muted-foreground">{{ battery.mv }} mV</span>
               <Badge :variant="batteryState.variant" size="status">{{ batteryState.label }}</Badge>
             </div>
-            <p class="mt-2 text-[12px] text-muted-foreground">
+            <p class="mt-2 text-body text-muted-foreground">
               {{ batteryState.help }} Lectura {{ formatRelative(battery.capturedAt) }}
               ({{ formatDateTime(battery.capturedAt) }}).
             </p>
-            <p class="mt-1 text-[11px] text-muted-foreground">
+            <p class="mt-1 text-caption text-muted-foreground">
               El % es orientativo (±3–5 puntos entre 3650 y 3850 mV, donde la curva es plana): la medida son los mV.
             </p>
           </template>
-          <p v-else class="text-[12px] text-muted-foreground">
+          <p v-else class="text-body text-muted-foreground">
             Sin lectura: la placa nunca envió una válida (sin celda o sin el divisor a GPIO13).
           </p>
         </section>
@@ -277,7 +277,7 @@ watch([open, () => props.cameraId], ([isOpen]) => {
                 :camera-id="camera.id"
                 :show-errors="deviceTried"
               />
-              <p class="flex gap-2 rounded-lg bg-navy-soft px-3 py-2 text-[12px] text-foreground">
+              <p class="flex gap-2 rounded-lg bg-navy-soft px-3 py-2 text-body text-foreground">
                 <Info class="mt-px size-4 shrink-0 text-[#1a56c4] dark:text-[#93c5fd]" />
                 <span>
                   Los cambios se aplican en la Pi en su siguiente sincronización. La captura llegará a la placa
@@ -303,15 +303,15 @@ watch([open, () => props.cameraId], ([isOpen]) => {
           <!-- Alta -->
           <TabsContent value="enrollment">
             <div class="grid gap-4">
-              <p class="text-[13px]">
+              <p class="text-body">
                 Generación de alta: <strong class="font-mono">{{ camera.enrollmentGeneration }}</strong>
               </p>
-              <p class="text-[13px] text-muted-foreground">
+              <p class="text-body text-muted-foreground">
                 Reiniciar el alta hace que el Fog revoque la credencial de esta placa y vuelva a admitir su alta
                 por MAC. Úsalo cuando cambies la placa por otra con la misma MAC registrada, o si su credencial
                 se perdió.
               </p>
-              <p class="flex gap-2 rounded-lg border border-destructive/25 bg-destructive-soft px-3 py-2 text-[12px] text-destructive">
+              <p class="flex gap-2 rounded-lg border border-destructive/25 bg-destructive-soft px-3 py-2 text-body text-destructive">
                 <TriangleAlert class="mt-px size-4 shrink-0" />
                 <span>
                   Solo si la placa ya lleva el firmware con alta por MAC. Con el firmware anterior (credencial
@@ -355,7 +355,7 @@ watch([open, () => props.cameraId], ([isOpen]) => {
     firmware con alta por MAC, dejará de subir fotos hasta reflashearla por USB.
     <template #extra>
       <div class="grid gap-1.5">
-        <Label for="reset-code" class="text-[12px]">Escribe <strong class="font-mono">{{ camera?.code }}</strong> para confirmar</Label>
+        <Label for="reset-code" class="text-body">Escribe <strong class="font-mono">{{ camera?.code }}</strong> para confirmar</Label>
         <Input id="reset-code" v-model="resetCode" class="font-mono" autocomplete="off" spellcheck="false" />
       </div>
     </template>

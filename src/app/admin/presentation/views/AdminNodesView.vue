@@ -110,9 +110,9 @@ onMounted(() => {
       :empty-text="store.nodes.length === 0 ? 'No hay nodos registrados' : 'No se encontraron nodos'"
     >
       <TableRow v-for="n in filtered" :key="n.id">
-        <TableCell class="font-mono text-xs font-semibold text-navy">{{ n.code }}</TableCell>
+        <TableCell class="font-mono text-body font-semibold text-navy">{{ n.code }}</TableCell>
         <TableCell class="font-semibold text-navy">{{ n.name }}</TableCell>
-        <TableCell class="text-xs text-muted-foreground">{{ n.location || '—' }}</TableCell>
+        <TableCell class="text-body text-muted-foreground">{{ n.location || '—' }}</TableCell>
         <TableCell>
           <Badge :variant="n.active ? 'success' : 'neutral'" size="status">
             {{ n.active ? 'Activo' : 'Inactivo' }}

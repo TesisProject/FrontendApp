@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, type Component } from 'vue'
 import { RouterLink } from 'vue-router'
-import { ChartNoAxesColumn, CircleUserRound, Users, Video } from '@lucide/vue'
+import { ChartNoAxesColumn, SquareParking, Users, Video } from '@lucide/vue'
 import { Button } from '@/app/shared/presentation/components/ui/button'
 import { useAdminZonesStore }   from '../../application/admin-zones.store'
 import { useAdminCamerasStore } from '../../application/admin-cameras.store'
@@ -70,7 +70,7 @@ interface Metric {
 }
 
 const metrics = computed<Metric[]>(() => [
-  { label: 'Zonas registradas',    value: zonesStore.zones.length, icon: CircleUserRound,   tone: 'bg-[#ebf8ff] text-[#3182ce]', to: '/admin/zones' },
+  { label: 'Zonas registradas',    value: zonesStore.zones.length, icon: SquareParking,   tone: 'bg-[#ebf8ff] text-[#3182ce]', to: '/admin/zones' },
   { label: 'Usuarios registrados', value: usersStore.users.length, icon: Users,             tone: 'bg-[#f0fff4] text-[#38a169]', to: '/admin/users' },
   {
     label: 'Cámaras activas',
@@ -90,7 +90,7 @@ const classifications = computed(() => [
 ])
 
 const shortcuts = [
-  { label: 'Gestionar zonas',    to: '/admin/zones',   icon: CircleUserRound },
+  { label: 'Gestionar zonas',    to: '/admin/zones',   icon: SquareParking },
   { label: 'Gestionar cámaras',  to: '/admin/cameras', icon: Video },
   { label: 'Gestionar usuarios', to: '/admin/users',   icon: Users },
 ]
@@ -125,7 +125,7 @@ onUnmounted(() => {
 <template>
   <AdminPage title="Dashboard" sub="Resumen general del sistema ParkVision" narrow>
     <template #actions>
-      <Button variant="outline" class="h-9 text-[13px]" :disabled="loading || exporting" @click="exportCsv">
+      <Button variant="outline" class="h-9 text-body" :disabled="loading || exporting" @click="exportCsv">
         <Download /> {{ exporting ? 'Exportando…' : 'Exportar CSV' }}
       </Button>
     </template>
@@ -156,10 +156,10 @@ onUnmounted(() => {
             <component :is="m.icon" class="size-[22px]" />
           </span>
           <span class="flex flex-col gap-0.5">
-            <span class="font-signage text-[34px] leading-none font-semibold text-navy tabular-nums">
+            <span class="font-signage text-display-lg leading-none font-semibold text-navy tabular-nums">
               {{ m.value }}<span v-if="m.total !== undefined" class="text-base font-medium text-muted-foreground">/{{ m.total }}</span>
             </span>
-            <span class="text-xs text-muted-foreground">{{ m.label }}</span>
+            <span class="text-body text-muted-foreground">{{ m.label }}</span>
           </span>
         </component>
       </template>
@@ -167,32 +167,32 @@ onUnmounted(() => {
 
     <template v-if="!loading">
       <section class="mb-7">
-        <h2 class="mb-3.5 text-[11px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">Estado de zonas</h2>
+        <h2 class="mb-3.5 text-caption font-semibold tracking-[0.1em] text-muted-foreground uppercase">Estado de zonas</h2>
         <div class="grid gap-3.5 sm:grid-cols-3">
           <div v-for="c in classifications" :key="c.label" :class="cardBase">
             <span class="size-3.5 shrink-0 rounded-full" :class="c.dot" />
             <div>
-              <p class="mb-0.5 font-signage text-[34px] leading-none font-semibold text-navy tabular-nums">{{ c.count }}</p>
-              <p class="text-xs text-muted-foreground">{{ c.label }}</p>
+              <p class="mb-0.5 font-signage text-display-lg leading-none font-semibold text-navy tabular-nums">{{ c.count }}</p>
+              <p class="text-body text-muted-foreground">{{ c.label }}</p>
             </div>
           </div>
         </div>
       </section>
 
       <section class="mb-7">
-        <h2 class="mb-3.5 text-[11px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">Ocupación por zona</h2>
+        <h2 class="mb-3.5 text-caption font-semibold tracking-[0.1em] text-muted-foreground uppercase">Ocupación por zona</h2>
         <div class="overflow-hidden rounded-xl border bg-card shadow-[var(--pv-shadow-sm)]">
-          <p v-if="!zoneOccupancy.length" class="px-5 py-6 text-center text-sm text-muted-foreground">Todavía no hay zonas registradas.</p>
+          <p v-if="!zoneOccupancy.length" class="px-5 py-6 text-center text-body text-muted-foreground">Todavía no hay zonas registradas.</p>
           <ul v-else class="divide-y">
             <li v-for="z in zoneOccupancy" :key="z.id" class="flex items-center justify-between gap-4 px-5 py-3">
               <span class="min-w-0">
-                <span class="block truncate text-sm font-medium text-heading">{{ z.name }}</span>
-                <span v-if="z.hasData" class="text-[11px] text-muted-foreground tabular-nums">{{ z.detail }}</span>
+                <span class="block truncate text-title font-medium text-heading">{{ z.name }}</span>
+                <span v-if="z.hasData" class="text-caption text-muted-foreground tabular-nums">{{ z.detail }}</span>
               </span>
               <OccupancyBar v-if="z.hasData" class="w-40 shrink-0" :percentage="z.pct" :color="z.color" />
               <span
                 v-else
-                class="shrink-0 rounded-full bg-muted px-2.5 py-[3px] font-mono text-[10px] font-semibold tracking-[0.6px] text-muted-foreground uppercase"
+                class="shrink-0 rounded-full bg-muted px-2.5 py-[3px] font-mono text-micro font-semibold tracking-[0.06em] text-muted-foreground uppercase"
               >{{ NO_DATA_LABEL }}</span>
             </li>
           </ul>
@@ -200,14 +200,14 @@ onUnmounted(() => {
       </section>
 
       <section class="mb-7">
-        <h2 class="mb-3.5 text-[11px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">Accesos rápidos</h2>
+        <h2 class="mb-3.5 text-caption font-semibold tracking-[0.1em] text-muted-foreground uppercase">Accesos rápidos</h2>
         <div class="flex flex-wrap gap-3">
           <Button
             v-for="s in shortcuts"
             :key="s.to"
             as-child
             variant="outline"
-            class="h-10 text-[13px] text-navy"
+            class="h-10 text-body text-navy"
           >
             <RouterLink :to="s.to"><component :is="s.icon" /> {{ s.label }}</RouterLink>
           </Button>

@@ -92,7 +92,7 @@ async function clear() {
     <AdminStateBox v-else-if="firmwareStore.error" tone="error">{{ firmwareStore.error }}</AdminStateBox>
 
     <template v-else>
-      <div class="grid gap-1.5 rounded-lg border bg-muted/30 px-4 py-3 text-[13px]">
+      <div class="grid gap-1.5 rounded-lg border bg-muted/30 px-4 py-3 text-body">
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-muted-foreground">Estado</span>
           <FirmwareStatusBadge :status="camera.firmware.status" :target="camera.firmware.target" :reported="camera.firmware.reported" />
@@ -101,13 +101,13 @@ async function clear() {
           Informa <strong class="font-mono">{{ camera.firmware.reported !== null ? `v${camera.firmware.reported}` : '—' }}</strong>
           · asignada <strong class="font-mono">{{ camera.firmware.target !== null ? `v${camera.firmware.target}` : '—' }}</strong>
         </p>
-        <p class="text-[12px] text-muted-foreground">
+        <p class="text-body text-muted-foreground">
           Asignada {{ formatDate(detail?.assignedAt ?? null) }} · último informe {{ formatDate(camera.firmware.reportedAt) }}
         </p>
-        <p class="text-[12px] text-muted-foreground">{{ FIRMWARE_STATUS_META[camera.firmware.status].help }}</p>
+        <p class="text-body text-muted-foreground">{{ FIRMWARE_STATUS_META[camera.firmware.status].help }}</p>
       </div>
 
-      <p v-if="firmwareStore.releases.length === 0" class="text-[13px] text-muted-foreground">
+      <p v-if="firmwareStore.releases.length === 0" class="text-body text-muted-foreground">
         Aún no hay firmware publicado.
         <RouterLink to="/admin/firmware" class="font-semibold text-link underline-offset-4 hover:underline">Publicar una versión</RouterLink>
       </p>
@@ -129,7 +129,7 @@ async function clear() {
             <Button type="submit" :disabled="!canAssign || camerasStore.saving">Asignar</Button>
           </div>
         </AdminField>
-        <p class="flex gap-2 text-[12px] text-muted-foreground">
+        <p class="flex gap-2 text-body text-muted-foreground">
           <Info class="mt-px size-4 shrink-0" />
           <span>
             No se puede bajar de versión: el cliente OTA de la placa solo instala versiones mayores. Para corregir

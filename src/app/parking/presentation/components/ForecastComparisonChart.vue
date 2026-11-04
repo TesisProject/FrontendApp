@@ -151,7 +151,7 @@ const ariaLabel = computed(() =>
 
 <template>
   <figure class="flex flex-col gap-1.5">
-    <figcaption class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-muted-foreground">
+    <figcaption class="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">
       <span class="inline-flex items-center gap-1.5">
         <svg width="18" height="8" aria-hidden="true"><line x1="0" x2="18" y1="4" y2="4" stroke="var(--chart-1)" stroke-width="2" stroke-dasharray="5 3" /></svg>
         Predicción
@@ -181,14 +181,14 @@ const ariaLabel = computed(() =>
       >
         <g v-for="t in yTicks" :key="'y' + t.value">
           <line :x1="PAD.left" :x2="W - PAD.right" :y1="t.y" :y2="t.y" stroke="var(--border)" stroke-width="1" />
-          <text :x="PAD.left - 6" :y="t.y + 3.5" text-anchor="end" class="fill-muted-foreground text-[10.5px] tabular-nums">
+          <text :x="PAD.left - 6" :y="t.y + 3.5" text-anchor="end" class="fill-muted-foreground text-micro tabular-nums">
             {{ t.value }}%
           </text>
         </g>
 
         <g v-for="t in xTicks" :key="'x' + t.x">
           <line :x1="t.x" :x2="t.x" :y1="baseline" :y2="baseline + 4" stroke="var(--border)" stroke-width="1" />
-          <text :x="t.x" :y="H - 7" text-anchor="middle" class="fill-muted-foreground text-[10.5px] tabular-nums">{{ t.label }}</text>
+          <text :x="t.x" :y="H - 7" text-anchor="middle" class="fill-muted-foreground text-micro tabular-nums">{{ t.label }}</text>
         </g>
 
         <g v-if="nowX !== null">
@@ -196,7 +196,7 @@ const ariaLabel = computed(() =>
           <text
             :x="nowX > W - 60 ? nowX - 4 : nowX + 4" :y="PAD.top + 9"
             :text-anchor="nowX > W - 60 ? 'end' : 'start'"
-            class="fill-muted-foreground text-[10.5px]"
+            class="fill-muted-foreground text-micro"
           >ahora</text>
         </g>
 
@@ -231,17 +231,17 @@ const ariaLabel = computed(() =>
         class="pointer-events-none absolute z-[5] flex -translate-x-1/2 -translate-y-[calc(100%+12px)] flex-col gap-0.5 rounded-lg bg-navy px-[11px] py-[7px] whitespace-nowrap text-white shadow-[0_4px_14px_rgba(9,44,76,0.25)] dark:border dark:bg-popover"
         :style="tooltipStyle"
       >
-        <span class="text-[11px] font-semibold text-[#bcd3ea] tabular-nums dark:text-muted-foreground">
+        <span class="text-caption font-semibold text-[#bcd3ea] tabular-nums dark:text-muted-foreground">
           {{ rangeLabel(hovered.point.start) }}
         </span>
-        <span class="text-xs tabular-nums">
+        <span class="text-body tabular-nums">
           Predicción: <span class="font-bold">{{ hovered.point.predicted }} %</span>
           <template v-if="hovered.point.actual !== null"> · Real: <span class="font-bold">{{ hovered.point.actual }} %</span></template>
         </span>
       </div>
     </div>
 
-    <p v-if="notice" class="text-[11.5px] leading-snug text-muted-foreground" role="note">{{ notice }}</p>
+    <p v-if="notice" class="text-caption leading-snug text-muted-foreground" role="note">{{ notice }}</p>
 
     <!-- Vista tabular para lectores de pantalla -->
     <div class="sr-only">

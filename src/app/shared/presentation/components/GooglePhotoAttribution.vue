@@ -9,7 +9,7 @@ defineProps<{ attributions: PhotoAttribution[] }>()
 </script>
 
 <template>
-  <p class="truncate text-[10px] leading-tight text-muted-foreground">
+  <p class="truncate text-micro leading-tight text-muted-foreground">
     <template v-if="attributions.length">
       Foto:
       <template v-for="(a, i) in attributions" :key="i">

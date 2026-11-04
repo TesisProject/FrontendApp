@@ -26,9 +26,9 @@ export const badgeVariants = cva(
       size: {
         default: "",
         // Admin data pills: mono, uppercase, tracked.
-        status: "px-2.5 py-[3px] font-mono text-[10px] font-semibold tracking-[0.6px] uppercase",
+        status: "px-2.5 py-[3px] font-mono text-micro font-semibold tracking-[0.06em] uppercase",
         // User-app status pills: bold, uppercase, tighter.
-        pill: "px-2.5 py-[3px] text-[10px] font-bold tracking-[0.3px] uppercase",
+        pill: "px-2.5 py-[3px] text-micro font-bold tracking-[0.03em] uppercase",
       },
     },
     defaultVariants: {

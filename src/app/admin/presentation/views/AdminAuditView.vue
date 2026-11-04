@@ -96,16 +96,16 @@ onMounted(() => {
         :empty-text="hasFilters ? 'No hay eventos para los filtros aplicados' : 'Todavía no hay eventos registrados'"
       >
         <TableRow v-for="e in store.entries" :key="e.id">
-          <TableCell class="text-xs whitespace-nowrap">{{ DATE_TIME.format(new Date(e.occurredAt)) }}</TableCell>
+          <TableCell class="text-body whitespace-nowrap">{{ DATE_TIME.format(new Date(e.occurredAt)) }}</TableCell>
           <TableCell class="font-semibold text-navy">{{ auditActionLabel(e.action) }}</TableCell>
-          <TableCell class="text-xs">{{ e.actorEmail ?? 'Sistema' }}</TableCell>
-          <TableCell class="text-xs">{{ zoneName(e.zoneId) }}</TableCell>
-          <TableCell class="font-mono text-xs">{{ e.entityType }}{{ e.entityId ? ` #${e.entityId}` : '' }}</TableCell>
-          <TableCell class="max-w-[320px] text-xs break-words text-muted-foreground">{{ e.detail ?? '—' }}</TableCell>
+          <TableCell class="text-body">{{ e.actorEmail ?? 'Sistema' }}</TableCell>
+          <TableCell class="text-body">{{ zoneName(e.zoneId) }}</TableCell>
+          <TableCell class="font-mono text-body">{{ e.entityType }}{{ e.entityId ? ` #${e.entityId}` : '' }}</TableCell>
+          <TableCell class="max-w-[20rem] text-body break-words text-muted-foreground">{{ e.detail ?? '—' }}</TableCell>
         </TableRow>
       </AdminTableCard>
 
-      <nav v-if="store.totalElements > AUDIT_PAGE_SIZE" class="mt-3 flex items-center justify-end gap-2 text-xs" aria-label="Paginación">
+      <nav v-if="store.totalElements > AUDIT_PAGE_SIZE" class="mt-3 flex items-center justify-end gap-2 text-body" aria-label="Paginación">
         <Button size="sm" variant="outline" :disabled="store.page === 0 || store.loading" @click="store.goToPage(store.page - 1)">
           Anterior
         </Button>

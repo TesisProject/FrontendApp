@@ -123,19 +123,19 @@ onMounted(refresh)
           <span v-if="store.unreadAlertIds.has(a.id)" class="mr-1.5 inline-block size-2 rounded-full bg-amber" aria-label="Sin leer" />
           {{ a.cameraLabel }}
         </TableCell>
-        <TableCell class="text-xs">{{ a.zoneLabel }}</TableCell>
+        <TableCell class="text-body">{{ a.zoneLabel }}</TableCell>
         <TableCell>
           <div class="flex flex-col gap-1">
-            <span class="text-xs font-medium">{{ alertTypeLabel(a.type) }}</span>
+            <span class="text-body font-medium">{{ alertTypeLabel(a.type) }}</span>
             <Badge v-if="a.severity === 'CRITICAL'" variant="danger" size="status">Crítica</Badge>
-            <span v-if="a.secondAlertSentAt" class="text-[11px] text-muted-foreground">2.º aviso enviado</span>
+            <span v-if="a.secondAlertSentAt" class="text-caption text-muted-foreground">2.º aviso enviado</span>
           </div>
         </TableCell>
-        <TableCell class="text-xs">{{ a.lastFrameAt ? formatDateTime(a.lastFrameAt) : '—' }}</TableCell>
-        <TableCell class="text-xs text-muted-foreground">{{ formatDateTime(a.detectedAt) }}</TableCell>
+        <TableCell class="text-body">{{ a.lastFrameAt ? formatDateTime(a.lastFrameAt) : '—' }}</TableCell>
+        <TableCell class="text-body text-muted-foreground">{{ formatDateTime(a.detectedAt) }}</TableCell>
         <TableCell>
           <Badge :variant="STATUS[alertStatus(a)].variant" size="status">{{ STATUS[alertStatus(a)].label }}</Badge>
-          <p v-if="a.resolutionNote" class="mt-1 max-w-[220px] text-[11px] text-muted-foreground">{{ a.resolutionNote }}</p>
+          <p v-if="a.resolutionNote" class="mt-1 max-w-[13.75rem] text-caption text-muted-foreground">{{ a.resolutionNote }}</p>
         </TableCell>
         <TableCell>
           <div v-if="alertStatus(a) !== 'resolved'" class="flex flex-wrap gap-1.5">
@@ -147,12 +147,12 @@ onMounted(refresh)
             >Reconocer</Button>
             <Button size="sm" variant="outline" :disabled="store.busyId === a.id" @click="openResolve(a)">Resolver</Button>
           </div>
-          <span v-else class="text-[11px] text-muted-foreground">{{ a.resolvedAt ? formatDateTime(a.resolvedAt) : '' }}</span>
+          <span v-else class="text-caption text-muted-foreground">{{ a.resolvedAt ? formatDateTime(a.resolvedAt) : '' }}</span>
         </TableCell>
       </TableRow>
     </AdminTableCard>
 
-    <p v-if="!store.loading && store.alerts.length === 0 && !store.error" class="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+    <p v-if="!store.loading && store.alerts.length === 0 && !store.error" class="mt-3 flex items-center gap-2 text-body text-muted-foreground">
       <BellOff class="size-4" /> Cuando una cámara deje de enviar imágenes más de 90 s, aparecerá aquí y recibirás un correo.
     </p>
 

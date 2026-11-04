@@ -455,11 +455,11 @@ onMounted(async () => {
 
 <template>
   <Dialog :open="true" @update:open="(v: boolean) => !v && tryClose()">
-    <DialogContent class="max-h-[92vh] sm:max-w-[1000px]">
+    <DialogContent class="max-h-[92vh] sm:max-w-[62.5rem]">
       <DialogHeader class="flex-row items-start justify-between gap-3">
         <div class="grid gap-1">
           <DialogTitle>ROIs de {{ zoneName }}</DialogTitle>
-          <DialogDescription class="text-xs">
+          <DialogDescription class="text-body">
             Elige la cámara que cubre el espacio, selecciona el espacio y dibuja su polígono con clics sobre la foto.
           </DialogDescription>
         </div>
@@ -470,7 +470,7 @@ onMounted(async () => {
 
       <AdminStateBox v-else-if="loadError" tone="error">{{ loadError }}</AdminStateBox>
 
-      <p v-else-if="cameras.length === 0" class="py-20 text-center text-[13px] text-muted-foreground">
+      <p v-else-if="cameras.length === 0" class="py-20 text-center text-body text-muted-foreground">
         Esta zona no tiene cámaras. Registra una en <strong>Cámaras</strong> para poder dibujar sus ROIs.
       </p>
 
@@ -486,9 +486,9 @@ onMounted(async () => {
             class="flex-row items-baseline gap-1.5 px-3 py-1.5"
             @click="selectCamera(c.id)"
           >
-            <span class="font-mono text-[12.5px] font-bold text-navy">{{ c.code }}</span>
-            <span v-if="c.name !== c.code" class="text-xs text-muted-foreground">{{ c.name }}</span>
-            <span class="text-[10.5px] text-muted-foreground">{{ spacesCoveredBy(c.id) }} esp.</span>
+            <span class="font-mono text-body font-bold text-navy">{{ c.code }}</span>
+            <span v-if="c.name !== c.code" class="text-body text-muted-foreground">{{ c.name }}</span>
+            <span class="text-micro text-muted-foreground">{{ spacesCoveredBy(c.id) }} esp.</span>
           </button>
         </div>
 
@@ -509,8 +509,8 @@ onMounted(async () => {
               class="flex-col items-start gap-0.5 px-2.5 py-2"
               @click="selectedId = s.id"
             >
-              <span class="font-mono text-[13px] font-bold text-navy">{{ s.spaceNumber }}</span>
-              <span class="text-[10.5px] font-semibold" :class="stateClass[spaceState(s.id).cls]">
+              <span class="font-mono text-body font-bold text-navy">{{ s.spaceNumber }}</span>
+              <span class="text-micro font-semibold" :class="stateClass[spaceState(s.id).cls]">
                 {{ spaceState(s.id).label }}
               </span>
             </button>
@@ -518,7 +518,7 @@ onMounted(async () => {
 
           <!-- Canvas -->
           <div class="min-w-0 flex-1">
-            <p v-if="selectedInOtherCamera" class="mb-2 rounded-lg bg-[#eef3fc] px-2.5 py-1.5 text-xs text-[#1a56c4]">
+            <p v-if="selectedInOtherCamera" class="mb-2 rounded-lg bg-[#eef3fc] px-2.5 py-1.5 text-body text-[#1a56c4]">
               Este espacio lo cubre {{ cameraLabel(selectedRoi!.cameraId) }}. Si dibujas aquí, al guardar
               pasará a {{ cameraLabel(cameraId) }}.
             </p>
@@ -533,7 +533,7 @@ onMounted(async () => {
               @mouseup="onMouseUp"
               @mouseleave="onMouseUp"
             />
-            <p class="mt-1.5 text-center text-[11.5px] text-muted-foreground">
+            <p class="mt-1.5 text-center text-caption text-muted-foreground">
               <template v-if="bgLoading">Cargando foto de la cámara...</template>
               <template v-else-if="background?.capturedAt">
                 Última foto de la cámara · {{ formatCapturedAt(background.capturedAt) }}
@@ -541,12 +541,12 @@ onMounted(async () => {
               <template v-else-if="background?.image">Imagen de referencia propia</template>
               <template v-else>La cámara aún no subió fotos: sube una imagen de referencia.</template>
             </p>
-            <p v-if="rotationMismatch" class="mt-1 text-center text-[11.5px] text-warning" role="status">
+            <p v-if="rotationMismatch" class="mt-1 text-center text-caption text-warning" role="status">
               La cámara está configurada a {{ rotationMismatch.camera }}° y la foto se ve girada {{ rotationMismatch.shown }}°.
               El Fog aplica el giro de la cámara: si acabas de cambiarlo, espera a la siguiente foto antes de dibujar.
             </p>
             <div class="mt-2.5 flex flex-wrap items-center gap-2.5">
-              <Button as="label" variant="outline" size="sm" class="cursor-pointer text-xs">
+              <Button as="label" variant="outline" size="sm" class="cursor-pointer text-caption">
                 <ImageUp />
                 {{ background?.image ? 'Usar otra imagen' : 'Subir imagen de referencia' }}
                 <input type="file" accept="image/*" hidden @change="onImageSelected" />
@@ -554,14 +554,14 @@ onMounted(async () => {
               <Button
                 variant="outline"
                 size="sm"
-                class="text-xs"
+                class="text-caption"
                 :disabled="!background?.image"
                 title="Gira la foto 90° en sentido horario: el ROI se dibuja sobre la foto derecha"
                 @click="rotateImage"
               >
                 <RotateCw /> Girar 90°{{ rotation ? ` (${rotation}°)` : '' }}
               </Button>
-              <span class="flex-1 text-center text-xs text-muted-foreground">
+              <span class="flex-1 text-center text-body text-muted-foreground">
                 {{ selectedRoi && !selectedInOtherCamera
                   ? `${selectedRoi.points.length} punto${selectedRoi.points.length !== 1 ? 's' : ''}`
                   : '' }}
@@ -570,24 +570,24 @@ onMounted(async () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  class="text-xs"
+                  class="text-caption"
                   :disabled="!selectedRoi || selectedInOtherCamera || selectedRoi.points.length === 0"
                   @click="undoPoint"
                 ><Undo2 /> Deshacer</Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  class="text-xs"
+                  class="text-caption"
                   :disabled="!selectedRoi || selectedInOtherCamera || selectedRoi.points.length === 0"
                   @click="clearPoints"
                 >Limpiar</Button>
-                <Button variant="outline" size="sm" class="text-xs" :disabled="!selectedRoi?.dirty" @click="discardSelected">
+                <Button variant="outline" size="sm" class="text-caption" :disabled="!selectedRoi?.dirty" @click="discardSelected">
                   Descartar
                 </Button>
                 <Button
                   variant="outline-destructive"
                   size="sm"
-                  class="text-xs"
+                  class="text-caption"
                   :disabled="!selectedRoi?.saved || spacesStore.saving"
                   @click="removeSelected"
                 >
@@ -601,7 +601,7 @@ onMounted(async () => {
         <Alert v-if="feedback" :variant="feedback.ok ? 'success' : 'destructive'" class="py-2">
           <CircleCheck v-if="feedback.ok" />
           <CircleAlert v-else />
-          <AlertDescription class="text-[13px] text-current">{{ feedback.msg }}</AlertDescription>
+          <AlertDescription class="text-body text-current">{{ feedback.msg }}</AlertDescription>
         </Alert>
       </template>
 

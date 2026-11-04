@@ -88,26 +88,26 @@ function exportPdf() {
 <template>
   <AdminPage title="Demanda" sub="Zonas con picos de demanda por hora o día, identificados automáticamente">
     <template #actions>
-      <Button variant="outline" class="h-9 text-[13px]" :disabled="!hasData || store.exporting" @click="exportCsv">
+      <Button variant="outline" class="h-9 text-body" :disabled="!hasData || store.exporting" @click="exportCsv">
         <Download /> {{ store.exporting ? 'Exportando…' : 'Exportar CSV' }}
       </Button>
-      <Button variant="outline" class="h-9 text-[13px]" :disabled="!hasData" @click="exportPdf">
+      <Button variant="outline" class="h-9 text-body" :disabled="!hasData" @click="exportPdf">
         <Printer /> Exportar PDF
       </Button>
     </template>
 
     <div class="no-print mb-5 flex flex-wrap items-end gap-4">
-      <div class="grid gap-1.5 text-xs font-medium text-muted-foreground">
+      <div class="grid gap-1.5 text-body font-medium text-muted-foreground">
         Agrupar
         <AdminSegmented v-model="groupBy" :options="groupOptions" label="Agrupar demanda" />
       </div>
-      <label class="grid gap-1.5 text-xs font-medium text-muted-foreground">
+      <label class="grid gap-1.5 text-body font-medium text-muted-foreground">
         Rango
         <NativeSelect v-model="rangeDays" wrapper-class="w-44" aria-label="Rango de fechas">
           <NativeSelectOption v-for="o in rangeOptions" :key="o.value" :value="String(o.value)">{{ o.label }}</NativeSelectOption>
         </NativeSelect>
       </label>
-      <label class="grid gap-1.5 text-xs font-medium text-muted-foreground">
+      <label class="grid gap-1.5 text-body font-medium text-muted-foreground">
         Zona
         <NativeSelect v-model="zoneId" wrapper-class="w-56" aria-label="Zona">
           <NativeSelectOption value="">Todas las zonas</NativeSelectOption>
@@ -123,25 +123,25 @@ function exportPdf() {
       <!-- Cabecera que solo aparece en el PDF -->
       <header class="hidden print:block">
         <h1 class="font-signage text-2xl font-semibold text-navy">ParkVision · Picos de demanda</h1>
-        <p class="text-xs">{{ filterSummary }}</p>
-        <p class="text-xs">Generado el {{ printedAt }}. Pico: ocupación promedio ≥ {{ peaks.thresholdPct }} % o percentil 90 ({{ formatPct(peaks.percentile90) }}).</p>
+        <p class="text-body">{{ filterSummary }}</p>
+        <p class="text-body">Generado el {{ printedAt }}. Pico: ocupación promedio ≥ {{ peaks.thresholdPct }} % o percentil 90 ({{ formatPct(peaks.percentile90) }}).</p>
       </header>
 
-      <p class="text-xs text-muted-foreground print:hidden">{{ filterSummary }}</p>
+      <p class="text-body text-muted-foreground print:hidden">{{ filterSummary }}</p>
 
       <div
         v-if="!hasData"
-        class="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card px-6 py-12 text-center text-sm text-muted-foreground"
+        class="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card px-6 py-12 text-center text-body text-muted-foreground"
         role="status"
       >
         <Flame class="size-6" />
         <p class="font-medium text-heading">No hay lecturas de ocupación en este rango</p>
-        <p class="text-xs">Amplía el rango o elige otra zona.</p>
+        <p class="text-body">Amplía el rango o elige otra zona.</p>
       </div>
 
       <template v-else>
         <section>
-          <h2 class="mb-3 text-[11px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+          <h2 class="mb-3 text-caption font-semibold tracking-[0.1em] text-muted-foreground uppercase">
             Zonas con picos ({{ peakZones.length }})
           </h2>
           <div v-if="peakZones.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -149,24 +149,24 @@ function exportPdf() {
               v-for="z in peakZones" :key="z.zoneId"
               class="peak-card rounded-xl border border-destructive/30 bg-destructive-soft p-4"
             >
-              <p class="flex items-center gap-1.5 text-sm font-semibold text-destructive">
+              <p class="flex items-center gap-1.5 text-title font-semibold text-destructive">
                 <Flame class="size-4" /> {{ z.zoneName }}
               </p>
-              <p class="mt-1 font-signage text-[28px] leading-none font-semibold text-navy tabular-nums">{{ formatPct(z.busiestSlot.avgPct) }}</p>
-              <p class="mt-1 text-xs text-muted-foreground">
+              <p class="mt-1 font-signage text-display leading-none font-semibold text-navy tabular-nums">{{ formatPct(z.busiestSlot.avgPct) }}</p>
+              <p class="mt-1 text-body text-muted-foreground">
                 Pico en {{ z.busiestSlot.label }} · {{ z.peakSlots }} {{ z.peakSlots === 1 ? 'franja pico' : 'franjas pico' }}
               </p>
             </article>
           </div>
-          <p v-else class="text-sm text-muted-foreground">Ninguna franja llega al umbral de pico en este rango.</p>
+          <p v-else class="text-body text-muted-foreground">Ninguna franja llega al umbral de pico en este rango.</p>
         </section>
 
         <section>
           <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 class="text-[11px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+            <h2 class="text-caption font-semibold tracking-[0.1em] text-muted-foreground uppercase">
               Ocupación promedio por {{ peaks.groupBy === 'hour' ? 'hora' : 'día' }} (%)
             </h2>
-            <p class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+            <p class="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">
               <span class="inline-flex items-center gap-1.5"><span class="heat-legend size-3 rounded-[2px] bg-destructive" /> Pico (≥ {{ peaks.thresholdPct }} % o percentil 90: {{ formatPct(peaks.percentile90) }})</span>
               <span class="inline-flex items-center gap-1.5"><span class="heat-legend size-3 rounded-[2px] bg-chart-1/30" /> Menos</span>
               <span class="inline-flex items-center gap-1.5"><span class="heat-legend size-3 rounded-[2px] bg-chart-1/80" /> Más</span>

@@ -9,6 +9,9 @@ const twMerge = extendTailwindMerge({
     theme: {
       shadow: ['brand', 'card'],
       font:   ['display', 'signage', 'heading'],
+      // Escala tipográfica en rem: sin esto `text-title` se toma por un color
+      // y `cn('text-title', 'text-heading')` descartaría el tamaño.
+      text:   ['micro', 'caption', 'body', 'title', 'lead', 'subhead', 'page', 'display', 'display-lg', 'jumbo'],
     },
   },
 })

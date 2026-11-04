@@ -158,9 +158,9 @@ onMounted(async () => {
       <TableRow v-for="c in filtered" :key="c.id">
         <TableCell class="font-semibold text-navy">{{ c.name }}</TableCell>
         <TableCell>{{ zoneName(c.zoneId) }}</TableCell>
-        <TableCell class="font-mono text-xs font-semibold text-navy">{{ c.code }}</TableCell>
+        <TableCell class="font-mono text-body font-semibold text-navy">{{ c.code }}</TableCell>
         <TableCell>
-          <span v-if="c.mac" class="font-mono text-xs">{{ c.mac }}</span>
+          <span v-if="c.mac" class="font-mono text-body">{{ c.mac }}</span>
           <Badge v-else variant="warning" size="status" title="Cárgala en Configurar → Dispositivo: sin MAC el Fog no podrá dar de alta esta placa">
             Sin MAC
           </Badge>
@@ -209,14 +209,14 @@ onMounted(async () => {
     <CameraDetailSheet v-model:open="showDetail" :camera-id="detailId" />
 
     <Dialog v-model:open="showCreate">
-      <DialogContent class="sm:max-w-[600px]">
+      <DialogContent class="sm:max-w-[37.5rem]">
         <DialogHeader>
           <DialogTitle>Nueva cámara</DialogTitle>
           <DialogDescription>El código (CAM-001, CAM-002…) lo asigna el sistema al crearla.</DialogDescription>
         </DialogHeader>
 
         <form class="grid gap-3.5" @submit.prevent="handleCreate">
-          <h3 class="text-[11px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">General</h3>
+          <h3 class="text-caption font-semibold tracking-[0.04em] text-muted-foreground uppercase">General</h3>
           <AdminField v-slot="{ id }" label="Zona" required>
             <NativeSelect :id="id" v-model="form.zoneId">
               <NativeSelectOption v-for="z in zonesStore.zones" :key="z.id" :value="z.id">{{ z.name }}</NativeSelectOption>
@@ -239,7 +239,7 @@ onMounted(async () => {
             </AdminField>
           </div>
 
-          <h3 class="mt-1 text-[11px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">Dispositivo</h3>
+          <h3 class="mt-1 text-caption font-semibold tracking-[0.04em] text-muted-foreground uppercase">Dispositivo</h3>
           <CameraDeviceFields v-model="form" mac-required :show-errors="createTried" />
 
           <FormAlert :message="formError" />

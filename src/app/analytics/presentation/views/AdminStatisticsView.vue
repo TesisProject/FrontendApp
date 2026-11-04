@@ -49,18 +49,18 @@ const columns = computed(() => [stats.value?.granularity === 'month' ? 'Mes' : s
 <template>
   <AdminPage title="Estadísticas" sub="Ocupación histórica por zona: promedio y máximo por día, semana o mes">
     <div class="mb-5 flex flex-wrap items-end gap-4">
-      <label class="grid gap-1.5 text-xs font-medium text-muted-foreground">
+      <label class="grid gap-1.5 text-body font-medium text-muted-foreground">
         Zona
         <NativeSelect v-model="zoneId" wrapper-class="w-64" :disabled="!zones.length" aria-label="Zona">
           <NativeSelectOption v-if="!zones.length" value="" disabled>No hay zonas registradas</NativeSelectOption>
           <NativeSelectOption v-for="z in zones" :key="z.id" :value="String(z.id)">{{ z.name }}</NativeSelectOption>
         </NativeSelect>
       </label>
-      <div class="grid gap-1.5 text-xs font-medium text-muted-foreground">
+      <div class="grid gap-1.5 text-body font-medium text-muted-foreground">
         Período
         <AdminSegmented v-model="period" :options="periodOptions" label="Período" />
       </div>
-      <p v-if="store.elapsedMs !== null && !store.loading" class="ml-auto text-[11px] text-muted-foreground tabular-nums">
+      <p v-if="store.elapsedMs !== null && !store.loading" class="ml-auto text-caption text-muted-foreground tabular-nums">
         Cargado en {{ (store.elapsedMs / 1000).toLocaleString('es-PE', { maximumFractionDigits: 2 }) }} s
       </p>
     </div>
@@ -71,7 +71,7 @@ const columns = computed(() => [stats.value?.granularity === 'month' ? 'Mes' : s
 
     <div
       v-else-if="!zones.length"
-      class="rounded-xl border bg-card px-6 py-12 text-center text-sm text-muted-foreground"
+      class="rounded-xl border bg-card px-6 py-12 text-center text-body text-muted-foreground"
       role="status"
     >
       Todavía no hay zonas registradas.
@@ -86,9 +86,9 @@ const columns = computed(() => [stats.value?.granularity === 'month' ? 'Mes' : s
         <header class="mb-4 flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <h2 class="font-signage text-xl font-semibold text-navy">{{ stats.zoneName }}</h2>
-            <p class="text-xs text-muted-foreground">{{ PERIOD_LABEL[stats.period] }}</p>
+            <p class="text-body text-muted-foreground">{{ PERIOD_LABEL[stats.period] }}</p>
           </div>
-          <dl v-if="stats.summary" class="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+          <dl v-if="stats.summary" class="flex flex-wrap gap-x-6 gap-y-1 text-body text-muted-foreground">
             <div>
               <dt class="inline">Promedio</dt>
               <dd class="ml-1 inline font-semibold text-heading tabular-nums">{{ formatPct(stats.summary.avgPct) }}</dd>
@@ -107,12 +107,12 @@ const columns = computed(() => [stats.value?.granularity === 'month' ? 'Mes' : s
         <StatisticsBarChart v-if="hasData" :statistics="stats" />
         <div
           v-else
-          class="flex flex-col items-center gap-2 rounded-lg border border-dashed px-6 py-10 text-center text-sm text-muted-foreground"
+          class="flex flex-col items-center gap-2 rounded-lg border border-dashed px-6 py-10 text-center text-body text-muted-foreground"
           role="status"
         >
           <ChartNoAxesColumn class="size-6" />
           <p class="font-medium text-heading">No hay datos de ocupación para este período</p>
-          <p class="text-xs">Las cámaras de {{ stats.zoneName }} no registraron lecturas en {{ PERIOD_LABEL[stats.period].toLowerCase() }}. Prueba con otro período o zona.</p>
+          <p class="text-body">Las cámaras de {{ stats.zoneName }} no registraron lecturas en {{ PERIOD_LABEL[stats.period].toLowerCase() }}. Prueba con otro período o zona.</p>
         </div>
       </section>
 

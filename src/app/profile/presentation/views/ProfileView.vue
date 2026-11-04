@@ -176,13 +176,13 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+  <div class="mx-auto flex w-full max-w-narrow flex-col gap-5">
     <!-- Header card -->
     <section class="flex items-center gap-5 rounded-[14px] border bg-card p-6">
       <div class="relative">
         <Avatar class="size-[72px]">
           <AvatarImage v-if="profileStore.profile?.avatarUrl" :src="profileStore.profile.avatarUrl" :alt="fullName" />
-          <AvatarFallback class="bg-navy text-[26px] font-bold tracking-[1px] text-white">{{ initials }}</AvatarFallback>
+          <AvatarFallback class="bg-navy text-display font-bold tracking-[0.08em] text-white">{{ initials }}</AvatarFallback>
         </Avatar>
         <div v-if="profileStore.avatarUploading" class="absolute inset-0 grid place-items-center rounded-full bg-black/40">
           <Loader2 class="size-6 animate-spin text-white" aria-label="Subiendo foto" />
@@ -190,7 +190,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
       </div>
       <div class="flex min-w-0 flex-1 flex-col gap-1">
         <h1 class="truncate text-xl font-bold text-heading">{{ fullName }}</h1>
-        <span class="truncate text-[13px] text-muted-foreground">{{ authStore.user?.email }}</span>
+        <span class="truncate text-body text-muted-foreground">{{ authStore.user?.email }}</span>
         <Badge variant="warning" size="pill" class="mt-0.5 bg-primary/10 text-link">
           {{ roleBadge[authStore.user?.role ?? ''] ?? authStore.user?.role }}
         </Badge>
@@ -233,7 +233,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
         <!-- Tab: Información personal -->
         <TabsContent value="info">
           <form class="flex flex-col gap-4 rounded-[14px] border bg-card p-7" novalidate @submit.prevent="handleSaveProfile">
-            <h2 class="text-[15px] font-bold text-heading">Información personal</h2>
+            <h2 class="text-title font-bold text-heading">Información personal</h2>
 
             <div class="grid gap-4 sm:grid-cols-2">
               <div class="grid gap-1.5">
@@ -248,7 +248,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
                   aria-describedby="profile-first-name-error"
                   @input="onFieldInput('firstName')"
                 />
-                <p v-if="fieldError('firstName')" id="profile-first-name-error" class="text-xs text-destructive">{{ fieldError('firstName') }}</p>
+                <p v-if="fieldError('firstName')" id="profile-first-name-error" class="text-body text-destructive">{{ fieldError('firstName') }}</p>
               </div>
               <div class="grid gap-1.5">
                 <Label for="profile-last-name">Apellido</Label>
@@ -262,7 +262,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
                   aria-describedby="profile-last-name-error"
                   @input="onFieldInput('lastName')"
                 />
-                <p v-if="fieldError('lastName')" id="profile-last-name-error" class="text-xs text-destructive">{{ fieldError('lastName') }}</p>
+                <p v-if="fieldError('lastName')" id="profile-last-name-error" class="text-body text-destructive">{{ fieldError('lastName') }}</p>
               </div>
             </div>
 
@@ -279,7 +279,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
                 aria-describedby="profile-phone-error"
                 @input="onFieldInput('phone')"
               />
-              <p v-if="fieldError('phone')" id="profile-phone-error" class="text-xs text-destructive">{{ fieldError('phone') }}</p>
+              <p v-if="fieldError('phone')" id="profile-phone-error" class="text-body text-destructive">{{ fieldError('phone') }}</p>
             </div>
 
             <div class="grid gap-1.5">
@@ -293,7 +293,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
                 aria-describedby="profile-bio-error"
                 @input="onFieldInput('bio')"
               />
-              <p class="text-xs" :class="fieldError('bio') ? 'text-destructive' : 'text-muted-foreground'" id="profile-bio-error">
+              <p class="text-body" :class="fieldError('bio') ? 'text-destructive' : 'text-muted-foreground'" id="profile-bio-error">
                 {{ fieldError('bio') ?? `${form.bio.length}/500` }}
               </p>
             </div>
@@ -314,13 +314,13 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
         <!-- Tab: Preferencias -->
         <TabsContent value="preferences">
           <section class="flex flex-col gap-4 rounded-[14px] border bg-card p-7">
-            <h2 class="text-[15px] font-bold text-heading">Preferencias</h2>
+            <h2 class="text-title font-bold text-heading">Preferencias</h2>
 
             <div class="divide-y divide-border/60">
               <div class="flex items-center justify-between gap-4 py-2.5">
                 <Label for="pref-dark" class="flex-col items-start gap-0.5">
                   <span class="text-sm font-medium text-foreground">Modo oscuro</span>
-                  <span class="text-xs font-normal text-muted-foreground">
+                  <span class="text-body font-normal text-muted-foreground">
                     Se aplica al instante y se guarda en tu cuenta para todos tus dispositivos
                   </span>
                 </Label>

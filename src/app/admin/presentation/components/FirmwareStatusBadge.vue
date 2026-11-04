@@ -28,7 +28,7 @@ const versions = computed(() => {
 
 <template>
   <span class="inline-flex items-center gap-1.5" :title="meta.help">
-    <span v-if="showVersions && versions" class="font-mono text-xs">{{ versions }}</span>
+    <span v-if="showVersions && versions" class="font-mono text-body">{{ versions }}</span>
     <Badge :variant="meta.variant" size="status">{{ meta.label }}</Badge>
     <span class="sr-only">{{ meta.help }}</span>
   </span>

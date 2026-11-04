@@ -53,7 +53,7 @@ const waitingLocation = computed(() => !position.value && ['idle', 'locating'].i
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-[760px] flex-col gap-5">
+  <div class="mx-auto flex w-full max-w-reading flex-col gap-5">
     <PageHeader
       title="Recomendaciones"
       :sub="`Zonas a menos de ${RECOMMENDATION_RADIUS_KM} km con más probabilidad de encontrar espacio`"
@@ -88,7 +88,7 @@ const waitingLocation = computed(() => !position.value && ['idle', 'locating'].i
             @view-detail="router.push(`/dashboard/zones/${r.zoneId}`)"
           />
         </div>
-        <p class="text-center text-[11px] text-muted-foreground">
+        <p class="text-center text-caption text-muted-foreground">
           <template v-if="updatedAt">Actualizado a las {{ updatedAt }} · </template>
           se actualiza cada 30 segundos o al moverte. La disponibilidad estimada combina la ocupación
           actual con la predicción de los próximos minutos.

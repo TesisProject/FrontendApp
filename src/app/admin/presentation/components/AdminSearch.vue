@@ -9,7 +9,7 @@ const model = defineModel<string>({ default: '' })
 </script>
 
 <template>
-  <div class="relative mb-4 max-w-[380px]">
+  <div class="relative mb-4 max-w-[23.75rem]">
     <Search class="pointer-events-none absolute top-1/2 left-3 size-[15px] -translate-y-1/2 text-muted-foreground/70" />
     <Input
       v-model="model"

@@ -45,7 +45,7 @@ const classifications = (['LIBRE', 'MODERADO', 'OCUPADO'] as ZoneClassification[
 }))
 
 const card = 'rounded-2xl border border-border/60 bg-card shadow-card'
-const sectionTitle = 'text-base font-semibold tracking-[-0.01em] text-heading'
+const sectionTitle = 'text-title font-semibold tracking-[-0.01em] text-heading'
 const stagger = (i: number, base = 0) => ({ animationDelay: `${base + Math.min(i, 4) * 0.06}s` })
 
 onMounted(() => {
@@ -54,23 +54,23 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-[1340px]">
+  <div class="mx-auto w-full max-w-page">
     <header class="mb-7 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end sm:gap-6">
       <div>
-        <span class="mb-2 inline-flex items-center gap-[7px] text-[11px] font-semibold tracking-[0.14em] text-link uppercase">
+        <span class="mb-2 inline-flex items-center gap-[7px] text-caption font-semibold tracking-[0.14em] text-link uppercase">
           <span class="live-dot" aria-hidden="true" />
           Panel en vivo
         </span>
-        <h1 class="mb-1.5 font-display text-[27px] font-bold tracking-[-0.02em] text-heading capitalize">
+        <h1 class="mb-1.5 font-display text-display font-bold tracking-[-0.02em] text-heading capitalize">
           Hola, {{ authStore.user?.email?.split('@')[0] }}
         </h1>
-        <p class="text-[13px] text-muted-foreground">El estado de los estacionamientos, en tiempo real</p>
+        <p class="text-body text-muted-foreground">El estado de los estacionamientos, en tiempo real</p>
       </div>
       <div class="flex shrink-0 flex-col items-start leading-none sm:items-end" aria-hidden="true">
-        <span class="font-display text-[34px] font-bold tracking-[-0.02em] text-heading tabular-nums">
+        <span class="font-display text-display-lg font-bold tracking-[-0.02em] text-heading tabular-nums">
           {{ globalOccupancy }}<span class="ml-px text-lg text-muted-foreground">%</span>
         </span>
-        <span class="mt-1.5 text-[11px] tracking-[0.08em] text-muted-foreground uppercase">ocupación ahora</span>
+        <span class="mt-1.5 text-caption tracking-[0.08em] text-muted-foreground uppercase">ocupación ahora</span>
       </div>
     </header>
 
@@ -89,10 +89,10 @@ onMounted(() => {
             <component :is="m.icon" class="size-[22px]" aria-hidden="true" />
           </span>
           <span class="flex flex-col gap-[3px]">
-            <span class="font-display text-[28px] leading-none font-bold tracking-[-0.02em] text-heading tabular-nums">
+            <span class="font-display text-display leading-none font-bold tracking-[-0.02em] text-heading tabular-nums">
               {{ m.value }}<span v-if="m.unit" class="ml-px text-lg text-muted-foreground">{{ m.unit }}</span>
             </span>
-            <span class="text-xs text-muted-foreground">{{ m.label }}</span>
+            <span class="text-body text-muted-foreground">{{ m.label }}</span>
           </span>
         </div>
       </div>
@@ -102,7 +102,7 @@ onMounted(() => {
         <section>
           <div class="mb-3.5 flex items-center justify-between">
             <h2 :class="sectionTitle">Zonas monitoreadas</h2>
-            <RouterLink to="/dashboard/zones" class="rounded-md text-[13px] font-semibold text-link hover:underline focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none">
+            <RouterLink to="/dashboard/zones" class="rounded-md text-body font-semibold text-link hover:underline focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none">
               Ver mapa →
             </RouterLink>
           </div>
@@ -124,10 +124,10 @@ onMounted(() => {
 
               <div class="min-w-0 flex-1">
                 <div class="mb-1 flex items-center gap-2.5">
-                  <span class="truncate text-[15px] font-bold text-heading">{{ zone.name }}</span>
+                  <span class="truncate text-title font-bold text-heading">{{ zone.name }}</span>
                   <ClassificationBadge :classification="zone.classification" />
                 </div>
-                <span class="mb-2.5 block truncate text-xs text-muted-foreground">{{ zone.street }}, {{ zone.district }}</span>
+                <span class="mb-2.5 block truncate text-body text-muted-foreground">{{ zone.street }}, {{ zone.district }}</span>
                 <OccupancyMeter
                   :percentage="zone.occupancyPercentage"
                   :color="CLASSIFICATION_COLOR[zone.classification]"
@@ -151,7 +151,7 @@ onMounted(() => {
             <ul class="divide-y divide-border/60">
               <li v-for="c in classifications" :key="c.key" class="flex items-center gap-2.5 py-2">
                 <span class="size-2.5 shrink-0 rounded-full" :style="{ background: c.color }" />
-                <span class="flex-1 text-[13px] font-semibold text-foreground/80">{{ c.label }}</span>
+                <span class="flex-1 text-body font-semibold text-foreground/80">{{ c.label }}</span>
                 <span class="font-display text-xl font-bold text-heading tabular-nums">{{ c.count.value }}</span>
               </li>
             </ul>
@@ -167,10 +167,10 @@ onMounted(() => {
                 />
               </div>
               <span class="min-w-10 font-display text-lg font-bold text-heading tabular-nums">
-                {{ globalOccupancy }}<span class="text-xs text-muted-foreground">%</span>
+                {{ globalOccupancy }}<span class="text-caption text-muted-foreground">%</span>
               </span>
             </div>
-            <div class="flex gap-5 text-[13px] text-foreground/80">
+            <div class="flex gap-5 text-body text-foreground/80">
               <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-zone-ocupado" />{{ totalOccupied }} ocupados</span>
               <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-zone-libre" />{{ totalFree }} libres</span>
             </div>

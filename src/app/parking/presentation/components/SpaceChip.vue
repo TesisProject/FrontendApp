@@ -10,7 +10,7 @@ defineProps<{
 
 <template>
   <li
-    class="inline-flex h-8 min-w-12 items-center justify-center gap-1.5 rounded-md border-[1.5px] px-2.5 text-xs font-bold text-heading transition-[box-shadow,transform]"
+    class="inline-flex h-8 min-w-12 items-center justify-center gap-1.5 rounded-md border-[1.5px] px-2.5 text-caption font-bold text-heading transition-[box-shadow,transform]"
     :class="[
       occupied ? 'border-zone-ocupado bg-destructive-soft' : 'border-zone-libre bg-success-soft',
       active && '-translate-y-px ring-2 ring-ring/60 ring-offset-1 ring-offset-card',

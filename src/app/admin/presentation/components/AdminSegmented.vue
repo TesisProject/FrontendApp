@@ -21,7 +21,7 @@ const name  = useId()
     <label
       v-for="o in options"
       :key="String(o.value)"
-      class="relative cursor-pointer rounded-md px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors
+      class="relative cursor-pointer rounded-md px-3 py-1.5 text-body font-medium text-muted-foreground transition-colors
              hover:text-foreground has-[:checked]:bg-card has-[:checked]:text-heading has-[:checked]:shadow-sm
              has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-55"
     >

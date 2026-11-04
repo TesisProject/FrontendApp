@@ -13,7 +13,7 @@ defineProps<{ to?: RouteLocationRaw }>()
   <component
     :is="to ? RouterLink : 'a'"
     :to="to"
-    class="rounded-sm text-[13px] font-medium text-link underline-offset-2 hover:underline focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+    class="rounded-sm text-body font-medium text-link underline-offset-2 hover:underline focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
   >
     <slot />
   </component>

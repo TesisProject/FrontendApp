@@ -32,7 +32,7 @@ const offset = computed(() => C * (1 - Math.min(100, Math.max(0, props.percentag
       />
     </svg>
     <span class="absolute font-display text-sm font-bold text-heading tabular-nums">
-      {{ Math.round(percentage) }}<span class="text-[8px] text-muted-foreground">%</span>
+      {{ Math.round(percentage) }}<span class="text-[0.5rem] text-muted-foreground">%</span>
     </span>
   </div>
 </template>

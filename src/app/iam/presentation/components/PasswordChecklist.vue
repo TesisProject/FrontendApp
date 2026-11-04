@@ -15,7 +15,7 @@ const items = computed(() =>
 </script>
 
 <template>
-  <ul class="-mt-2 grid grid-cols-1 gap-1 text-[12.5px] sm:grid-cols-2" aria-label="Requisitos de la contraseña">
+  <ul class="-mt-2 grid grid-cols-1 gap-1 text-body sm:grid-cols-2" aria-label="Requisitos de la contraseña">
     <li
       v-for="item in items"
       :key="item.id"

@@ -33,7 +33,7 @@ watch(activeCategory, () => { openItem.value = undefined })
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-[760px] flex-col gap-5">
+  <div class="mx-auto flex w-full max-w-reading flex-col gap-5">
     <PageHeader title="Preguntas frecuentes" sub="Encuentra respuestas sobre el funcionamiento de ParkVision" />
 
     <div class="relative">
@@ -51,7 +51,7 @@ watch(activeCategory, () => { openItem.value = undefined })
 
     <p
       v-if="!online"
-      class="flex items-center gap-2 rounded-[10px] border border-warning/30 bg-warning-soft px-3 py-2.5 text-[12.5px] text-warning"
+      class="flex items-center gap-2 rounded-[10px] border border-warning/30 bg-warning-soft px-3 py-2.5 text-body text-warning"
       role="status"
     >
       <WifiOff class="size-4 shrink-0" aria-hidden="true" />
@@ -64,7 +64,7 @@ watch(activeCategory, () => { openItem.value = undefined })
       <template #action>
         <a
           :href="supportMailto"
-          class="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold text-link hover:bg-accent"
+          class="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-caption font-semibold text-link hover:bg-accent"
         >
           <Mail class="size-3.5" aria-hidden="true" /> Contactar a soporte
         </a>
@@ -81,13 +81,13 @@ watch(activeCategory, () => { openItem.value = undefined })
         <AccordionTrigger class="px-5 py-4 text-sm font-semibold text-heading hover:no-underline [&>svg]:size-4">
           {{ item.question }}
         </AccordionTrigger>
-        <AccordionContent class="px-5 pb-4 text-[13px] leading-relaxed text-muted-foreground">
+        <AccordionContent class="px-5 pb-4 text-body leading-relaxed text-muted-foreground">
           {{ item.answer }}
         </AccordionContent>
       </AccordionItem>
     </Accordion>
 
-    <p class="text-center text-[13px] text-muted-foreground">
+    <p class="text-center text-body text-muted-foreground">
       ¿No encontraste lo que buscabas?
       <a :href="supportMailto" class="font-medium text-link hover:underline">
         Contacta a soporte ({{ env.supportEmail }})

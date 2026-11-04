@@ -97,11 +97,11 @@ onMounted(loadProfile)
           <span class="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-navy-soft text-navy">
             <User class="size-[18px]" />
           </span>
-          <CardTitle class="text-[15px] font-bold text-navy">Información personal</CardTitle>
+          <CardTitle class="text-title font-bold text-navy">Información personal</CardTitle>
         </CardHeader>
 
         <CardContent>
-          <p v-if="profileLoading" class="text-[13px] text-muted-foreground">Cargando perfil...</p>
+          <p v-if="profileLoading" class="text-body text-muted-foreground">Cargando perfil...</p>
 
           <form v-else class="grid gap-3.5" @submit.prevent="saveProfile">
             <div class="grid gap-3 sm:grid-cols-2">
@@ -136,7 +136,7 @@ onMounted(loadProfile)
           <span class="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-navy-soft text-navy">
             <Lock class="size-[18px]" />
           </span>
-          <CardTitle class="text-[15px] font-bold text-navy">Cambiar contraseña</CardTitle>
+          <CardTitle class="text-title font-bold text-navy">Cambiar contraseña</CardTitle>
         </CardHeader>
 
         <CardContent>
@@ -166,7 +166,7 @@ onMounted(loadProfile)
       </Card>
     </div>
 
-    <span class="inline-flex items-center gap-1.5 rounded-full bg-[#ebf8ff] px-3.5 py-1.5 text-xs font-semibold text-[#2b6cb0]">
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-[#ebf8ff] px-3.5 py-1.5 text-caption font-semibold text-[#2b6cb0]">
       <ShieldCheck class="size-3.5" />
       Cuenta con rol Administrador
     </span>

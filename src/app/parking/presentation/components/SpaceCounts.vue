@@ -8,7 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <p class="flex flex-wrap items-center gap-1.5 text-xs">
+  <p class="flex flex-wrap items-center gap-1.5 text-body">
     <span class="font-semibold text-success">{{ free }} libres</span>
     <span class="text-muted-foreground/60" aria-hidden="true">·</span>
     <span class="font-semibold text-destructive">{{ occupied }} ocupados</span>

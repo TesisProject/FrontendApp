@@ -15,10 +15,10 @@ const home = computed(() => (tokenRepository.isAuthenticated() ? '/dashboard' : 
     <BrandWordmark tone="dark" />
 
     <div class="flex flex-col items-center">
-      <p class="font-display text-[88px] leading-none font-bold tracking-[-0.04em] text-heading tabular-nums">404</p>
+      <p class="font-display text-jumbo leading-none font-bold tracking-[-0.04em] text-heading tabular-nums">404</p>
       <div class="bay-stripe" aria-hidden="true" />
       <h1 class="mt-5 mb-2 font-display text-2xl font-bold text-heading">Esta plaza no existe</h1>
-      <p class="max-w-sm text-sm text-muted-foreground">
+      <p class="max-w-sm text-body text-muted-foreground">
         La página que buscas no está disponible o fue movida. Vuelve al inicio para seguir buscando estacionamiento.
       </p>
     </div>

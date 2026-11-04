@@ -18,7 +18,7 @@ const reasonLabel = { THRESHOLD: '≥ 80 %', PERCENTILE: 'percentil 90' } as con
 
 <template>
   <div class="overflow-x-auto rounded-xl border bg-card shadow-[var(--pv-shadow-sm)] print:overflow-visible print:shadow-none">
-    <table class="w-full border-collapse text-[11px]">
+    <table class="w-full border-collapse text-caption">
       <caption class="sr-only">Ocupación promedio por zona y franja; las franjas pico están marcadas</caption>
       <thead>
         <tr class="border-b">
@@ -33,7 +33,7 @@ const reasonLabel = { THRESHOLD: '≥ 80 %', PERCENTILE: 'percentil 90' } as con
         <tr v-for="r in rows" :key="r.zoneId" class="border-b last:border-0">
           <th
             scope="row"
-            class="sticky left-0 z-[1] max-w-48 truncate bg-card px-3 py-1.5 text-left text-xs font-medium"
+            class="sticky left-0 z-[1] max-w-48 truncate bg-card px-3 py-1.5 text-left text-body font-medium"
             :class="r.peakZone ? 'text-destructive' : 'text-heading'"
           >
             <span v-if="r.peakZone" aria-hidden="true" class="mr-1 inline-block size-2 rounded-full bg-destructive" />

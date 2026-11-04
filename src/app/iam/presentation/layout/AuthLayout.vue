@@ -48,14 +48,14 @@ onBeforeUnmount(() => clearInterval(flipTimer))
         <BrandWordmark />
       </header>
 
-      <div class="relative z-1 flex max-w-[460px] flex-1 flex-col justify-center py-6">
-        <p class="mb-4 text-xs font-semibold tracking-[0.16em] text-[#f2a878] uppercase">
+      <div class="relative z-1 flex max-w-[28.75rem] flex-1 flex-col justify-center py-6">
+        <p class="mb-4 text-caption font-semibold tracking-[0.16em] text-[#f2a878] uppercase">
           Visión artificial en tiempo real
         </p>
-        <h1 class="mb-3.5 font-display text-[38px] leading-[1.08] font-bold tracking-[-0.025em]">
+        <h1 class="mb-3.5 font-display text-display-lg leading-[1.08] font-bold tracking-[-0.025em]">
           Encuentra estacionamiento<br />antes de llegar.
         </h1>
-        <p class="mb-[34px] max-w-[400px] text-[15px] leading-[1.6] text-white/60">
+        <p class="mb-[34px] max-w-[25rem] text-title leading-[1.6] text-white/60">
           Cámaras inteligentes leen cada plaza y te muestran dónde aparcar
           en tu ciudad, plaza por plaza.
         </p>
@@ -75,17 +75,17 @@ onBeforeUnmount(() => clearInterval(flipTimer))
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-[18px] text-xs text-white/70">
+        <div class="flex flex-wrap items-center gap-[18px] text-body text-white/70">
           <span class="inline-flex items-center gap-[7px]"><i class="size-[9px] rounded-[3px] bg-[#16b178]" />Libre</span>
           <span class="inline-flex items-center gap-[7px]"><i class="size-[9px] rounded-[3px] bg-[#f2894a]" />Moderado</span>
           <span class="inline-flex items-center gap-[7px]"><i class="size-[9px] rounded-[3px] bg-[#ff5d5d]" />Ocupado</span>
-          <span class="ml-auto inline-flex items-center gap-[7px] text-[11px] text-white/50">
+          <span class="ml-auto inline-flex items-center gap-[7px] text-caption text-white/50">
             <i class="live-dot" aria-hidden="true" />En vivo · cada 30 s
           </span>
         </div>
       </div>
 
-      <footer class="relative z-1 flex items-center justify-between text-xs text-white/45">
+      <footer class="relative z-1 flex items-center justify-between text-body text-white/45">
         <span>© {{ year }} ParkVision</span>
         <nav class="flex gap-5">
           <a href="#" class="text-white/55 hover:text-white">Términos</a>
@@ -99,7 +99,7 @@ onBeforeUnmount(() => clearInterval(flipTimer))
       <div class="flex justify-center pt-3 pb-2 min-[981px]:hidden">
         <BrandWordmark tone="dark" />
       </div>
-      <div class="m-auto w-full max-w-[410px]">
+      <div class="m-auto w-full max-w-[25.625rem]">
         <RouterView />
       </div>
     </main>

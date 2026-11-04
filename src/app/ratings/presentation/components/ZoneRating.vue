@@ -79,18 +79,18 @@ onMounted(async () => {
     <!-- Reseñas de la comunidad -->
     <div class="flex flex-col gap-3 px-5 py-[18px]">
       <div class="flex items-center gap-2.5">
-        <h2 class="flex-1 text-sm font-bold text-heading">Reseñas</h2>
+        <h2 class="flex-1 text-title font-bold text-heading">Reseñas</h2>
         <span
           v-if="!isLoadingReviews && reviews.length"
-          class="flex items-center gap-1 rounded-[10px] border border-amber-200 bg-amber-50 px-2.5 py-[3px] text-xs font-bold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+          class="flex items-center gap-1 rounded-[10px] border border-amber-200 bg-amber-50 px-2.5 py-[3px] text-caption font-bold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
         >
           <Star :size="13" :stroke-width="0" class="fill-amber-500" aria-hidden="true" />
           {{ avg.toFixed(1) }} · {{ reviews.length }} {{ reviews.length === 1 ? 'reseña' : 'reseñas' }}
         </span>
       </div>
 
-      <p v-if="isLoadingReviews" class="text-[13px] text-muted-foreground">Cargando reseñas...</p>
-      <p v-else-if="reviews.length === 0" class="text-[13px] text-muted-foreground italic">
+      <p v-if="isLoadingReviews" class="text-body text-muted-foreground">Cargando reseñas...</p>
+      <p v-else-if="reviews.length === 0" class="text-body text-muted-foreground italic">
         Sé el primero en calificar esta zona
       </p>
 
@@ -98,25 +98,25 @@ onMounted(async () => {
         <li v-for="r in reviews" :key="r.userId" class="flex flex-col gap-1.5 rounded-[10px] border bg-muted/40 px-3 py-2.5">
           <div class="flex items-center gap-2.5">
             <Avatar class="size-8">
-              <AvatarFallback class="bg-muted text-[11px] font-bold text-heading">{{ initials(r.userDisplayName) }}</AvatarFallback>
+              <AvatarFallback class="bg-muted text-caption font-bold text-heading">{{ initials(r.userDisplayName) }}</AvatarFallback>
             </Avatar>
             <div class="flex flex-1 flex-col gap-px">
-              <span class="text-xs font-semibold text-foreground">{{ r.userDisplayName }}</span>
-              <span class="text-[11px] text-muted-foreground">{{ formatShortDate(r.createdAt) }}</span>
+              <span class="text-body font-semibold text-foreground">{{ r.userDisplayName }}</span>
+              <span class="text-caption text-muted-foreground">{{ formatShortDate(r.createdAt) }}</span>
             </div>
             <StarRating :model-value="r.stars" readonly />
           </div>
-          <p v-if="r.comment" class="text-[13px] leading-normal text-foreground/80">{{ r.comment }}</p>
+          <p v-if="r.comment" class="text-body leading-normal text-foreground/80">{{ r.comment }}</p>
         </li>
       </ul>
     </div>
 
     <!-- Tu calificación -->
     <div v-if="userId" class="flex flex-col gap-3 px-5 py-[18px]">
-      <h2 class="text-sm font-bold text-heading">Tu calificación</h2>
+      <h2 class="text-title font-bold text-heading">Tu calificación</h2>
 
       <div v-if="!current && !editing" class="flex flex-wrap items-center gap-3.5">
-        <p class="flex-1 text-[13px] text-muted-foreground">Aún no has calificado esta zona</p>
+        <p class="flex-1 text-body text-muted-foreground">Aún no has calificado esta zona</p>
         <Button size="sm" variant="emphasis" @click="startEdit">
           Calificar
         </Button>
@@ -125,9 +125,9 @@ onMounted(async () => {
       <div v-else-if="current && !editing" class="flex flex-col gap-2">
         <div class="flex items-center gap-2">
           <StarRating :model-value="current.stars" readonly :size="20" />
-          <span class="text-xs font-semibold text-amber-600 dark:text-amber-400">{{ starLabel(current.stars) }}</span>
+          <span class="text-body font-semibold text-amber-600 dark:text-amber-400">{{ starLabel(current.stars) }}</span>
         </div>
-        <p v-if="current.comment" class="text-[13px] text-foreground/80 italic">{{ current.comment }}</p>
+        <p v-if="current.comment" class="text-body text-foreground/80 italic">{{ current.comment }}</p>
         <div class="flex gap-2">
           <Button size="sm" variant="outline-primary" class="border-emphasis text-emphasis hover:bg-emphasis hover:text-emphasis-foreground" @click="startEdit">
             Editar
@@ -139,7 +139,7 @@ onMounted(async () => {
       <form v-if="editing" class="flex flex-col gap-2.5" @submit.prevent="save">
         <div class="flex items-center gap-2">
           <StarRating v-model="form.stars" v-model:hovered="hovered" :size="28" label="Tu calificación de la zona" />
-          <span class="min-w-[70px] text-xs font-semibold text-amber-600 dark:text-amber-400" aria-live="polite">
+          <span class="min-w-[4.375rem] text-body font-semibold text-amber-600 dark:text-amber-400" aria-live="polite">
             {{ starLabel(hovered || form.stars) }}
           </span>
         </div>

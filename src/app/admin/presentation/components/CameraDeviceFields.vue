@@ -61,14 +61,14 @@ const macTakenBy = computed(() => {
         spellcheck="false"
         :aria-invalid="!!macError"
       />
-      <p v-if="macError" class="text-[11px] text-destructive">{{ macError }}</p>
-      <p v-else-if="macTakenBy" class="text-[11px] text-warning">Ya la usa {{ macTakenBy }}: cada placa tiene una MAC única.</p>
-      <p v-else-if="!macRequired && !form.mac.trim()" class="text-[11px] text-warning">
+      <p v-if="macError" class="text-caption text-destructive">{{ macError }}</p>
+      <p v-else-if="macTakenBy" class="text-caption text-warning">Ya la usa {{ macTakenBy }}: cada placa tiene una MAC única.</p>
+      <p v-else-if="!macRequired && !form.mac.trim()" class="text-caption text-warning">
         Sin MAC, el Fog no podrá dar de alta esta placa por MAC.
       </p>
     </AdminField>
 
-    <details class="group rounded-lg border bg-muted/30 px-3 py-2 text-[12px] text-muted-foreground">
+    <details class="group rounded-lg border bg-muted/30 px-3 py-2 text-body text-muted-foreground">
       <summary class="cursor-pointer font-semibold text-foreground">¿Dónde encuentro la MAC?</summary>
       <p class="mt-1.5 leading-relaxed">
         Es la MAC de <strong>estación (STA)</strong> de la placa: el firmware la imprime en el monitor serie
@@ -83,7 +83,7 @@ const macTakenBy = computed(() => {
     </AdminField>
 
     <details class="rounded-lg border px-3 py-2" :open="showErrors && !!(errors.intervalSec || errors.jpegQuality)">
-      <summary class="cursor-pointer text-[13px] font-semibold text-foreground">
+      <summary class="cursor-pointer text-body font-semibold text-foreground">
         Captura
         <span class="font-normal text-muted-foreground">
           · {{ form.capture.intervalSec }} s · {{ form.capture.framesize }} · calidad {{ form.capture.jpegQuality }}
@@ -105,7 +105,7 @@ const macTakenBy = computed(() => {
             step="1"
             :aria-invalid="!!errors.intervalSec"
           />
-          <p v-if="errors.intervalSec" class="text-[11px] text-destructive">{{ errors.intervalSec }}</p>
+          <p v-if="errors.intervalSec" class="text-caption text-destructive">{{ errors.intervalSec }}</p>
         </AdminField>
         <AdminField v-slot="{ id }" label="Resolución" hint="Mayor = más detalle y más tiempo de radio">
           <NativeSelect :id="id" v-model="form.capture.framesize">
@@ -127,7 +127,7 @@ const macTakenBy = computed(() => {
             step="1"
             :aria-invalid="!!errors.jpegQuality"
           />
-          <p v-if="errors.jpegQuality" class="text-[11px] text-destructive">{{ errors.jpegQuality }}</p>
+          <p v-if="errors.jpegQuality" class="text-caption text-destructive">{{ errors.jpegQuality }}</p>
         </AdminField>
       </div>
     </details>

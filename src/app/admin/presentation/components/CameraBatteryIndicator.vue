@@ -26,10 +26,10 @@ const help = computed(() => props.battery && badge.value
   </span>
   <span v-else class="inline-flex items-center gap-2" :title="help">
     <BatteryMeter :battery="battery" />
-    <span class="text-[13px] font-semibold tabular-nums" :class="battery.stale ? 'text-muted-foreground' : 'text-navy'">
+    <span class="text-body font-semibold tabular-nums" :class="battery.stale ? 'text-muted-foreground' : 'text-navy'">
       {{ battery.percent }} %
     </span>
-    <span class="font-mono text-xs text-muted-foreground">{{ battery.mv }} mV</span>
+    <span class="font-mono text-body text-muted-foreground">{{ battery.mv }} mV</span>
     <Badge v-if="showBadge && badge" :variant="badge.variant" size="status">{{ badge.label }}</Badge>
     <span class="sr-only">{{ help }}</span>
   </span>

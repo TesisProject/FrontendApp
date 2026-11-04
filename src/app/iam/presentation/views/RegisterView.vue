@@ -223,7 +223,7 @@ const onSubmit = handleSubmit(async (values) => {
       />
     </form>
 
-    <p class="text-center text-[13px] text-muted-foreground">
+    <p class="text-center text-body text-muted-foreground">
       Al registrarte aceptas nuestros
       <TextLink href="#">Términos de uso</TextLink>
     </p>

@@ -18,12 +18,12 @@ defineEmits<{ 'view-detail': [] }>()
     >{{ rank }}</span>
 
     <div class="min-w-0 flex-1">
-      <h3 class="truncate text-[15px] font-bold text-heading">{{ recommendation.zoneName }}</h3>
-      <p class="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+      <h3 class="truncate text-title font-bold text-heading">{{ recommendation.zoneName }}</h3>
+      <p class="mt-0.5 flex items-center gap-1 text-body text-muted-foreground">
         <Navigation class="size-3 shrink-0" aria-hidden="true" />
         a {{ formatDistance(recommendation.distanceMeters) }}
       </p>
-      <p class="mt-1 text-[11px] text-muted-foreground">
+      <p class="mt-1 text-caption text-muted-foreground">
         <template v-if="recommendation.currentAvailabilityPct != null">
           Ahora {{ recommendation.currentAvailabilityPct }} % libre
           <template v-if="recommendation.available != null">({{ recommendation.available }} de {{ recommendation.total }})</template>
@@ -41,13 +41,13 @@ defineEmits<{ 'view-detail': [] }>()
 
     <div class="flex shrink-0 flex-col items-end gap-1.5">
       <span
-        class="font-display text-[26px] leading-none font-bold text-heading tabular-nums"
+        class="font-display text-display leading-none font-bold text-heading tabular-nums"
         :aria-label="`${recommendation.estimatedAvailabilityPct} % de disponibilidad estimada`"
       >{{ recommendation.estimatedAvailabilityPct }}%</span>
-      <span class="text-[10px] font-medium text-muted-foreground">disponibilidad estimada</span>
+      <span class="text-micro font-medium text-muted-foreground">disponibilidad estimada</span>
       <button
         type="button"
-        class="inline-flex items-center gap-1 text-xs font-semibold text-link hover:underline"
+        class="inline-flex items-center gap-1 text-body font-semibold text-link hover:underline"
         @click="$emit('view-detail')"
       >
         Ver detalle <ArrowRight class="size-3" aria-hidden="true" />

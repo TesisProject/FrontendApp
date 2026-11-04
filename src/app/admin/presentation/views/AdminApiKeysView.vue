@@ -126,7 +126,7 @@ onMounted(() => Promise.all([store.fetchApiKeys(), nodesStore.fetchNodes()]))
     >
       <TableRow v-for="k in filtered" :key="k.id">
         <TableCell class="font-semibold text-navy">{{ k.name }}</TableCell>
-        <TableCell class="font-mono text-xs font-semibold text-navy">{{ k.keyId }}</TableCell>
+        <TableCell class="font-mono text-body font-semibold text-navy">{{ k.keyId }}</TableCell>
         <TableCell>
           <Badge :variant="k.role === 'FOG' ? 'info' : 'neutral'" size="status">{{ k.role }}</Badge>
         </TableCell>
@@ -136,8 +136,8 @@ onMounted(() => Promise.all([store.fetchApiKeys(), nodesStore.fetchNodes()]))
           </Badge>
           <template v-else>{{ k.role === 'FOG' ? nodeName(k.nodeId) : '—' }}</template>
         </TableCell>
-        <TableCell class="text-xs text-muted-foreground">{{ formatDate(k.lastUsedAt) }}</TableCell>
-        <TableCell class="text-xs text-muted-foreground">{{ formatDate(k.expiresAt) }}</TableCell>
+        <TableCell class="text-body text-muted-foreground">{{ formatDate(k.lastUsedAt) }}</TableCell>
+        <TableCell class="text-body text-muted-foreground">{{ formatDate(k.expiresAt) }}</TableCell>
         <TableCell>
           <Badge :variant="k.active ? 'success' : 'neutral'" size="status">
             {{ k.active ? 'Activa' : 'Revocada' }}
@@ -189,10 +189,10 @@ onMounted(() => Promise.all([store.fetchApiKeys(), nodesStore.fetchNodes()]))
               <NativeSelectOption v-for="n in nodesStore.nodes" :key="n.id" :value="n.id">{{ n.name }} ({{ n.code }})</NativeSelectOption>
             </NativeSelect>
           </AdminField>
-          <p v-else class="text-[12px] text-muted-foreground">
+          <p v-else class="text-body text-muted-foreground">
             La key del prediction-engine no se liga a ningún nodo: lee zonas e historial y publica el pronóstico.
           </p>
-          <p v-if="noNodesForFog" class="text-[12px] text-muted-foreground">
+          <p v-if="noNodesForFog" class="text-body text-muted-foreground">
             Registra antes un nodo en <RouterLink to="/admin/nodes" class="font-semibold text-link underline-offset-4 hover:underline">Nodos</RouterLink>.
           </p>
 
@@ -228,21 +228,21 @@ onMounted(() => Promise.all([store.fetchApiKeys(), nodesStore.fetchNodes()]))
         </DialogHeader>
 
         <div class="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2.5">
-          <code class="flex-1 font-mono text-xs break-all text-navy">{{ store.createdKey }}</code>
+          <code class="flex-1 font-mono text-body break-all text-navy">{{ store.createdKey }}</code>
           <Button size="sm" :variant="copied ? 'secondary' : 'default'" @click="copyKey">
             <Check v-if="copied" /><Copy v-else />
             {{ copied ? 'Copiada' : 'Copiar' }}
           </Button>
         </div>
-        <p v-if="store.createdMetadata?.role === 'PREDICTION'" class="text-xs text-muted-foreground">
+        <p v-if="store.createdMetadata?.role === 'PREDICTION'" class="text-body text-muted-foreground">
           Configúrala en el prediction-engine como header
-          <code class="rounded bg-muted px-1.5 py-px font-mono text-[11px]">X-API-Key</code>.
+          <code class="rounded bg-muted px-1.5 py-px font-mono text-caption">X-API-Key</code>.
         </p>
-        <p v-else class="text-xs text-muted-foreground">
+        <p v-else class="text-body text-muted-foreground">
           Configúrala en el nodo Fog como
-          <code class="rounded bg-muted px-1.5 py-px font-mono text-[11px]">CLOUD_API_KEY</code>
+          <code class="rounded bg-muted px-1.5 py-px font-mono text-caption">CLOUD_API_KEY</code>
           (se envía en el header
-          <code class="rounded bg-muted px-1.5 py-px font-mono text-[11px]">X-API-Key</code>).
+          <code class="rounded bg-muted px-1.5 py-px font-mono text-caption">X-API-Key</code>).
         </p>
 
         <DialogFooter>

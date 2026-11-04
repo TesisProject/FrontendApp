@@ -148,14 +148,14 @@ onBeforeUnmount(() => {
       <div ref="mapEl" class="size-full" />
       <div
         v-if="loading || mapError"
-        class="absolute inset-0 flex items-center justify-center bg-[#eef2f7] p-4 text-center text-[13px]"
+        class="absolute inset-0 flex items-center justify-center bg-[#eef2f7] p-4 text-center text-body"
         :class="mapError ? 'text-destructive' : 'text-muted-foreground'"
         :role="mapError ? 'alert' : 'status'"
       >
         {{ mapError || 'Cargando mapa...' }}
       </div>
     </div>
-    <p class="mt-1.5 text-xs text-muted-foreground">
+    <p class="mt-1.5 text-body text-muted-foreground">
       <template v-if="hasLocation">
         Arrastra el pin o haz clic en el mapa para ajustar la ubicación exacta.
       </template>

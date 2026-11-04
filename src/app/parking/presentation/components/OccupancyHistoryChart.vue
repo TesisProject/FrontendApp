@@ -143,7 +143,7 @@ function onMove(e: MouseEvent) {
 
 <template>
   <div class="flex flex-col gap-3">
-    <p v-if="summary" class="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+    <p v-if="summary" class="flex flex-wrap gap-x-5 gap-y-1 text-body text-muted-foreground">
       <span>
         Ocupación media
         <strong class="font-semibold text-heading tabular-nums">{{ summary.avgPct }}%</strong>
@@ -169,14 +169,14 @@ function onMove(e: MouseEvent) {
           <line :x1="PAD.left" :x2="W - PAD.right" :y1="t.y" :y2="t.y" stroke="var(--border)" stroke-width="1" />
           <text
             :x="PAD.left - 8" :y="t.y + 3.5"
-            text-anchor="end" class="fill-muted-foreground text-[11px] tabular-nums"
+            text-anchor="end" class="fill-muted-foreground text-caption tabular-nums"
           >{{ t.value }}</text>
         </g>
 
         <!-- Eje X: marcas de tiempo fijas del rango -->
         <g v-for="t in xTicks" :key="'x' + t.x">
           <line :x1="t.x" :x2="t.x" :y1="baseline" :y2="baseline + 4" stroke="var(--border)" stroke-width="1" />
-          <text :x="t.x" :y="H - 8" text-anchor="middle" class="fill-muted-foreground text-[11px] tabular-nums">
+          <text :x="t.x" :y="H - 8" text-anchor="middle" class="fill-muted-foreground text-caption tabular-nums">
             {{ t.label }}
           </text>
         </g>
@@ -189,7 +189,7 @@ function onMove(e: MouseEvent) {
           <text
             :x="nowX > W - 60 ? nowX - 4 : nowX + 4" :y="PAD.top + 10"
             :text-anchor="nowX > W - 60 ? 'end' : 'start'"
-            class="fill-muted-foreground text-[11px]"
+            class="fill-muted-foreground text-caption"
           >ahora</text>
         </g>
 
@@ -223,14 +223,14 @@ function onMove(e: MouseEvent) {
         class="pointer-events-none absolute z-[5] flex -translate-x-1/2 -translate-y-[calc(100%+12px)] flex-col gap-0.5 rounded-lg bg-navy px-[11px] py-[7px] whitespace-nowrap text-white shadow-[0_4px_14px_rgba(9,44,76,0.25)] dark:border dark:bg-popover"
         :style="tooltipStyle"
       >
-        <span class="text-[11px] font-semibold text-[#bcd3ea] tabular-nums dark:text-muted-foreground">
+        <span class="text-caption font-semibold text-[#bcd3ea] tabular-nums dark:text-muted-foreground">
           {{ bucketLabel(hovered.bucket) }}
         </span>
-        <span class="text-xs tabular-nums">
+        <span class="text-body tabular-nums">
           <span class="font-bold">{{ Math.round(hovered.bucket.avg) }} de {{ hovered.bucket.capacity }} ocupados</span>
           · {{ pct(hovered.bucket.avg, hovered.bucket.capacity) }}%
         </span>
-        <span v-if="hovered.bucket.min !== hovered.bucket.max" class="text-[11px] text-[#bcd3ea] tabular-nums dark:text-muted-foreground">
+        <span v-if="hovered.bucket.min !== hovered.bucket.max" class="text-caption text-[#bcd3ea] tabular-nums dark:text-muted-foreground">
           entre {{ hovered.bucket.min }} y {{ hovered.bucket.max }} en ese lapso
         </span>
       </div>

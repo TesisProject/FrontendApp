@@ -58,7 +58,6 @@ const polygons = computed(() => {
       const pts = s.roi.map(p => ({ x: p.x * d.w, y: p.y * d.h }))
       return {
         ...s,
-        points: pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '),
         cx: pts.reduce((a, p) => a + p.x, 0) / pts.length,
         cy: pts.reduce((a, p) => a + p.y, 0) / pts.length,
       }
@@ -67,6 +66,11 @@ const polygons = computed(() => {
 
 // Tamaños relativos a la foto: el SVG escala con el contenedor y la foto puede ser de cualquier resolución.
 const unit = computed(() => (display.value ? Math.max(display.value.w, display.value.h) / 100 : 1))
+
+/** Ancho de la píldora según el largo del número (aprox. 1,4 unidades por carácter + margen). */
+function labelWidth(text: string): number {
+  return (text.length * 1.4 + 2.4) * unit.value
+}
 </script>
 
 <template>
@@ -79,7 +83,7 @@ const unit = computed(() => (display.value ? Math.max(display.value.w, display.v
       class="block h-auto max-h-[26rem] w-full"
       :viewBox="`0 0 ${display.w} ${display.h}`"
       role="img"
-      aria-label="Última foto de estos espacios con cada espacio marcado según su estado"
+      aria-label="Última foto de estos espacios con el número de cada espacio en el color de su estado"
     >
       <image :href="imageUrl!" :width="natural!.w" :height="natural!.h" :transform="imageTransform" />
       <g
@@ -89,20 +93,20 @@ const unit = computed(() => (display.value ? Math.max(display.value.w, display.v
         @mouseenter="activeId = p.id"
         @mouseleave="activeId = null"
       >
-        <polygon
-          :points="p.points"
+        <!-- Solo la etiqueta con el color del estado: el contorno del ROI confundía a los usuarios. -->
+        <rect
+          :x="p.cx - labelWidth(p.spaceNumber) / 2" :y="p.cy - 1.8 * unit"
+          :width="labelWidth(p.spaceNumber)" :height="3.6 * unit"
+          :rx="1.8 * unit"
           :fill="p.occupied ? 'var(--zone-ocupado)' : 'var(--zone-libre)'"
-          :fill-opacity="activeId === p.id ? 0.45 : 0.22"
-          :stroke="p.occupied ? 'var(--zone-ocupado)' : 'var(--zone-libre)'"
-          :stroke-width="(activeId === p.id ? 0.6 : 0.3) * unit"
-          stroke-linejoin="round"
-          class="transition-[fill-opacity]"
+          :fill-opacity="activeId === p.id ? 1 : 0.9"
+          stroke="white" :stroke-width="(activeId === p.id ? 0.5 : 0.25) * unit"
         />
         <text
           :x="p.cx" :y="p.cy"
           text-anchor="middle" dominant-baseline="central"
           :font-size="2.2 * unit" font-weight="700"
-          fill="white" stroke="rgba(9,44,76,0.85)" :stroke-width="0.5 * unit" paint-order="stroke"
+          fill="white"
         >{{ p.spaceNumber }}</text>
       </g>
     </svg>
@@ -111,7 +115,7 @@ const unit = computed(() => (display.value ? Math.max(display.value.w, display.v
 
     <div
       v-else
-      class="flex aspect-video max-h-[26rem] w-full flex-col items-center justify-center gap-2 bg-muted text-[13px] text-muted-foreground"
+      class="flex aspect-video max-h-[26rem] w-full flex-col items-center justify-center gap-2 bg-muted text-body text-muted-foreground"
     >
       <ImageOff class="size-8 stroke-[1.5] opacity-60" aria-hidden="true" />
       Aún no hay foto de estos espacios

@@ -89,12 +89,12 @@ const onSubmit = handleSubmit(async (values) => {
       />
     </form>
 
-    <p class="text-center text-[13px] text-muted-foreground">
+    <p class="text-center text-body text-muted-foreground">
       ¿No tienes cuenta?
       <TextLink to="/register">Regístrate aquí</TextLink>
     </p>
 
-    <p class="text-center text-[13px] text-muted-foreground">
+    <p class="text-center text-body text-muted-foreground">
       ¿Eres administrador?
       <TextLink to="/admin">Accede al panel</TextLink>
     </p>

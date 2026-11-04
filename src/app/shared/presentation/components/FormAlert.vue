@@ -15,7 +15,7 @@ defineProps<{ message?: string | null }>()
   >
     <Alert v-if="message" variant="destructive" class="rounded-[9px] py-2.5">
       <CircleAlert />
-      <AlertDescription class="text-[13px]">{{ message }}</AlertDescription>
+      <AlertDescription class="text-body">{{ message }}</AlertDescription>
     </Alert>
   </Transition>
 </template>

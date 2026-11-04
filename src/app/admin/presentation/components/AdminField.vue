@@ -21,13 +21,13 @@ const id = useId()
 
 <template>
   <div class="flex min-w-0 flex-col gap-1.5">
-    <Label :for="id" class="gap-1 text-[11px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">
+    <Label :for="id" class="gap-1 text-caption font-semibold tracking-[0.04em] text-muted-foreground uppercase">
       {{ label }}
       <span v-if="optional" class="font-normal tracking-normal normal-case opacity-70">(opcional)</span>
       <span v-if="required" class="text-destructive" aria-hidden="true">*</span>
     </Label>
     <slot :id="id" />
-    <p v-if="error" class="text-[11px] font-medium text-destructive" role="alert">{{ error }}</p>
-    <p v-else-if="hint" class="text-[11px] text-muted-foreground">{{ hint }}</p>
+    <p v-if="error" class="text-caption font-medium text-destructive" role="alert">{{ error }}</p>
+    <p v-else-if="hint" class="text-caption text-muted-foreground">{{ hint }}</p>
   </div>
 </template>

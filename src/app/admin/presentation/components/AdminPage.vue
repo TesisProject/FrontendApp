@@ -12,13 +12,13 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div class="mx-auto w-full" :class="narrow ? 'max-w-[900px]' : 'max-w-[1040px]'">
+  <div class="mx-auto w-full" :class="narrow ? 'max-w-narrow' : 'max-w-page'">
     <header class="mb-5 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 class="bay-stripe mb-1 font-signage text-[30px] leading-[1.05] font-semibold tracking-[0.3px] text-navy">
+        <h1 class="bay-stripe mb-1 font-signage text-display leading-[1.05] font-semibold tracking-[0.03em] text-navy">
           {{ title }}
         </h1>
-        <p v-if="sub" class="text-[13px] text-muted-foreground">{{ sub }}</p>
+        <p v-if="sub" class="text-body text-muted-foreground">{{ sub }}</p>
       </div>
       <div v-if="$slots.actions" class="flex items-center gap-2.5">
         <slot name="actions" />

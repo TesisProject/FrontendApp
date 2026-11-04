@@ -93,7 +93,7 @@ function clearAll() {
 <template>
   <div class="grid gap-2.5">
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <p class="text-[11px] text-muted-foreground">
+      <p class="text-caption text-muted-foreground">
         Deja todo apagado si no conoces el horario: se mostrará «Sin información».
       </p>
       <div class="flex gap-1.5">
@@ -112,8 +112,8 @@ function clearAll() {
         :class="row.key === 0 && 'mt-1 border-t pt-2'"
       >
         <div class="grid grid-cols-[96px_auto_1fr] items-center gap-2.5 sm:grid-cols-[110px_96px_1fr]">
-          <span class="text-[13px] font-medium text-navy">{{ row.label }}</span>
-          <label class="flex items-center gap-2 text-xs text-muted-foreground">
+          <span class="text-body font-medium text-navy">{{ row.label }}</span>
+          <label class="flex items-center gap-2 text-body text-muted-foreground">
             <Switch v-model="row.open" :aria-label="`${row.label}: abierto`" />
             {{ row.open ? 'Abierto' : 'Cerrado' }}
           </label>
@@ -121,30 +121,30 @@ function clearAll() {
             <Input
               v-model="row.opensAt"
               type="time"
-              class="h-8 min-w-0 px-2 text-[13px]"
+              class="h-8 min-w-0 px-2 text-body"
               :aria-label="`${row.label}: hora de inicio`"
               :aria-invalid="!!errors[i]"
             />
-            <span class="text-xs text-muted-foreground">a</span>
+            <span class="text-body text-muted-foreground">a</span>
             <Input
               v-model="row.closesAt"
               type="time"
-              class="h-8 min-w-0 px-2 text-[13px]"
+              class="h-8 min-w-0 px-2 text-body"
               :aria-label="`${row.label}: hora de fin`"
               :aria-invalid="!!errors[i]"
             />
           </div>
-          <span v-else class="text-xs text-muted-foreground/70">
+          <span v-else class="text-body text-muted-foreground/70">
             {{ row.key === 0 ? 'Sin información' : '—' }}
           </span>
         </div>
-        <p v-if="errors[i]" class="text-[11px] text-destructive sm:pl-[220px]" role="alert">{{ errors[i] }}</p>
+        <p v-if="errors[i]" class="text-caption text-destructive sm:pl-[220px]" role="alert">{{ errors[i] }}</p>
       </li>
     </ul>
 
     <div class="rounded-lg border border-dashed px-3 py-2">
-      <p class="mb-0.5 text-[10px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">Así se verá</p>
-      <p v-for="line in preview" :key="line" class="text-xs text-foreground">{{ line }}</p>
+      <p class="mb-0.5 text-micro font-semibold tracking-[0.04em] text-muted-foreground uppercase">Así se verá</p>
+      <p v-for="line in preview" :key="line" class="text-body text-foreground">{{ line }}</p>
     </div>
   </div>
 </template>

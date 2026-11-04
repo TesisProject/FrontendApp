@@ -18,7 +18,7 @@ defineEmits<{ back: [] }>()
 </script>
 
 <template>
-  <div class="w-full max-w-[410px] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3.5 motion-safe:duration-500">
+  <div class="w-full max-w-[25.625rem] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3.5 motion-safe:duration-500">
     <Button
       v-if="back"
       variant="outline"
@@ -30,13 +30,13 @@ defineEmits<{ back: [] }>()
       <ArrowLeft class="size-5" />
     </Button>
 
-    <p v-if="eyebrow" class="mb-2.5 text-[11px] font-semibold tracking-[0.15em] text-link uppercase">
+    <p v-if="eyebrow" class="mb-2.5 text-caption font-semibold tracking-[0.15em] text-link uppercase">
       {{ eyebrow }}
     </p>
-    <h1 class="mb-2 font-display text-[29px] leading-[1.08] font-bold tracking-[-0.02em] text-ink">
+    <h1 class="mb-2 font-display text-display leading-[1.08] font-bold tracking-[-0.02em] text-ink">
       {{ title }}
     </h1>
-    <p v-if="sub" class="mb-[26px] text-sm leading-normal text-muted-foreground">{{ sub }}</p>
+    <p v-if="sub" class="mb-[26px] text-body leading-normal text-muted-foreground">{{ sub }}</p>
 
     <slot />
   </div>

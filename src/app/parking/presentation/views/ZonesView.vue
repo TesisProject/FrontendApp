@@ -250,8 +250,8 @@ onUnmounted(() => {
             >
               <MapPin class="size-[13px] shrink-0 text-muted-foreground" aria-hidden="true" />
               <span class="flex min-w-0 flex-col gap-px">
-                <span class="truncate text-[13px] font-semibold text-heading">{{ pred.mainText }}</span>
-                <span class="truncate text-[11px] text-muted-foreground">{{ pred.secondaryText }}</span>
+                <span class="truncate text-body font-semibold text-heading">{{ pred.mainText }}</span>
+                <span class="truncate text-caption text-muted-foreground">{{ pred.secondaryText }}</span>
               </span>
             </li>
           </ul>
@@ -261,12 +261,12 @@ onUnmounted(() => {
 
         <div class="mt-3 flex flex-col gap-2">
           <div class="flex items-center justify-between gap-2">
-            <span class="text-[11px] font-semibold tracking-[0.4px] text-muted-foreground uppercase">Distancia</span>
+            <span class="text-caption font-semibold tracking-[0.04em] text-muted-foreground uppercase">Distancia</span>
             <Button
               v-if="radiusKm == null"
               variant="outline"
               size="sm"
-              class="h-7 rounded-full px-3 text-xs"
+              class="h-7 rounded-full px-3 text-caption"
               @click="nearMe"
             >
               <LocateFixed class="size-3.5" aria-hidden="true" /> Cerca de mí
@@ -275,7 +275,7 @@ onUnmounted(() => {
               v-else
               variant="ghost"
               size="sm"
-              class="h-7 rounded-full px-2.5 text-xs text-link"
+              class="h-7 rounded-full px-2.5 text-caption text-link"
               @click="clearRadius"
             >
               <X class="size-3.5" aria-hidden="true" /> Limpiar filtro
@@ -356,7 +356,7 @@ onUnmounted(() => {
       >
         <div
           v-if="popupZone"
-          class="pointer-events-auto absolute z-10 min-w-[200px] -translate-x-1/2 -translate-y-[calc(100%+18px)] rounded-[10px] bg-popover px-3.5 py-3 text-popover-foreground shadow-[0_4px_20px_rgba(0,0,0,0.18)] after:absolute after:-bottom-[7px] after:left-1/2 after:-translate-x-1/2 after:border-x-8 after:border-t-8 after:border-x-transparent after:border-t-popover after:content-['']"
+          class="pointer-events-auto absolute z-10 min-w-[12.5rem] -translate-x-1/2 -translate-y-[calc(100%+18px)] rounded-[10px] bg-popover px-3.5 py-3 text-popover-foreground shadow-[0_4px_20px_rgba(0,0,0,0.18)] after:absolute after:-bottom-[7px] after:left-1/2 after:-translate-x-1/2 after:border-x-8 after:border-t-8 after:border-x-transparent after:border-t-popover after:content-['']"
           :style="{ left: popupPos.x + 'px', top: popupPos.y + 'px' }"
         >
           <button
@@ -368,8 +368,8 @@ onUnmounted(() => {
           >
             <X class="size-3.5" aria-hidden="true" />
           </button>
-          <p class="mb-[3px] pr-5 text-sm font-bold text-heading">{{ popupZone.name }}</p>
-          <p class="mb-2 text-xs text-muted-foreground">{{ popupZone.street }}, {{ popupZone.district }}</p>
+          <p class="mb-[3px] pr-5 text-title font-bold text-heading">{{ popupZone.name }}</p>
+          <p class="mb-2 text-body text-muted-foreground">{{ popupZone.street }}, {{ popupZone.district }}</p>
           <div class="flex flex-wrap items-center gap-1.5">
             <ClassificationBadge :classification="popupZone.classification" />
             <StaleBadge :freshness="popupZone" />
@@ -383,7 +383,7 @@ onUnmounted(() => {
           <button
             v-if="popupPinned"
             type="button"
-            class="mt-2.5 text-xs font-semibold text-link hover:underline"
+            class="mt-2.5 text-body font-semibold text-link hover:underline"
             @click="router.push(`/dashboard/zones/${popupZone.id}`)"
           >
             Ver detalle

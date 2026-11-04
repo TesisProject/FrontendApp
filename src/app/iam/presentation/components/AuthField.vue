@@ -39,7 +39,7 @@ provide(AUTH_FIELD_KEY, {
       <span
         v-if="message"
         :id="messageId"
-        class="text-xs"
+        class="text-body"
         :class="error ? 'text-destructive' : 'text-muted-foreground'"
         :role="error ? 'alert' : undefined"
       >{{ message }}</span>

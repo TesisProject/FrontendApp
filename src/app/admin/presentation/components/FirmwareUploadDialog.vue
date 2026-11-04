@@ -68,7 +68,7 @@ async function handleSubmit() {
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="sm:max-w-[560px]" @interact-outside="store.uploading && $event.preventDefault()">
+    <DialogContent class="sm:max-w-[35rem]" @interact-outside="store.uploading && $event.preventDefault()">
       <DialogHeader>
         <DialogTitle>Publicar versión de firmware</DialogTitle>
         <DialogDescription>
@@ -89,27 +89,27 @@ async function handleSubmit() {
             :key="inputKey"
             type="file"
             accept=".bin,application/octet-stream"
-            class="h-10 w-full min-w-0 rounded-lg border-[1.5px] border-input bg-card px-3 py-1.5 text-[13px] outline-none
-                   file:mr-3 file:h-7 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:text-[12px] file:font-semibold file:text-secondary-foreground
+            class="h-10 w-full min-w-0 rounded-lg border-[1.5px] border-input bg-card px-3 py-1.5 text-body outline-none
+                   file:mr-3 file:h-7 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:text-body file:font-semibold file:text-secondary-foreground
                    focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/15
                    aria-invalid:border-destructive dark:bg-input/30"
             :aria-invalid="tried && !!fileError"
             @change="onFileChange"
           />
           <template v-if="form.file && check">
-            <p v-for="err in check.errors" :key="err" class="flex gap-1.5 text-[12px] text-destructive">
+            <p v-for="err in check.errors" :key="err" class="flex gap-1.5 text-body text-destructive">
               <TriangleAlert class="mt-px size-3.5 shrink-0" />{{ err }}
             </p>
-            <p v-for="w in check.warnings" :key="w" class="flex gap-1.5 text-[12px] text-warning">
+            <p v-for="w in check.warnings" :key="w" class="flex gap-1.5 text-body text-warning">
               <TriangleAlert class="mt-px size-3.5 shrink-0" />{{ w }}
             </p>
-            <p v-if="check.errors.length === 0" class="flex gap-1.5 text-[12px] text-success">
+            <p v-if="check.errors.length === 0" class="flex gap-1.5 text-body text-success">
               <CircleCheck class="mt-px size-3.5 shrink-0" />
               Imagen ESP32 (0xE9) · {{ form.file.size.toLocaleString('es-PE') }} bytes
               ({{ otaSlotPercent(form.file.size) }} % de la ranura OTA de {{ OTA_SLOT_BYTES.toLocaleString('es-PE') }})
             </p>
           </template>
-          <p v-else-if="tried && fileError" class="text-[12px] text-destructive">{{ fileError }}</p>
+          <p v-else-if="tried && fileError" class="text-body text-destructive">{{ fileError }}</p>
         </AdminField>
 
         <AdminField
@@ -125,18 +125,18 @@ async function handleSubmit() {
             inputmode="numeric"
             min="1"
             step="1"
-            class="max-w-[160px] font-mono"
+            class="max-w-[10rem] font-mono"
             :aria-invalid="!!versionError"
           />
-          <p v-if="versionError" class="text-[12px] text-destructive">{{ versionError }}</p>
+          <p v-if="versionError" class="text-body text-destructive">{{ versionError }}</p>
         </AdminField>
 
         <AdminField v-slot="{ id }" label="Notas" optional :hint="`${notesLength}/${FIRMWARE_NOTES_MAX}`">
           <Textarea :id="id" v-model="form.notes" rows="3" placeholder="Qué cambia en esta versión" :aria-invalid="!!notesError" />
-          <p v-if="notesError" class="text-[12px] text-destructive">{{ notesError }}</p>
+          <p v-if="notesError" class="text-body text-destructive">{{ notesError }}</p>
         </AdminField>
 
-        <p class="flex gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-[12px] text-warning">
+        <p class="flex gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-body text-warning">
           <TriangleAlert class="mt-px size-4 shrink-0" />
           <span>Una versión publicada no se puede borrar ni reutilizar, y no se puede bajar de versión: revisa el número antes de publicar.</span>
         </p>

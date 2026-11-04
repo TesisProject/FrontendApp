@@ -2,7 +2,6 @@
 import { Check, Info, X } from '@lucide/vue'
 import { Input } from '@/app/shared/presentation/components/ui/input'
 import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
-import SectionCard from '../../../shared/presentation/components/SectionCard.vue'
 import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
 import OccupancyMeter from './OccupancyMeter.vue'
 import ForecastComparisonChart, { type ForecastChartPoint } from './ForecastComparisonChart.vue'
@@ -92,7 +91,13 @@ const selectedDay = computed(() => {
 })
 const isToday = computed(() => selectedDate.value === todayIso)
 const isPast = computed(() => selectedDate.value < todayIso)
-const dateLabel = computed(() => (isToday.value ? 'hoy' : isPast.value ? 'día pasado' : 'fecha elegida'))
+
+/** Fecha de la cabecera: "Hoy, martes 4 de noviembre" o solo la fecha si es otro día. */
+const LONG_DATE = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })
+const headerDate = computed(() => {
+  const text = LONG_DATE.format(new Date(`${selectedDate.value}T00:00`))
+  return isToday.value ? `Hoy, ${text}` : text
+})
 
 function onDateChange(e: Event) {
   const value = (e.target as HTMLInputElement).value
@@ -265,10 +270,10 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 // Hora · barra · % · predicción [· real · veredicto]. En móvil no caben en una línea: predicción y
 // real bajan a una segunda línea con su etiqueta, y el veredicto se queda junto al porcentaje.
 const rowGrid = computed(() => [
-  'grid items-center gap-x-3 gap-y-1 px-2 py-[5px]',
+  'grid items-center gap-x-4 gap-y-1 px-5 py-2',
   showComparison.value
-    ? 'grid-cols-[44px_minmax(0,1fr)_38px_20px] md:grid-cols-[44px_minmax(0,1fr)_38px_128px_128px_20px]'
-    : 'grid-cols-[44px_minmax(0,1fr)_38px] md:grid-cols-[44px_minmax(0,1fr)_38px_128px]',
+    ? 'grid-cols-[2.75rem_minmax(0,1fr)_2.75rem_1.25rem] md:grid-cols-[2.75rem_minmax(0,1fr)_2.75rem_8rem_8rem_1.25rem]'
+    : 'grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] md:grid-cols-[2.75rem_minmax(0,1fr)_2.75rem_8rem]',
 ])
 
 watch(
@@ -300,8 +305,14 @@ watch(
 </script>
 
 <template>
-  <SectionCard title="Predicciones" :sub="`Probabilidad de espacios disponibles ${bucketSub} (${dateLabel})`">
-    <template #actions>
+  <!-- Franjas con aire entre ellas: cabecera con controles · indicadores del modelo · gráfico ·
+       detalle por franja · aviso. Sin título propio: la pestaña ya dice "Predicciones". -->
+  <section class="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-[var(--pv-shadow-sm)]">
+    <header class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 px-5 pt-5 pb-4">
+      <div class="min-w-0">
+        <h2 class="text-title text-heading">Disponibilidad esperada {{ bucketSub }}</h2>
+        <p class="mt-0.5 text-body text-muted-foreground first-letter:uppercase">{{ headerDate }}</p>
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <FilterPills
           v-if="granularityOptions.length > 1"
@@ -316,166 +327,195 @@ watch(
           :min="earliestDate"
           :max="maxDate"
           aria-label="Fecha de la predicción"
-          class="h-8 w-auto cursor-pointer px-2.5 text-[13px] text-heading"
+          class="h-8 w-auto cursor-pointer px-2.5 text-body text-heading"
           @change="onDateChange"
         />
       </div>
-    </template>
+    </header>
 
-    <StateMessage v-if="loading" compact>Cargando predicciones...</StateMessage>
-    <StateMessage v-else-if="error" tone="error" compact>{{ error }}</StateMessage>
-    <StateMessage v-else-if="rows.length === 0" tone="empty" compact>
-      <template v-if="isPast">No quedó registrada la predicción de este día para esta zona.</template>
-      <template v-else>Aún no hay predicciones para {{ isToday ? 'hoy' : 'este día' }} en esta zona.</template>
-    </StateMessage>
+    <div v-if="loading || error || rows.length === 0" class="px-5 pb-5">
+      <StateMessage v-if="loading" compact>Cargando predicciones...</StateMessage>
+      <StateMessage v-else-if="error" tone="error" compact>{{ error }}</StateMessage>
+      <StateMessage v-else tone="empty" compact>
+        <template v-if="isPast">No quedó registrada la predicción de este día para esta zona.</template>
+        <template v-else>Aún no hay predicciones para {{ isToday ? 'hoy' : 'este día' }} en esta zona.</template>
+      </StateMessage>
+    </div>
 
     <TooltipProvider v-else :delay-duration="150">
-      <ForecastComparisonChart
-        class="mb-3"
-        :points="chartPoints"
-        :bucket-minutes="bucketMinutes"
-        :now-minute="isToday ? nowMinute : null"
-        :notice="chartNotice"
-      />
+      <!-- Indicadores: ¿cuánto puedo confiar en esto? -->
+      <dl class="grid border-y bg-muted/40 max-sm:divide-y sm:grid-cols-3 sm:divide-x">
+        <div class="grid content-start gap-1 px-5 py-4">
+          <dt class="text-caption font-medium text-muted-foreground">Aciertos de {{ isToday ? 'hoy' : 'este día' }}</dt>
+          <dd v-if="evaluation.total > 0" class="flex flex-wrap items-baseline gap-x-1.5">
+            <span class="font-display text-subhead font-bold text-heading tabular-nums">{{ evaluation.hits }}/{{ evaluation.total }}</span>
+            <span class="text-caption text-muted-foreground">{{ bucketUnit }} · ±{{ HIT_TOLERANCE_PCT }} pts</span>
+          </dd>
+          <dd v-else class="text-body text-muted-foreground">
+            {{ hasElapsedBuckets ? 'Sin lecturas de las cámaras para comprobarlo' : 'Aún no termina ninguna franja' }}
+          </dd>
+        </div>
 
-      <p v-if="evaluation.total > 0" class="mb-2.5 text-xs text-muted-foreground">
-        Acertó en <strong class="text-heading">{{ evaluation.hits }} de {{ evaluation.total }}</strong> {{ bucketUnit }} con lectura real
-        <span class="opacity-70">· margen ±{{ HIT_TOLERANCE_PCT }} pts</span>
-      </p>
-      <p v-else-if="hasElapsedBuckets" class="mb-2.5 text-xs text-muted-foreground">
-        Sin lecturas de las cámaras para {{ isToday ? `las ${bucketUnit} ya transcurridas` : 'este día' }}:
-        no se puede comprobar si la predicción acertó.
-      </p>
+        <div v-for="bar in modelBars" :key="bar.label" class="grid content-start gap-1 px-5 py-4">
+          <dt>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <button
+                  type="button"
+                  class="inline-flex cursor-help items-center gap-1 rounded text-caption font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  :aria-label="`${bar.label}: ${bar.help}`"
+                >
+                  {{ bar.label }} <Info class="size-3 opacity-70" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" class="max-w-[16.25rem]">{{ bar.help }}</TooltipContent>
+            </Tooltip>
+          </dt>
+          <dd v-if="bar.pct !== null" class="grid gap-1.5">
+            <span class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span class="font-display text-subhead font-bold text-heading tabular-nums">{{ bar.pct }}%</span>
+              <!-- HU-14: nivel de confianza junto a Confiabilidad -->
+              <span
+                v-if="bar.label === 'Confiabilidad' && confidence"
+                class="rounded-full px-2 py-px text-caption font-semibold"
+                :class="confidence.tone"
+              >{{ confidence.label }}</span>
+            </span>
+            <OccupancyMeter :percentage="bar.pct" color="var(--heading)" class="h-1" />
+            <span v-if="bar.label === 'Confiabilidad' && confidence" class="text-caption text-muted-foreground">
+              {{ confidence.hint }}
+            </span>
+          </dd>
+          <dd v-else class="text-body text-muted-foreground" title="Aún no hay datos suficientes para calcularlo">
+            {{ metrics ? 'Sin datos suficientes' : '—' }}
+          </dd>
+        </div>
+      </dl>
 
-      <ForecastLegend class="mb-2.5" :tolerance="HIT_TOLERANCE_PCT" :show-comparison="showComparison" />
+      <div class="px-5 pt-5 pb-6">
+        <ForecastComparisonChart
+          :points="chartPoints"
+          :bucket-minutes="bucketMinutes"
+          :now-minute="isToday ? nowMinute : null"
+          :notice="chartNotice"
+        />
+      </div>
 
-      <div role="table" :aria-label="`Predicción ${bucketSub}`">
-        <div :class="[rowGrid, 'pt-0 pb-1.5 text-[10.5px] font-semibold tracking-[0.4px] text-muted-foreground uppercase']" role="row">
-          <span role="columnheader">Hora</span>
-          <span role="columnheader">Disponibilidad</span>
-          <span />
-          <!-- En móvil cada fila ya rotula su predicción y su lectura real. -->
-          <span class="max-md:hidden md:contents" role="none">
-            <span role="columnheader">Predicción</span>
-            <span v-if="showComparison" role="columnheader">Real</span>
-          </span>
-          <span v-if="showComparison" class="max-md:hidden" />
+      <!-- Detalle por franja -->
+      <div class="border-t">
+        <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-5 pt-4 pb-3">
+          <h3 class="text-title text-heading">Detalle por franja</h3>
+          <ForecastLegend :tolerance="HIT_TOLERANCE_PCT" :show-comparison="showComparison" />
         </div>
 
         <div
           ref="scrollBox"
           class="relative"
-          :class="bucketMinutes < 60 && 'max-h-[26rem] overflow-y-auto overscroll-contain'"
-          role="rowgroup"
+          :class="bucketMinutes < 60 && 'max-h-[24rem] overflow-y-auto overscroll-contain [scrollbar-width:thin]'"
+          role="table"
+          :aria-label="`Predicción ${bucketSub}`"
         >
           <div
-            v-for="row in rows"
-            :key="row.start"
-            :class="[rowGrid, 'border-b border-border/50 last:border-b-0', isCurrentRow(row.start) && 'rounded-md bg-muted']"
+            :class="[rowGrid, 'sticky top-0 z-10 border-y bg-card py-2 text-micro font-semibold tracking-[0.06em] text-muted-foreground uppercase']"
             role="row"
-            :aria-current="isCurrentRow(row.start) ? 'time' : undefined"
           >
-            <span class="text-[12.5px] font-semibold text-heading tabular-nums" role="cell">{{ row.label }}</span>
-            <span role="cell">
-              <Tooltip v-if="showComparison && row.actual">
-                <TooltipTrigger as-child>
-                  <span
-                    class="relative block cursor-help rounded-full py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    tabindex="0"
-                    :aria-label="`Real: ${row.actual.pct} % · Predicción: ${row.pct} %`"
-                  >
-                    <OccupancyMeter :percentage="row.pct" :color="barColor(row.pct)" class="h-2" />
-                    <!-- Marca de la disponibilidad real medida por las cámaras -->
-                    <span
-                      class="pointer-events-none absolute top-1/2 h-[14px] w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-heading ring-2 ring-card"
-                      :style="{ left: `${Math.min(100, Math.max(0, row.actual.pct))}%` }"
-                      aria-hidden="true"
-                    />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top" class="tabular-nums">
-                  Real: {{ row.actual.pct }} % · Predicción: {{ row.pct }} %
-                </TooltipContent>
-              </Tooltip>
-              <OccupancyMeter v-else :percentage="row.pct" :color="barColor(row.pct)" class="h-2" />
+            <span role="columnheader">Hora</span>
+            <span role="columnheader">Disponibilidad</span>
+            <span />
+            <!-- En móvil cada fila ya rotula su predicción y su lectura real. -->
+            <span class="max-md:hidden md:contents" role="none">
+              <span role="columnheader">Predicción</span>
+              <span v-if="showComparison" role="columnheader">Real</span>
             </span>
-            <span class="text-right text-xs font-bold text-heading tabular-nums" role="cell">{{ row.pct }}%</span>
-  
-            <!-- Escritorio: columnas de la fila. Móvil: segunda línea bajo la barra. -->
-            <span
+            <span v-if="showComparison" class="max-md:hidden" />
+          </div>
+
+          <div role="rowgroup">
+            <div
+              v-for="row in rows"
+              :key="row.start"
               :class="[
-                'md:contents max-md:col-start-2 max-md:row-start-2 max-md:flex max-md:min-w-0 max-md:flex-wrap max-md:gap-x-4',
-                showComparison ? 'max-md:col-span-3' : 'max-md:col-span-2',
-                !row.predicted && !row.actual && 'max-md:hidden',
+                rowGrid,
+                'border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/50',
+                isCurrentRow(row.start) && 'bg-primary/5 shadow-[inset_3px_0_0_var(--primary)] hover:bg-primary/10',
               ]"
-              role="none"
+              role="row"
+              :aria-current="isCurrentRow(row.start) ? 'time' : undefined"
             >
-              <span class="text-[11.5px] whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
-                <template v-if="row.predicted">
-                  <span class="md:hidden">Predicción: </span>
-                  {{ plural(row.predicted.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}</span>
-                </template>
+              <span class="text-body font-medium text-heading tabular-nums" role="cell">{{ row.label }}</span>
+              <span role="cell">
+                <Tooltip v-if="showComparison && row.actual">
+                  <TooltipTrigger as-child>
+                    <span
+                      class="relative block cursor-help rounded-full py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      tabindex="0"
+                      :aria-label="`Real: ${row.actual.pct} % · Predicción: ${row.pct} %`"
+                    >
+                      <OccupancyMeter :percentage="row.pct" :color="barColor(row.pct)" class="h-1.5" />
+                      <!-- Marca de la disponibilidad real medida por las cámaras -->
+                      <span
+                        class="pointer-events-none absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-heading ring-2 ring-card"
+                        :style="{ left: `${Math.min(100, Math.max(0, row.actual.pct))}%` }"
+                        aria-hidden="true"
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" class="tabular-nums">
+                    Real: {{ row.actual.pct }} % · Predicción: {{ row.pct }} %
+                  </TooltipContent>
+                </Tooltip>
+                <OccupancyMeter v-else :percentage="row.pct" :color="barColor(row.pct)" class="h-1.5" />
               </span>
-              <span v-if="showComparison" class="text-[11.5px] whitespace-nowrap text-heading tabular-nums" role="cell">
-                <template v-if="row.actual">
-                  <span class="text-muted-foreground md:hidden">Real: </span>
-                  {{ plural(row.actual.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}</span>
-                </template>
-              </span>
-            </span>
-            <template v-if="showComparison">
+              <span class="text-right text-body font-semibold text-heading tabular-nums" role="cell">{{ row.pct }}%</span>
+
+              <!-- Escritorio: columnas de la fila. Móvil: segunda línea bajo la barra. -->
               <span
-                v-if="row.verdict"
-                class="inline-flex size-[18px] items-center justify-center rounded-full max-md:col-start-4 max-md:row-start-1"
-                :class="row.verdict === 'hit' ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
-                role="img"
-                :aria-label="row.verdict === 'hit' ? 'Acertó' : 'Falló'"
-                :title="row.verdict === 'hit' ? 'La predicción acertó' : 'La predicción falló'"
+                :class="[
+                  'md:contents max-md:col-start-2 max-md:row-start-2 max-md:flex max-md:min-w-0 max-md:flex-wrap max-md:gap-x-4',
+                  showComparison ? 'max-md:col-span-3' : 'max-md:col-span-2',
+                  !row.predicted && !row.actual && 'max-md:hidden',
+                ]"
+                role="none"
               >
-                <Check v-if="row.verdict === 'hit'" class="size-3" :stroke-width="3.5" />
-                <X v-else class="size-3" :stroke-width="3.5" />
+                <span class="text-body whitespace-nowrap text-muted-foreground tabular-nums" role="cell">
+                  <template v-if="row.predicted">
+                    <span class="md:hidden">Predicción: </span>
+                    {{ plural(row.predicted.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.predicted.occupied, 'ocup.', 'ocup.') }}</span>
+                  </template>
+                </span>
+                <span v-if="showComparison" class="text-body whitespace-nowrap text-foreground tabular-nums" role="cell">
+                  <template v-if="row.actual">
+                    <span class="text-muted-foreground md:hidden">Real: </span>
+                    {{ plural(row.actual.free, 'libre', 'libres') }}<span class="max-md:hidden"> · {{ plural(row.actual.occupied, 'ocup.', 'ocup.') }}</span>
+                  </template>
+                </span>
               </span>
-              <span v-else class="max-md:col-start-4 max-md:row-start-1" />
-            </template>
+              <template v-if="showComparison">
+                <span
+                  v-if="row.verdict"
+                  class="inline-flex size-5 items-center justify-center rounded-full max-md:col-start-4 max-md:row-start-1"
+                  :class="row.verdict === 'hit' ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
+                  role="img"
+                  :aria-label="row.verdict === 'hit' ? 'Acertó' : 'Falló'"
+                  :title="row.verdict === 'hit' ? 'La predicción acertó' : 'La predicción falló'"
+                >
+                  <Check v-if="row.verdict === 'hit'" class="size-3" :stroke-width="3.5" />
+                  <X v-else class="size-3" :stroke-width="3.5" />
+                </span>
+                <span v-else class="max-md:col-start-4 max-md:row-start-1" />
+              </template>
+            </div>
           </div>
         </div>
       </div>
 
-      <div v-if="metrics" class="mt-3.5 grid gap-2.5 border-t pt-3 md:grid-cols-2 md:gap-6">
-        <div v-for="bar in modelBars" :key="bar.label" class="grid grid-cols-[auto_1fr_auto] items-center gap-x-2.5 gap-y-1 text-xs">
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                class="inline-flex cursor-help items-center gap-1 rounded text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                :aria-label="`${bar.label}: ${bar.help}`"
-              >
-                {{ bar.label }}
-                <Info class="size-3 opacity-70" aria-hidden="true" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" class="max-w-[260px]">{{ bar.help }}</TooltipContent>
-          </Tooltip>
-          <OccupancyMeter :percentage="bar.pct ?? 0" color="var(--heading)" />
-          <strong v-if="bar.pct !== null" class="text-heading tabular-nums">{{ bar.pct }}%</strong>
-          <span v-else class="text-[11.5px] text-muted-foreground" title="Aún no hay datos suficientes para calcularlo">
-            Sin datos suficientes
-          </span>
-          <!-- HU-14: nivel de confianza junto a Confiabilidad -->
-          <p v-if="bar.label === 'Confiabilidad' && confidence" class="col-span-3 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-muted-foreground">
-            <span class="rounded-full px-2 py-px font-semibold" :class="confidence.tone">{{ confidence.label }}</span>
-            <span>{{ confidence.hint }}</span>
-          </p>
-        </div>
-      </div>
-
-      <p class="mt-2.5 flex items-start gap-1.5 text-[11.5px] leading-snug text-muted-foreground">
-        <Info class="mt-0.5 size-[13px] shrink-0" aria-hidden="true" />
+      <footer class="flex items-start gap-1.5 border-t bg-muted/40 px-5 py-3 text-caption leading-snug text-muted-foreground">
+        <Info class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
         <span>
           Las predicciones son generadas por inteligencia artificial y pueden contener errores.
           <template v-if="modelVersionLabel">· {{ modelVersionLabel }}</template>
         </span>
-      </p>
+      </footer>
     </TooltipProvider>
-  </SectionCard>
+  </section>
 </template>

@@ -61,7 +61,7 @@ async function handleSubmit() {
       />
     </form>
 
-    <p class="text-center text-[13px] text-muted-foreground">
+    <p class="text-center text-body text-muted-foreground">
       <TextLink to="/login">← Volver a iniciar sesión</TextLink>
     </p>
   </AuthCard>

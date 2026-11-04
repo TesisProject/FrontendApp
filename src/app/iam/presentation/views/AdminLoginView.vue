@@ -55,7 +55,7 @@ async function handleLogin() {
       />
     </form>
 
-    <p class="text-center text-[13px] text-muted-foreground">
+    <p class="text-center text-body text-muted-foreground">
       <TextLink to="/login">← Volver al acceso de usuario</TextLink>
     </p>
   </AuthCard>

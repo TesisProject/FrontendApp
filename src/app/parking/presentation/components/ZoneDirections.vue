@@ -71,35 +71,35 @@ function openRoute(app: 'waze' | 'google') {
 
 <template>
   <div class="grid gap-2">
-    <p v-if="!destination" class="flex items-start gap-1.5 text-[13px] text-destructive" role="alert">
+    <p v-if="!destination" class="flex items-start gap-1.5 text-body text-destructive" role="alert">
       <CircleAlert class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
       Esta zona no tiene una ubicación registrada, así que no se puede calcular la ruta.
     </p>
 
     <template v-else>
-      <p v-if="estimating" class="flex items-center gap-1.5 text-[13px] text-muted-foreground" role="status">
+      <p v-if="estimating" class="flex items-center gap-1.5 text-body text-muted-foreground" role="status">
         <Loader2 class="size-3.5 animate-spin" aria-hidden="true" /> Calculando la ruta...
       </p>
-      <p v-else-if="estimate" class="flex items-center gap-1.5 text-[13px] text-foreground">
+      <p v-else-if="estimate" class="flex items-center gap-1.5 text-body text-foreground">
         <Route class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span>
           <strong class="font-semibold">{{ formatDistance(estimate.distanceMeters) }}</strong>
           · {{ formatDuration(estimate.durationSeconds) }} en auto desde tu ubicación
         </span>
       </p>
-      <p v-else-if="estimateFailed" class="flex items-start gap-1.5 text-[12px] text-muted-foreground" role="status">
+      <p v-else-if="estimateFailed" class="flex items-start gap-1.5 text-body text-muted-foreground" role="status">
         <CircleAlert class="mt-0.5 size-3.5 shrink-0 text-warning" aria-hidden="true" />
         El servicio de rutas no está disponible temporalmente. Puedes abrir la ruta en Waze o Google Maps.
       </p>
-      <p v-else-if="!origin" class="text-[12px] text-muted-foreground">
+      <p v-else-if="!origin" class="text-body text-muted-foreground">
         Activa tu ubicación para ver la distancia y el tiempo estimado.
       </p>
 
       <div class="flex flex-wrap gap-2">
-        <Button size="sm" class="rounded-full px-3.5 text-xs" @click="openRoute('waze')">
+        <Button size="sm" class="rounded-full px-3.5 text-caption" @click="openRoute('waze')">
           <ExternalLink class="size-3.5" aria-hidden="true" /> Abrir en Waze
         </Button>
-        <Button size="sm" variant="outline" class="rounded-full px-3.5 text-xs" @click="openRoute('google')">
+        <Button size="sm" variant="outline" class="rounded-full px-3.5 text-caption" @click="openRoute('google')">
           <ExternalLink class="size-3.5" aria-hidden="true" /> Google Maps
         </Button>
       </div>

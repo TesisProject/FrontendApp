@@ -7,7 +7,7 @@ withDefaults(defineProps<{ tone?: 'loading' | 'error' }>(), { tone: 'loading' })
 
 <template>
   <div
-    class="flex flex-col items-center gap-3 rounded-xl border px-6 py-12 text-center text-sm"
+    class="flex flex-col items-center gap-3 rounded-xl border px-6 py-12 text-center text-body"
     :class="tone === 'error'
       ? 'border-destructive/25 bg-destructive-soft text-destructive'
       : 'bg-card text-muted-foreground'"

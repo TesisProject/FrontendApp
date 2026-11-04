@@ -21,7 +21,7 @@ defineProps<{
     >
       <div class="h-full transition-[width] duration-200" :style="{ width: `${percentage}%`, background: color }" />
     </div>
-    <span class="font-mono text-[11px] font-semibold tabular-nums" :style="{ color }">
+    <span class="font-mono text-caption font-semibold tabular-nums" :style="{ color }">
       {{ Math.round(percentage) }}%
     </span>
   </div>
