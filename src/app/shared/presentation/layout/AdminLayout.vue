@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import {
+  BrainCircuit, ScrollText,
   CircleUserRound, Cpu, KeyRound, LayoutGrid, Server, User, Users, Video,
 } from '@lucide/vue'
 import { useAuthStore } from '../../../iam/application/auth.store'
@@ -18,6 +19,8 @@ const nav: NavItem[] = [
   { to: '/admin/firmware',  label: 'Firmware',  icon: Cpu },
   { to: '/admin/api-keys',  label: 'API Keys',  icon: KeyRound },
   { to: '/admin/users',     label: 'Usuarios',  icon: Users },
+  { to: '/admin/audit',     label: 'Auditoría', icon: ScrollText },
+  { to: '/admin/model',     label: 'Modelo IA', icon: BrainCircuit },
 ]
 
 const footerNav: NavItem[] = [

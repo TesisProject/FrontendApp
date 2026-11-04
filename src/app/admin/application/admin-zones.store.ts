@@ -7,12 +7,38 @@ import { toAdminZone, toAdminZoneRequest } from '../infrastructure/admin-assembl
 import { toZonePhoto } from '../../parking/infrastructure/zone-assembler'
 import { AvailabilityApi } from '../../parking/infrastructure/availability-api'
 import type { ZoneAvailabilityResponse } from '../../parking/infrastructure/availability-response'
-import { zonePhotoErrorMessage, zoneSaveErrorMessage } from './admin-error-messages'
+import { adminErrorMessage, zonePhotoErrorMessage, zoneSaveErrorMessage } from './admin-error-messages'
+import { validationFieldErrors, type FieldErrors } from './admin-field-errors'
+import { errorCode } from '../../shared/infrastructure/http-client'
+import type { ZoneDeletionImpactResponse } from '../infrastructure/admin-response'
 
 const availabilityApi = new AvailabilityApi()
 
 /** Resultado de una operación sobre una foto: la foto subida, o el mensaje de error para mostrar. */
 export type ZonePhotoResult = { ok: true; photo?: ZonePhoto } | { ok: false; error: string }
+
+/**
+ * Resultado de eliminar una zona (HU-22): borrada, o con datos asociados que piden una segunda
+ * confirmación (con sus conteos), o un error para mostrar.
+ */
+export type ZoneDeleteResult =
+  | { status: 'deleted' }
+  | { status: 'needs-confirmation'; impact: ZoneDeletionImpactResponse }
+  | { status: 'error'; error: string }
+
+/** Mensajes por campo de `CreateZoneRequest`/`UpdateZoneRequest` cuando el backend responde VALIDATION_ERROR. */
+export const ZONE_FIELD_LABELS: Record<string, string> = {
+  name:          'El nombre de la zona es obligatorio',
+  street:        'La calle es obligatoria',
+  district:      'El distrito es obligatorio',
+  city:          'La ciudad es obligatoria',
+  latitude:      'La latitud debe estar entre -90 y 90',
+  longitude:     'La longitud debe estar entre -180 y 180',
+  totalSpaces:   'El total de espacios debe ser al menos 1',
+  totalCapacity: 'La capacidad total debe ser al menos 1',
+  openingHours:  'Revisa el horario',
+  googlePlaceId: 'El Place ID de Google no es válido',
+}
 
 export const useAdminZonesStore = defineStore('admin-zones', () => {
   const zones       = ref<AdminZone[]>([])
@@ -21,6 +47,8 @@ export const useAdminZonesStore = defineStore('admin-zones', () => {
   const saving      = ref(false)
   /** Mensaje del último fallo al crear/actualizar una zona. */
   const actionError = ref<string | null>(null)
+  /** Errores por campo del último guardado rechazado por el backend (VALIDATION_ERROR). */
+  const fieldErrors = ref<FieldErrors>({})
 
   /**
    * Zona estática de parking + disponibilidad viva de vision (si vision falla, solo estática).
@@ -62,11 +90,13 @@ export const useAdminZonesStore = defineStore('admin-zones', () => {
   async function createZone(form: AdminZoneForm): Promise<AdminZone | null> {
     saving.value = true
     actionError.value = null
+    fieldErrors.value = {}
     try {
       const zone = toAdminZone(await adminApi.createZone(toAdminZoneRequest(form)))
       replaceZone(zone)
       return zone
     } catch (err) {
+      fieldErrors.value = validationFieldErrors(err, ZONE_FIELD_LABELS)
       actionError.value = zoneSaveErrorMessage(err)
       return null
     } finally {
@@ -77,11 +107,13 @@ export const useAdminZonesStore = defineStore('admin-zones', () => {
   async function updateZone(id: number, form: AdminZoneForm): Promise<AdminZone | null> {
     saving.value = true
     actionError.value = null
+    fieldErrors.value = {}
     try {
       const zone = withLiveOccupancy(toAdminZone(await adminApi.updateZone(id, toAdminZoneRequest(form))))
       replaceZone(zone)
       return zone
     } catch (err) {
+      fieldErrors.value = validationFieldErrors(err, ZONE_FIELD_LABELS)
       actionError.value = zoneSaveErrorMessage(err)
       return null
     } finally {
@@ -89,13 +121,24 @@ export const useAdminZonesStore = defineStore('admin-zones', () => {
     }
   }
 
-  async function deleteZone(id: number): Promise<boolean> {
+  /**
+   * Elimina la zona. Sin `confirmed`, una zona con espacios o cámaras no se borra: el backend
+   * responde 409 ZONE_HAS_ACTIVE_DATA y se devuelven los conteos para la segunda confirmación.
+   */
+  async function deleteZone(id: number, confirmed = false): Promise<ZoneDeleteResult> {
     try {
-      await adminApi.deleteZone(id)
+      await adminApi.deleteZone(id, confirmed)
       zones.value = zones.value.filter(z => z.id !== id)
-      return true
-    } catch {
-      return false
+      return { status: 'deleted' }
+    } catch (err) {
+      if (!confirmed && errorCode(err) === 'ZONE_HAS_ACTIVE_DATA') {
+        try {
+          return { status: 'needs-confirmation', impact: await adminApi.getZoneDeletionImpact(id) }
+        } catch (impactErr) {
+          return { status: 'error', error: adminErrorMessage(impactErr, 'No se pudo consultar qué datos tiene la zona') }
+        }
+      }
+      return { status: 'error', error: adminErrorMessage(err, 'No se pudo eliminar la zona') }
     }
   }
 
@@ -122,7 +165,7 @@ export const useAdminZonesStore = defineStore('admin-zones', () => {
   }
 
   return {
-    zones, loading, error, saving, actionError,
+    zones, loading, error, saving, actionError, fieldErrors,
     fetchZones, createZone, updateZone, deleteZone, uploadPhoto, deletePhoto,
   }
 })

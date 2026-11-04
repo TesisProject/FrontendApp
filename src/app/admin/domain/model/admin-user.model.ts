@@ -5,6 +5,8 @@ export interface AdminUser {
   email:      string
   role:       AdminRole
   active:     boolean
+  /** Nombre y apellido del perfil, si los cargó. */
+  fullName?:  string | null
   firstName?: string
   lastName?:  string
   createdAt?: string

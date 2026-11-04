@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useAdminCamerasStore } from '../../application/admin-cameras.store'
 import { useAdminZonesStore }   from '../../application/admin-zones.store'
 import { useAdminNodesStore }   from '../../application/admin-nodes.store'
-import type { AdminCameraCreateForm } from '../../domain/model/admin-camera.model'
+import type { AdminCamera, AdminCameraCreateForm } from '../../domain/model/admin-camera.model'
 import { CAPTURE_DEFAULTS, deviceFieldErrors, hasDeviceErrors, normalizeMac } from '../../domain/camera-device'
 import { Plus } from '@lucide/vue'
 import { toast } from 'vue-sonner'
@@ -50,8 +50,19 @@ const subtitle   = computed(() => [
   lowBattery.value ? `${lowBattery.value} con batería baja` : null,
 ].filter(Boolean).join(' · '))
 
-function zoneName(zoneId: number) {
+function zoneName(zoneId: number | null) {
+  if (zoneId === null) return 'Sin zona'
   return zonesStore.zones.find(z => z.id === zoneId)?.name ?? `Zona ${zoneId}`
+}
+
+// ── Activar / desactivar (HU-23) ────────────────────────────────────────
+const togglingId = ref<number | null>(null)
+
+async function toggleActive(c: AdminCamera) {
+  togglingId.value = c.id
+  const ok = await store.setActive(c.id, !c.active).finally(() => { togglingId.value = null })
+  if (ok) toast.success(c.active ? `${c.code} desactivada` : `${c.code} activada`)
+  else toast.error(store.actionError ?? 'No se pudo cambiar el estado de la cámara')
 }
 
 // ── Alta ────────────────────────────────────────────────────────────────
@@ -89,7 +100,7 @@ async function handleCreate() {
     formError.value = store.actionError ?? 'Ocurrió un error, intenta de nuevo'
     return
   }
-  toast.success('Cámara creada')
+  toast.success('Cámara registrada')
   showCreate.value = false
 }
 
@@ -114,6 +125,7 @@ function openDelete(id: number) {
 async function handleDelete(id: number) {
   if (await store.deleteCamera(id)) {
     confirmId.value = null
+    toast.success('Cámara eliminada')
   } else {
     deleteError.value = store.actionError
   }
@@ -166,6 +178,15 @@ onMounted(async () => {
         </TableCell>
         <TableCell>
           <div class="flex flex-wrap gap-1.5">
+            <Button
+              size="sm"
+              :variant="c.active ? 'secondary' : 'outline-primary'"
+              :disabled="togglingId === c.id"
+              :aria-label="`${c.active ? 'Desactivar' : 'Activar'} ${c.code}`"
+              @click="toggleActive(c)"
+            >
+              {{ togglingId === c.id ? 'Guardando...' : c.active ? 'Desactivar' : 'Activar' }}
+            </Button>
             <Button size="sm" variant="outline-primary" @click="openDetail(c.id)">Configurar</Button>
             <Button size="sm" variant="outline-destructive" @click="openDelete(c.id)">Eliminar</Button>
           </div>

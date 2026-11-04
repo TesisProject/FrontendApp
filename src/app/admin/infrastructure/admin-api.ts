@@ -8,6 +8,7 @@ import type {
   AdminApiKeyResponse, AdminApiKeyCreateRequest, AdminCreatedApiKeyResponse,
   MonitoredSpaceResponse, UpdateSpaceRoiRequest, CameraScreenshotResponse,
   FirmwareReleaseResponse, CameraFirmwareResponse, ZonePhotoResponse,
+  ZoneDeletionImpactResponse,
 } from './admin-response'
 import type { AdminSpaceResponse } from './admin-response'
 
@@ -22,8 +23,12 @@ export class AdminApi {
   updateZone(id: number, body: AdminZoneRequest): Promise<AdminZoneResponse> {
     return httpClient.put(`/parking/zones/${id}`, body)
   }
-  deleteZone(id: number): Promise<void> {
-    return httpClient.delete(`/parking/zones/${id}`)
+  /** Con datos asociados y sin `confirm` responde 409 ZONE_HAS_ACTIVE_DATA (HU-22). */
+  deleteZone(id: number, confirm = false): Promise<void> {
+    return httpClient.delete(`/parking/zones/${id}${confirm ? '?confirm=true' : ''}`)
+  }
+  getZoneDeletionImpact(id: number): Promise<ZoneDeletionImpactResponse> {
+    return httpClient.get(`/parking/zones/${id}/deletion-impact`)
   }
   /** multipart `file` (jpeg/png/webp, ≤ 5 MB, máx. 10 por zona). 400 tipo/tamaño · 409 límite · 503 sin R2. */
   uploadZonePhoto(zoneId: number, file: File): Promise<ZonePhotoResponse> {
@@ -36,8 +41,13 @@ export class AdminApi {
   }
 
   // Users — /api/v1/iam/users
-  getUsers(): Promise<AdminUserResponse[]> {
-    return httpClient.get('/iam/users')
+  /** `q` busca en correo y nombre; `role` filtra por rol exacto (HU-24). */
+  getUsers(filters: { q?: string; role?: string } = {}): Promise<AdminUserResponse[]> {
+    const params = new URLSearchParams()
+    if (filters.q?.trim()) params.set('q', filters.q.trim())
+    if (filters.role) params.set('role', filters.role)
+    const query = params.toString()
+    return httpClient.get(`/iam/users${query ? `?${query}` : ''}`)
   }
   updateUserRole(id: number, roleName: string): Promise<AdminUserResponse> {
     return httpClient.put(`/iam/users/${id}/role`, { roleName })

@@ -48,7 +48,8 @@ export interface AdminCameraResponse {
   id:        number
   code:      string
   nodeId:    number | null
-  zoneId:    number
+  /** `null` si se eliminó su zona (la cámara queda desactivada). */
+  zoneId:    number | null
   name:      string | null
   location:  string | null
   active:    boolean
@@ -121,6 +122,19 @@ export interface AdminUserResponse {
   role:      string
   isActive:  boolean
   createdAt?: string
+  /** Solo en `GET /iam/users`; `null` si el usuario no cargó su nombre. */
+  fullName?: string | null
+  lastLoginAt?: string | null
+}
+
+/** GET /parking/zones/{id}/deletion-impact — qué se borra al eliminar la zona (HU-22). */
+export interface ZoneDeletionImpactResponse {
+  zoneId:          number
+  parkingSpaces:   number
+  monitoredSpaces: number
+  cameras:         number
+  activeCameras:   number
+  hasActiveData:   boolean
 }
 
 export interface AdminUserProfileResponse {
