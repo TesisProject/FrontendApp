@@ -18,6 +18,9 @@ import ZoneForecastCard from '../components/ZoneForecastCard.vue'
 import ZoneInfoCard from '../components/ZoneInfoCard.vue'
 import { formatZoneAddress } from '../../domain/zone-address'
 import ClassificationBadge from '../components/ClassificationBadge.vue'
+import StaleBadge from '../components/StaleBadge.vue'
+import ConnectivityNotice from '../components/ConnectivityNotice.vue'
+import { useNetworkStatus } from '../../../shared/presentation/composables/useNetworkStatus'
 import OccupancyMeter from '../components/OccupancyMeter.vue'
 import ZoneSpacesPanel from '../components/ZoneSpacesPanel.vue'
 import ZoneSpacesSkeleton from '../components/ZoneSpacesSkeleton.vue'
@@ -32,6 +35,7 @@ const favoriteStore = useFavoriteStore()
 const authStore = useAuthStore()
 
 const zoneId = computed(() => Number(route.params.id))
+const { online } = useNetworkStatus()
 const userId = computed(() => authStore.user?.id ?? 0)
 const isFav = computed(() => favoriteStore.isFavorite(zoneId.value))
 const spaces = computed(() => zoneStore.spaces as ParkingSpace[])
@@ -122,6 +126,8 @@ onUnmounted(() => clearInterval(refreshTimer))
       </Button>
     </div>
 
+    <ConnectivityNotice :online="online" />
+
     <StateMessage v-if="zoneStore.zoneError" tone="error">{{ zoneStore.zoneError }}</StateMessage>
 
     <!-- Mientras carga la zona se ve la silueta de la página; cada sección maneja además su propia carga. -->
@@ -146,6 +152,7 @@ onUnmounted(() => clearInterval(refreshTimer))
           </p>
         </div>
         <div class="mt-1 flex shrink-0 items-center gap-2.5">
+          <StaleBadge :freshness="zoneStore.zone" class="px-3 py-[5px] text-xs" />
           <ClassificationBadge :classification="zoneStore.zone.classification" class="px-3.5 py-[5px] text-xs" />
           <Button
             variant="outline"
@@ -195,7 +202,8 @@ onUnmounted(() => clearInterval(refreshTimer))
         :sub="zoneStore.views.length ? 'Pasa el cursor por un espacio para ubicarlo en la foto.' : undefined"
       >
         <template #actions>
-          <div class="flex shrink-0 gap-4 pt-0.5 text-xs text-muted-foreground">
+          <div class="flex shrink-0 flex-wrap items-center gap-4 pt-0.5 text-xs text-muted-foreground">
+            <StaleBadge v-if="zoneStore.zone" :freshness="zoneStore.zone" />
             <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-libre" /> Libre</span>
             <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-ocupado" /> Ocupado</span>
           </div>

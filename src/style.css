@@ -64,8 +64,9 @@
 
   /* ── Zone classification (mirror parking/domain/zone-classification.ts) ──── */
   --zone-libre:          #38a169;
-  --zone-moderado:       #f2894a;
+  --zone-moderado:       #d69e2e;
   --zone-ocupado:        #e53e3e;
+  --zone-sin-datos:      #a0aec0;
 
   /* ── Radii ───────────────────────────────────────────────────────────────── */
   --pv-radius-sm:        6px;
@@ -239,6 +240,7 @@ html.dark {
   --color-zone-libre:    var(--zone-libre);
   --color-zone-moderado: var(--zone-moderado);
   --color-zone-ocupado:  var(--zone-ocupado);
+  --color-zone-sin-datos: var(--zone-sin-datos);
 
   --shadow-card:  var(--elevation-card);
   --shadow-brand: 0 6px 16px var(--pv-amber-glow);

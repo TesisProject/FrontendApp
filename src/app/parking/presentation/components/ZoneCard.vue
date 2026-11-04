@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { ArrowRight, Heart, MapPin } from '@lucide/vue'
+import { computed } from 'vue'
+import { ArrowRight, Heart, MapPin, Navigation } from '@lucide/vue'
 import { classificationColor } from '../../domain/zone-classification'
+import { formatDistance } from '../../domain/geo'
 import type { Zone } from '../../domain/model/zone.model'
 import ClassificationBadge from './ClassificationBadge.vue'
 import OccupancyMeter from './OccupancyMeter.vue'
+import StaleBadge from './StaleBadge.vue'
 
-defineProps<{
+const props = defineProps<{
   zone: Zone
   selected: boolean
   isFavorite: boolean
+  /** Distancia al usuario (HU-07); solo con "Cerca de mí" activo. */
+  distanceMeters?: number | null
 }>()
+
+/** Sin ninguna lectura no hay conteo que mostrar: se ve "—" en vez de un "libres" inventado. */
+const noReading = computed(() => props.zone.classification === 'SIN_DATOS' && !props.zone.lastUpdatedAt)
 
 defineEmits<{
   focus: []
@@ -41,6 +49,10 @@ defineEmits<{
             <MapPin class="size-[11px] shrink-0 opacity-70" aria-hidden="true" />
             <span class="truncate">{{ zone.street }}, {{ zone.district }}</span>
           </p>
+          <p v-if="distanceMeters != null" class="mt-1 flex items-center gap-[5px] text-xs font-semibold text-heading">
+            <Navigation class="size-[11px] shrink-0" aria-hidden="true" />
+            a {{ formatDistance(distanceMeters) }}
+          </p>
         </div>
         <button
           type="button"
@@ -60,14 +72,16 @@ defineEmits<{
           <span
             class="font-display text-[28px] leading-none font-bold tracking-[-0.02em] tabular-nums"
             :style="{ color: classificationColor(zone.classification) }"
-          >{{ zone.freeCount }}</span>
+          >{{ noReading ? '—' : zone.freeCount }}</span>
           <span class="flex flex-col leading-tight">
-            <span class="text-xs font-semibold text-foreground/80">libres</span>
+            <span class="text-xs font-semibold text-foreground/80">{{ noReading ? 'sin lecturas' : 'libres' }}</span>
             <span class="text-[11px] text-muted-foreground">de {{ zone.totalSpaces }} espacios</span>
           </span>
         </div>
         <ClassificationBadge :classification="zone.classification" />
       </div>
+
+      <StaleBadge :freshness="zone" class="self-start" />
 
       <div class="flex items-center gap-[9px]">
         <OccupancyMeter

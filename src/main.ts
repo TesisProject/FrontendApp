@@ -17,3 +17,11 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 app.mount('#app')
+
+// HU-32: service worker que precachea el app shell (la Ayuda funciona sin conexión). Solo en el build:
+// en `pnpm dev` no existe sw.js y cachear rompería la recarga en caliente.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('[PWA] sin service worker:', err))
+  })
+}

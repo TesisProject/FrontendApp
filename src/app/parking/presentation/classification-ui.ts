@@ -10,4 +10,5 @@ export const CLASSIFICATION_BADGE: Record<ZoneClassification, BadgeVariants['var
   LIBRE:    'success',
   MODERADO: 'warning',
   OCUPADO:  'danger',
+  SIN_DATOS: 'neutral',
 }

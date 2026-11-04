@@ -66,6 +66,7 @@ const router = createRouter({
         { path: 'favorites',  component: () => import('../app/favorites/presentation/views/FavoritesView.vue') },
         { path: 'profile',    component: () => import('../app/profile/presentation/views/ProfileView.vue') },
         { path: 'faq',         component: () => import('../app/faq/presentation/views/FaqView.vue') },
+        { path: 'recommendations', component: () => import('../app/predictions/presentation/views/RecommendationsView.vue') },
       ],
     },
 
