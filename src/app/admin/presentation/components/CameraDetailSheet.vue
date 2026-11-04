@@ -53,18 +53,26 @@ const generalForm  = ref<AdminCameraForm>({ zoneId: '', nodeId: '', name: '', lo
 const generalError = ref<string | null>(null)
 
 function generalOf(c: AdminCamera): AdminCameraForm {
-  return { zoneId: c.zoneId, nodeId: c.nodeId ?? '', name: c.name, location: c.location, active: c.active }
+  return { zoneId: c.zoneId ?? '', nodeId: c.nodeId ?? '', name: c.name, location: c.location, active: c.active }
 }
 
 async function saveGeneral() {
   const c = camera.value
   if (!c) return
   generalError.value = null
-  if (!(await store.updateCamera(c.id, generalForm.value))) {
-    generalError.value = store.actionError
+  if (generalForm.value.zoneId === '') {
+    generalError.value = 'Elige la zona de la cámara'
     return
   }
-  toast.success('Cámara actualizada')
+  const wasActive = c.active
+  if (!(await store.updateCamera(c.id, generalForm.value))) {
+    generalError.value = store.actionError
+    toast.error(store.actionError ?? 'No se pudo actualizar la cámara')
+    return
+  }
+  toast.success(wasActive === generalForm.value.active
+    ? 'Cámara actualizada'
+    : generalForm.value.active ? 'Cámara activada' : 'Cámara desactivada')
 }
 
 // ── Dispositivo ──────────────────────────────────────────────────────────

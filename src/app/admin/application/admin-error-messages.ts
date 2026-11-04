@@ -38,6 +38,29 @@ const MESSAGES: Record<string, string> = {
   API_KEY_NOT_FOUND:                 'La API key ya no existe. Recarga la página',
 
   VALIDATION_ERROR:                  'Revisa los campos del formulario',
+
+  // Zonas (HU-22)
+  ZONE_NOT_FOUND:                    'La zona ya no existe. Recarga la página',
+  ZONE_HAS_ACTIVE_DATA:              'La zona tiene espacios o cámaras asociados: confirma de nuevo para eliminarla',
+  INVALID_OPENING_HOURS:             'El horario no es válido: revisa que cada tramo empiece antes de terminar y que haya uno por día',
+
+  // Cámaras (HU-23)
+  CAMERA_NODE_NOT_FOUND:             'El nodo Fog elegido ya no existe. Recarga la página',
+  CAMERA_NODE_INACTIVE:              'El nodo Fog de la cámara está desactivado: actívalo antes de activar la cámara',
+  CAMERA_ZONE_REQUIRED:              'La cámara no tiene zona (se eliminó la suya): asígnale una antes de activarla',
+
+  // Usuarios (HU-24)
+  LAST_ACTIVE_ADMIN:                 'Es el último administrador activo: activa o asigna otro administrador antes de desactivarlo o cambiarle el rol',
+  INVALID_ROLE:                      'Ese rol no existe',
+  USER_NOT_FOUND:                    'El usuario ya no existe. Recarga la página',
+
+  // Modelo IA (HU-27)
+  MODEL_TRAINING_NOT_CONFIGURED:     'El reentrenamiento no está configurado en el servidor (faltan GITHUB_TOKEN y GITHUB_REPO). Avisa al responsable del backend',
+  MODEL_TRAINING_UNAVAILABLE:        'GitHub no aceptó la solicitud o no respondió. Revisa el token del servidor o inténtalo más tarde',
+
+  // Auditoría (HU-25)
+  INVALID_AUDIT_QUERY:               'El rango de fechas no es válido: la fecha final debe ser posterior a la inicial',
+  INVALID_PARAMETER:                 'Algún filtro tiene un valor no válido',
 }
 
 const STATUS_MESSAGES: Record<number, string> = {

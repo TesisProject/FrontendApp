@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, markRaw } from 'vue'
-import { useAdminZonesStore } from '../../application/admin-zones.store'
+import { useAdminZonesStore, ZONE_FIELD_LABELS } from '../../application/admin-zones.store'
+import type { FieldErrors } from '../../application/admin-field-errors'
+import type { ZoneDeletionImpactResponse } from '../../infrastructure/admin-response'
 import { useAdminSpacesStore } from '../../application/admin-spaces.store'
 import ZoneRoiEditorModal from '../components/ZoneRoiEditorModal.vue'
 import ZoneLocationPicker from '../components/ZoneLocationPicker.vue'
@@ -132,9 +134,15 @@ function resetPhotos() {
   removedPhotoIds.value = []
 }
 const formError = ref<string | null>(null)
+/** Errores por campo: los del formulario y los que devuelve el backend (VALIDATION_ERROR). */
+const fieldErrors = ref<FieldErrors>({})
 const photosSyncing = ref(false)
 const busy = computed(() => store.saving || photosSyncing.value)
 const confirmId = ref<number | null>(null)
+/** Segunda confirmación (HU-22): la zona tiene datos asociados y estos son sus conteos. */
+const deleteImpact = ref<ZoneDeletionImpactResponse | null>(null)
+const deleting = ref(false)
+const deleteError = ref<string | null>(null)
 
 // Places autocomplete
 const addrQuery = ref('')
@@ -256,6 +264,7 @@ function openCreate() {
   loadGooglePhotos(null)
   addrQuery.value = ''
   formError.value = null
+  fieldErrors.value = {}
   showModal.value = true
 }
 
@@ -277,6 +286,7 @@ function openEdit(zone: AdminZone) {
   loadGooglePhotos(zone.googlePlaceId)
   addrQuery.value = zone.street ? `${zone.street}, ${zone.district}` : ''
   formError.value = null
+  fieldErrors.value = {}
   showModal.value = true
 }
 
@@ -284,21 +294,30 @@ function closeModal() {
   showModal.value = false
 }
 
+/** Revisa todos los campos y deja el error de cada uno en `fieldErrors`; devuelve el primero. */
 function validate(): string | null {
   const f = form.value
-  if (!f.name.trim()) return 'El nombre de la zona es obligatorio'
-  if (!f.street.trim()) return 'La calle es obligatoria'
-  if (!f.district.trim()) return 'El distrito es obligatorio'
-  if (!f.city.trim()) return 'La ciudad es obligatoria'
-  if (!f.latitude || !f.longitude)
-    return 'Ubica la zona en el mapa o selecciona una dirección del autocompletado'
-  if (!f.totalSpaces || f.totalSpaces < 1)
-    return 'El total de espacios debe ser al menos 1'
-  if (!f.totalCapacity || f.totalCapacity < 1)
-    return 'La capacidad total debe ser al menos 1'
+  const errors: FieldErrors = {}
+  if (!f.name.trim()) errors.name = ZONE_FIELD_LABELS.name!
+  else if (f.name.trim().length > 200) errors.name = 'El nombre no puede pasar de 200 caracteres'
+  if (!f.street.trim()) errors.street = ZONE_FIELD_LABELS.street!
+  if (!f.district.trim()) errors.district = ZONE_FIELD_LABELS.district!
+  if (!f.city.trim()) errors.city = ZONE_FIELD_LABELS.city!
+  if (!f.latitude || !f.longitude) {
+    errors.latitude = 'Ubica la zona en el mapa o selecciona una dirección del autocompletado'
+  } else {
+    if (Math.abs(f.latitude) > 90) errors.latitude = ZONE_FIELD_LABELS.latitude!
+    if (Math.abs(f.longitude) > 180) errors.longitude = ZONE_FIELD_LABELS.longitude!
+  }
+  if (!f.totalSpaces || f.totalSpaces < 1 || !Number.isInteger(f.totalSpaces))
+    errors.totalSpaces = 'El total de espacios debe ser un entero mayor o igual a 1'
+  if (!f.totalCapacity || f.totalCapacity < 1 || !Number.isInteger(f.totalCapacity))
+    errors.totalCapacity = 'La capacidad total debe ser un entero mayor o igual a 1'
   const hoursError = openingHoursError(f.openingHours)
-  if (hoursError) return `Horario — ${hoursError}`
-  return null
+  if (hoursError) errors.openingHours = `Horario — ${hoursError}`
+  fieldErrors.value = errors
+  const first = Object.values(errors)[0]
+  return first ? `Corrige los campos marcados: ${first}` : null
 }
 
 /**
@@ -337,7 +356,9 @@ async function handleSubmit() {
     ? await store.updateZone(editTarget.value!.id, form.value)
     : await store.createZone(form.value)
   if (!saved) {
+    fieldErrors.value = store.fieldErrors
     formError.value = store.actionError
+    toast.error(editing ? 'No se pudo actualizar la zona' : 'No se pudo crear la zona')
     return
   }
   // Si fallan las fotos, el formulario queda abierto en modo edición para reintentar solo eso.
@@ -353,9 +374,26 @@ async function handleSubmit() {
 }
 
 
-async function handleDelete(id: number) {
-  await store.deleteZone(id)
+/** Primera confirmación: si la zona tiene espacios o cámaras, se pide una segunda con los conteos. */
+async function handleDelete(id: number, confirmed = false) {
+  deleting.value = true
+  deleteError.value = null
+  const result = await store.deleteZone(id, confirmed).finally(() => { deleting.value = false })
+  if (result.status === 'deleted') {
+    toast.success('Zona eliminada')
+    closeDelete()
+  } else if (result.status === 'needs-confirmation') {
+    deleteImpact.value = result.impact
+  } else {
+    deleteError.value = result.error
+    toast.error(result.error)
+  }
+}
+
+function closeDelete() {
   confirmId.value = null
+  deleteImpact.value = null
+  deleteError.value = null
 }
 
 function classColor(c: string) {
@@ -414,14 +452,35 @@ onMounted(() => store.fetchZones())
     </AdminTableCard>
 
     <ConfirmDialog
-      :open="confirmId !== null"
+      :open="confirmId !== null && !deleteImpact"
       title="Eliminar zona"
       confirm-label="Eliminar"
       destructive
-      @cancel="confirmId = null"
+      :loading="deleting"
+      :error="deleteError"
+      @cancel="closeDelete"
       @confirm="handleDelete(confirmId!)"
     >
       ¿Eliminar esta zona? Esta acción no se puede deshacer.
+    </ConfirmDialog>
+
+    <ConfirmDialog
+      :open="!!deleteImpact"
+      title="La zona tiene datos asociados"
+      confirm-label="Sí, eliminar todo"
+      destructive
+      :loading="deleting"
+      :error="deleteError"
+      @cancel="closeDelete"
+      @confirm="handleDelete(confirmId!, true)"
+    >
+      <template v-if="deleteImpact">
+        Al eliminarla se borrarán <strong>{{ deleteImpact.parkingSpaces }} espacio(s)</strong> y
+        <strong>{{ deleteImpact.monitoredSpaces }} espacio(s) monitoreado(s)</strong> con su ROI, y
+        <strong>{{ deleteImpact.cameras }} cámara(s)</strong>
+        ({{ deleteImpact.activeCameras }} activa(s)) quedarán desactivadas y sin zona.
+        El historial de ocupación se conserva. ¿Confirmas la eliminación?
+      </template>
     </ConfirmDialog>
 
     <!-- Create / Edit -->
@@ -432,7 +491,7 @@ onMounted(() => store.fetchZones())
         </DialogHeader>
 
         <form class="grid gap-3.5" @submit.prevent="handleSubmit">
-          <AdminField v-slot="{ id }" label="Nombre de la zona" hint="Nombre interno con el que identificarás esta zona.">
+          <AdminField v-slot="{ id }" label="Nombre de la zona" hint="Nombre interno con el que identificarás esta zona." :error="fieldErrors.name">
             <Input :id="id" v-model="form.name" placeholder="Ej: Zona Norte, Zona Centro, Estacionamiento Sur" />
           </AdminField>
 
@@ -488,23 +547,23 @@ onMounted(() => store.fetchZones())
           />
 
           <div class="grid gap-3 sm:grid-cols-2">
-            <AdminField v-slot="{ id }" label="Ciudad">
+            <AdminField v-slot="{ id }" label="Ciudad" :error="fieldErrors.city">
               <Input :id="id" v-model="form.city" placeholder="Lima" />
             </AdminField>
-            <AdminField v-slot="{ id }" label="Distrito">
+            <AdminField v-slot="{ id }" label="Distrito" :error="fieldErrors.district">
               <Input :id="id" v-model="form.district" placeholder="San Miguel" />
             </AdminField>
           </div>
 
-          <AdminField v-slot="{ id }" label="Calle">
+          <AdminField v-slot="{ id }" label="Calle" :error="fieldErrors.street">
             <Input :id="id" v-model="form.street" placeholder="Av. Ejemplo 123" />
           </AdminField>
 
           <div class="grid gap-3 sm:grid-cols-2">
-            <AdminField v-slot="{ id }" label="Latitud">
+            <AdminField v-slot="{ id }" label="Latitud" :error="fieldErrors.latitude">
               <Input :id="id" v-model.number="form.latitude" type="number" step="0.000001" />
             </AdminField>
-            <AdminField v-slot="{ id }" label="Longitud">
+            <AdminField v-slot="{ id }" label="Longitud" :error="fieldErrors.longitude">
               <Input :id="id" v-model.number="form.longitude" type="number" step="0.000001" />
             </AdminField>
           </div>
@@ -514,10 +573,10 @@ onMounted(() => store.fetchZones())
           </div>
 
           <div class="grid gap-3 sm:grid-cols-2">
-            <AdminField v-slot="{ id }" label="Total de espacios">
+            <AdminField v-slot="{ id }" label="Total de espacios" :error="fieldErrors.totalSpaces">
               <Input :id="id" v-model.number="form.totalSpaces" type="number" min="1" />
             </AdminField>
-            <AdminField v-slot="{ id }" label="Capacidad total">
+            <AdminField v-slot="{ id }" label="Capacidad total" :error="fieldErrors.totalCapacity">
               <Input :id="id" v-model.number="form.totalCapacity" type="number" min="1" />
             </AdminField>
           </div>
@@ -527,6 +586,7 @@ onMounted(() => store.fetchZones())
           </div>
 
           <OpeningHoursEditor v-model="form.openingHours" />
+          <p v-if="fieldErrors.openingHours" class="text-[11px] font-medium text-destructive" role="alert">{{ fieldErrors.openingHours }}</p>
 
           <div class="my-1 flex items-center gap-2.5 text-[11px] font-semibold tracking-[0.5px] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
             Fotos

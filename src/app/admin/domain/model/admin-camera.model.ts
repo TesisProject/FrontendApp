@@ -25,7 +25,8 @@ export interface AdminCamera {
   id:       number
   code:     string
   nodeId:   number | null
-  zoneId:   number
+  /** `null` si se eliminó su zona: queda desactivada hasta asignarle otra (HU-22). */
+  zoneId:   number | null
   name:     string
   location: string
   active:   boolean

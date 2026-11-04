@@ -12,6 +12,8 @@ defineProps<{
   optional?: boolean
   required?: boolean
   hint?: string
+  /** Mensaje de error del campo; reemplaza al hint mientras exista. */
+  error?: string | null
 }>()
 
 const id = useId()
@@ -25,6 +27,7 @@ const id = useId()
       <span v-if="required" class="text-destructive" aria-hidden="true">*</span>
     </Label>
     <slot :id="id" />
-    <p v-if="hint" class="text-[11px] text-muted-foreground">{{ hint }}</p>
+    <p v-if="error" class="text-[11px] font-medium text-destructive" role="alert">{{ error }}</p>
+    <p v-else-if="hint" class="text-[11px] text-muted-foreground">{{ hint }}</p>
   </div>
 </template>

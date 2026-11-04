@@ -36,6 +36,22 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
     if (idx !== -1) cameras.value[idx] = camera
   }
 
+  /**
+   * Activa o desactiva la cámara desde la lista (HU-23) sin tocar sus demás datos. El panel se
+   * actualiza con la respuesta del backend; si falla, `actionError` trae la causa específica.
+   */
+  async function setActive(id: number, active: boolean): Promise<boolean> {
+    const c = cameras.value.find(cam => cam.id === id)
+    if (!c) return false
+    if (active && c.zoneId === null) {
+      actionError.value = adminErrorMessage({ error: 'CAMERA_ZONE_REQUIRED' })
+      return false
+    }
+    return updateCamera(id, {
+      zoneId: c.zoneId ?? '', nodeId: c.nodeId ?? '', name: c.name, location: c.location, active,
+    })
+  }
+
   /** La vista ya validó la MAC; aquí solo se normaliza. Rotación y captura se omiten si son las de por defecto. */
   async function createCamera(form: AdminCameraCreateForm): Promise<boolean> {
     saving.value      = true
@@ -206,6 +222,6 @@ export const useAdminCamerasStore = defineStore('admin-cameras', () => {
     cameras, loading, error, saving, actionError,
     fetchCameras, createCamera, updateCamera, deleteCamera,
     updateDeviceSettings, refreshCamera, resetEnrollment, countRoiSpaces,
-    fetchCameraFirmware, assignFirmware, clearFirmware,
+    fetchCameraFirmware, assignFirmware, clearFirmware, setActive,
   }
 })

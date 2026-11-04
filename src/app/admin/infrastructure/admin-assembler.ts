@@ -146,5 +146,6 @@ export function toAdminUser(r: AdminUserResponse): AdminUser {
     email:  r.email,
     role:   r.role as AdminRole,
     active: r.isActive ?? false,
+    fullName: r.fullName ?? null,
   }
 }
