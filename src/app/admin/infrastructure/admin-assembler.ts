@@ -31,7 +31,7 @@ export function toAdminZone(r: AdminZoneResponse, availability?: ZoneAvailabilit
     occupiedCount:       availability?.occupied ?? 0,
     freeCount:           availability?.available ?? r.totalSpaces,
     occupancyPercentage: availability?.occupancyPercentage ?? 0,
-    classification:      availability?.classification ?? 'LIBRE',
+    classification:      availability?.classification ?? 'SIN_DATOS',
     openingHours:        toOpeningHours(r.openingHours),
     googlePlaceId:       r.googlePlaceId?.trim() || null,
     photos:              (r.photos ?? []).map(toZonePhoto),

@@ -7,16 +7,56 @@ import { useAdminZonesStore }   from '../../application/admin-zones.store'
 import { useAdminCamerasStore } from '../../application/admin-cameras.store'
 import { useAdminUsersStore }   from '../../application/admin-users.store'
 import AdminPage from '../components/AdminPage.vue'
+import { Download } from '@lucide/vue'
+import { toast } from 'vue-sonner'
+import OccupancyBar from '../components/OccupancyBar.vue'
+import { hasLiveData, levelColor, NO_DATA_LABEL, weightedOccupancy } from '../../../analytics/domain/occupancy-level'
+import { analyticsApi } from '../../../analytics/infrastructure/analytics-api'
+import { ref } from 'vue'
 
 const zonesStore   = useAdminZonesStore()
 const camerasStore = useAdminCamerasStore()
 const usersStore   = useAdminUsersStore()
 
+/**
+ * HU-20: ocupación global ponderada por capacidad (ocupados / capacidad de las zonas con datos), no
+ * el promedio simple de porcentajes. Sin ninguna zona con datos se muestra "—".
+ */
 const globalOccupancy = computed(() => {
-  if (!zonesStore.zones.length) return 0
-  const avg = zonesStore.zones.reduce((s, z) => s + z.occupancyPercentage, 0) / zonesStore.zones.length
-  return Math.round(avg)
+  const pct = weightedOccupancy(zonesStore.zones.map(z => ({
+    occupied:       z.occupiedCount,
+    capacity:       z.totalCapacity,
+    classification: z.classification,
+  })))
+  return pct === null ? '—' : `${Math.round(pct)}%`
 })
+
+/** HU-20: ocupación actual de cada zona; las que no tienen lectura muestran "Sin datos" sin romper la lista. */
+const zoneOccupancy = computed(() =>
+  [...zonesStore.zones]
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    .map(z => ({
+      id:      z.id,
+      name:    z.name,
+      hasData: hasLiveData(z.classification),
+      pct:     z.occupancyPercentage,
+      color:   levelColor(z.classification),
+      detail:  `${z.occupiedCount} de ${z.totalCapacity} ocupados`,
+    })),
+)
+
+const exporting = ref(false)
+async function exportCsv() {
+  exporting.value = true
+  try {
+    await analyticsApi.exportAvailabilityCsv()
+    toast.success('CSV descargado')
+  } catch {
+    toast.error('No se pudo exportar el CSV')
+  } finally {
+    exporting.value = false
+  }
+}
 
 const countByClassification = (c: string) => zonesStore.zones.filter(z => z.classification === c).length
 
@@ -40,7 +80,7 @@ const metrics = computed<Metric[]>(() => [
     tone:  'bg-[#fff5eb] text-[#f2894a]',
     to:    '/admin/cameras',
   },
-  { label: 'Ocupación global', value: `${globalOccupancy.value}%`, icon: ChartNoAxesColumn, tone: 'bg-[#fff5f5] text-[#e53e3e]' },
+  { label: 'Ocupación global', value: globalOccupancy.value, icon: ChartNoAxesColumn, tone: 'bg-[#fff5f5] text-[#e53e3e]' },
 ])
 
 const classifications = computed(() => [
@@ -84,6 +124,12 @@ onUnmounted(() => {
 
 <template>
   <AdminPage title="Dashboard" sub="Resumen general del sistema ParkVision" narrow>
+    <template #actions>
+      <Button variant="outline" class="h-9 text-[13px]" :disabled="loading || exporting" @click="exportCsv">
+        <Download /> {{ exporting ? 'Exportando…' : 'Exportar CSV' }}
+      </Button>
+    </template>
+
     <div class="mb-8 grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
       <template v-if="loading">
         <div v-for="i in 4" :key="i" :class="cardBase" aria-hidden="true">
@@ -130,6 +176,26 @@ onUnmounted(() => {
               <p class="text-xs text-muted-foreground">{{ c.label }}</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="mb-7">
+        <h2 class="mb-3.5 text-[11px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">Ocupación por zona</h2>
+        <div class="overflow-hidden rounded-xl border bg-card shadow-[var(--pv-shadow-sm)]">
+          <p v-if="!zoneOccupancy.length" class="px-5 py-6 text-center text-sm text-muted-foreground">Todavía no hay zonas registradas.</p>
+          <ul v-else class="divide-y">
+            <li v-for="z in zoneOccupancy" :key="z.id" class="flex items-center justify-between gap-4 px-5 py-3">
+              <span class="min-w-0">
+                <span class="block truncate text-sm font-medium text-heading">{{ z.name }}</span>
+                <span v-if="z.hasData" class="text-[11px] text-muted-foreground tabular-nums">{{ z.detail }}</span>
+              </span>
+              <OccupancyBar v-if="z.hasData" class="w-40 shrink-0" :percentage="z.pct" :color="z.color" />
+              <span
+                v-else
+                class="shrink-0 rounded-full bg-muted px-2.5 py-[3px] font-mono text-[10px] font-semibold tracking-[0.6px] text-muted-foreground uppercase"
+              >{{ NO_DATA_LABEL }}</span>
+            </li>
+          </ul>
         </div>
       </section>
 
