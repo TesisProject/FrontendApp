@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { describeOpeningHours, formatOpeningHours, openingHoursError } from './opening-hours'
+import {
+  describeOpeningHours, formatOpeningHours, fromOpeningHoursRanges, holidayTimes, openingHoursError, toOpeningHoursRanges,
+} from './opening-hours'
 import type { IsoDayOfWeek, OpeningHoursEntry } from './model/opening-hours.model'
 
 const day = (dayOfWeek: IsoDayOfWeek, opensAt: string, closesAt: string): OpeningHoursEntry =>
@@ -66,5 +68,39 @@ describe('openingHoursError', () => {
   it('aplica las reglas de holiday/dayOfWeek', () => {
     expect(openingHoursError([{ dayOfWeek: 1, holiday: true, opensAt: '08:00', closesAt: '09:00' }])).not.toBeNull()
     expect(openingHoursError([{ dayOfWeek: null, holiday: false, opensAt: '08:00', closesAt: '09:00' }])).not.toBeNull()
+  })
+})
+
+describe('rangos de edición', () => {
+  it('agrupa por horario los días, ordenados por su primer día, sin incluir feriados', () => {
+    const entries = [day(6, '10:00', '14:00'), ...weekdays('09:00', '18:00'), holiday('09:00', '13:00')]
+    expect(toOpeningHoursRanges(entries)).toEqual([
+      { opensAt: '09:00', closesAt: '18:00', days: [1, 2, 3, 4, 5] },
+      { opensAt: '10:00', closesAt: '14:00', days: [6] },
+    ])
+    expect(holidayTimes(entries)).toEqual({ opensAt: '09:00', closesAt: '13:00' })
+    expect(holidayTimes(weekdays('09:00', '18:00'))).toBeNull()
+  })
+
+  it('vuelve a tramos por día en orden canónico, con feriados al final', () => {
+    const entries = fromOpeningHoursRanges(
+      [{ opensAt: '10:00', closesAt: '14:00', days: [6] }, { opensAt: '09:00', closesAt: '18:00', days: [5, 1] }],
+      { opensAt: '09:00', closesAt: '13:00' },
+    )
+    expect(entries).toEqual([day(1, '09:00', '18:00'), day(5, '09:00', '18:00'), day(6, '10:00', '14:00'), holiday('09:00', '13:00')])
+  })
+
+  it('un día repetido en dos rangos se queda con el primero', () => {
+    const entries = fromOpeningHoursRanges(
+      [{ opensAt: '08:00', closesAt: '12:00', days: [1] }, { opensAt: '14:00', closesAt: '18:00', days: [1, 2] }],
+      null,
+    )
+    expect(entries).toEqual([day(1, '08:00', '12:00'), day(2, '14:00', '18:00')])
+    expect(openingHoursError(entries)).toBeNull()
+  })
+
+  it('ida y vuelta conserva el horario', () => {
+    const entries = [...weekdays('08:00', '15:00'), day(6, '09:00', '13:00'), holiday('10:00', '12:00')]
+    expect(fromOpeningHoursRanges(toOpeningHoursRanges(entries), holidayTimes(entries))).toEqual(entries)
   })
 })

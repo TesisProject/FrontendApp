@@ -8,6 +8,11 @@ export const DAY_NAMES: Record<IsoDayOfWeek, string> = {
   1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo',
 }
 
+/** Inicial de cada día para selectores compactos (L M X J V S D). */
+export const DAY_INITIALS: Record<IsoDayOfWeek, string> = {
+  1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 7: 'D',
+}
+
 /** Máximo de tramos que acepta el backend: uno por día más el de feriados. */
 export const MAX_OPENING_HOURS_ENTRIES = 8
 
@@ -54,6 +59,67 @@ export function openingHoursError(entries: readonly OpeningHoursEntry[]): string
     if (error) return `${entryLabel(e)}: ${error}`
   }
   return null
+}
+
+// ── Rangos (vista de edición) ─────────────────────────────────────────────────────────────────
+
+/** Un mismo horario aplicado a varios días: la forma en que el admin lo edita. */
+export interface OpeningHoursRange {
+  opensAt:  string
+  closesAt: string
+  /** Días ISO ordenados de lunes a domingo. */
+  days:     IsoDayOfWeek[]
+}
+
+/** Horas `HH:mm` de un tramo, sin día. */
+export type OpeningHoursTimes = Pick<OpeningHoursEntry, 'opensAt' | 'closesAt'>
+
+const entryOrder = (e: OpeningHoursEntry) => (e.holiday ? 8 : e.dayOfWeek ?? 8)
+
+/** Los tramos en orden canónico: lunes → domingo y feriados al final. */
+export function sortOpeningHours(entries: readonly OpeningHoursEntry[]): OpeningHoursEntry[] {
+  return [...entries].sort((a, b) => entryOrder(a) - entryOrder(b))
+}
+
+/**
+ * Agrupa los tramos por día en rangos que comparten horario, ordenados por su primer día. Los
+ * feriados no forman parte de ningún rango (ver `holidayTimes`).
+ */
+export function toOpeningHoursRanges(entries: readonly OpeningHoursEntry[]): OpeningHoursRange[] {
+  const byTimes = new Map<string, OpeningHoursRange>()
+  for (const e of sortOpeningHours(entries)) {
+    if (e.holiday || !isIsoDayOfWeek(e.dayOfWeek)) continue
+    const key = `${e.opensAt}|${e.closesAt}`
+    const range = byTimes.get(key) ?? { opensAt: e.opensAt, closesAt: e.closesAt, days: [] }
+    if (!range.days.includes(e.dayOfWeek)) range.days.push(e.dayOfWeek)
+    byTimes.set(key, range)
+  }
+  return [...byTimes.values()].sort((a, b) => a.days[0]! - b.days[0]!)
+}
+
+/** Horas del tramo de feriados, o `null` si no hay. */
+export function holidayTimes(entries: readonly OpeningHoursEntry[]): OpeningHoursTimes | null {
+  const e = entries.find((x) => x.holiday)
+  return e ? { opensAt: e.opensAt, closesAt: e.closesAt } : null
+}
+
+/**
+ * Inverso de `toOpeningHoursRanges`: un tramo por día asignado más el de feriados, en orden
+ * canónico. Si un día aparece en dos rangos, se queda con el primero (el backend admite uno por día).
+ */
+export function fromOpeningHoursRanges(
+  ranges: readonly OpeningHoursRange[],
+  holiday: OpeningHoursTimes | null,
+): OpeningHoursEntry[] {
+  const byDay = new Map<IsoDayOfWeek, OpeningHoursEntry>()
+  for (const r of ranges) {
+    for (const day of r.days) {
+      if (!byDay.has(day)) byDay.set(day, { dayOfWeek: day, holiday: false, opensAt: r.opensAt, closesAt: r.closesAt })
+    }
+  }
+  const entries = ISO_DAYS.flatMap((d) => byDay.get(d) ?? [])
+  if (holiday) entries.push({ dayOfWeek: null, holiday: true, ...holiday })
+  return entries
 }
 
 // ── Formato ───────────────────────────────────────────────────────────────────────────────────
