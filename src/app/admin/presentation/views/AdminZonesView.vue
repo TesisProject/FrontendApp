@@ -4,6 +4,13 @@ import { useAdminZonesStore } from '../../application/admin-zones.store'
 import { useAdminSpacesStore } from '../../application/admin-spaces.store'
 import ZoneRoiEditorModal from '../components/ZoneRoiEditorModal.vue'
 import ZoneLocationPicker from '../components/ZoneLocationPicker.vue'
+import OpeningHoursEditor from '../components/OpeningHoursEditor.vue'
+import ZonePhotosField from '../components/ZonePhotosField.vue'
+import { fromGooglePeriods } from '../../infrastructure/google-opening-hours'
+import { fetchGooglePlacePhotos, toGooglePlacePhotos } from '../../../parking/infrastructure/google-place-photos'
+import type { GooglePlacePhoto } from '../../../parking/domain/model/zone-photo.model'
+import { formatOpeningHours, openingHoursError } from '../../../parking/domain/opening-hours'
+import { formatZoneAddress } from '../../../parking/domain/zone-address'
 import { loadGoogleMaps } from '../../../shared/infrastructure/maps-loader'
 import type {
   AdminZone,
@@ -71,17 +78,62 @@ const filtered = computed(() =>
 // Modal
 const showModal = ref(false)
 const editTarget = ref<AdminZone | null>(null)
-const form = ref<AdminZoneForm>({
-  name: '',
-  street: '',
-  district: '',
-  city: '',
-  latitude: 0,
-  longitude: 0,
-  totalSpaces: 0,
-  totalCapacity: 0,
-})
+function emptyForm(): AdminZoneForm {
+  return {
+    name: '',
+    street: '',
+    district: '',
+    city: '',
+    latitude: 0,
+    longitude: 0,
+    totalSpaces: 0,
+    totalCapacity: 0,
+    openingHours: [],
+    googlePlaceId: null,
+  }
+}
+const form = ref<AdminZoneForm>(emptyForm())
+
+// Fotos: las de Google se muestran (no se guardan); las subidas se aplican tras guardar la zona.
+const googlePhotos = ref<GooglePlacePhoto[]>([])
+const googlePhotosLoading = ref(false)
+const pendingFiles = ref<File[]>([])
+const removedPhotoIds = ref<string[]>([])
+/** Evita que una respuesta tardía de Google pise la de otra zona o dirección. */
+let googleRequest = 0
+
+const existingPhotos = computed(() =>
+  editTarget.value ? store.zones.find((z) => z.id === editTarget.value!.id)?.photos ?? editTarget.value.photos : [],
+)
+
+async function loadGooglePhotos(placeId: string | null) {
+  const request = ++googleRequest
+  googlePhotos.value = []
+  if (!placeId) {
+    googlePhotosLoading.value = false
+    return
+  }
+  googlePhotosLoading.value = true
+  const photos = await fetchGooglePlacePhotos(placeId)
+  if (request !== googleRequest) return
+  googlePhotos.value = photos
+  googlePhotosLoading.value = false
+}
+
+function unlinkGoogle() {
+  form.value.googlePlaceId = null
+  googleRequest++
+  googlePhotos.value = []
+  googlePhotosLoading.value = false
+}
+
+function resetPhotos() {
+  pendingFiles.value = []
+  removedPhotoIds.value = []
+}
 const formError = ref<string | null>(null)
+const photosSyncing = ref(false)
+const busy = computed(() => store.saving || photosSyncing.value)
 const confirmId = ref<number | null>(null)
 
 // Places autocomplete
@@ -140,7 +192,23 @@ async function selectAddr(item: {
   sessionToken = null
 
   const place = item._raw.toPlace()
-  await place.fetchFields({ fields: ['location', 'addressComponents'] })
+  googleRequest++
+  googlePhotosLoading.value = true
+  try {
+    await place.fetchFields({ fields: ['id', 'location', 'addressComponents', 'photos', 'regularOpeningHours'] })
+  } finally {
+    googlePhotosLoading.value = false
+  }
+
+  form.value.googlePlaceId = place.id ?? null
+  googlePhotos.value = toGooglePlacePhotos(place.photos)
+
+  // Google numera los días desde el domingo y no informa feriados; el editor queda para revisarlo.
+  const googleHours = fromGooglePeriods(place.regularOpeningHours?.periods)
+  if (googleHours.length) {
+    form.value.openingHours = googleHours
+    toast.info('Horario prellenado desde Google: revísalo antes de guardar')
+  }
 
   if (place.location) {
     form.value.latitude = place.location.lat()
@@ -183,16 +251,9 @@ function hideAddrDrop() {
 
 function openCreate() {
   editTarget.value = null
-  form.value = {
-    name: '',
-    street: '',
-    district: '',
-    city: '',
-    latitude: 0,
-    longitude: 0,
-    totalSpaces: 0,
-    totalCapacity: 0,
-  }
+  form.value = emptyForm()
+  resetPhotos()
+  loadGooglePhotos(null)
   addrQuery.value = ''
   formError.value = null
   showModal.value = true
@@ -208,8 +269,12 @@ function openEdit(zone: AdminZone) {
     latitude: zone.latitude,
     longitude: zone.longitude,
     totalSpaces: zone.totalSpaces,
-    totalCapacity: zone.totalSpaces,
+    totalCapacity: zone.totalCapacity,
+    openingHours: zone.openingHours.map((e) => ({ ...e })),
+    googlePlaceId: zone.googlePlaceId,
   }
+  resetPhotos()
+  loadGooglePhotos(zone.googlePlaceId)
   addrQuery.value = zone.street ? `${zone.street}, ${zone.district}` : ''
   formError.value = null
   showModal.value = true
@@ -231,7 +296,32 @@ function validate(): string | null {
     return 'El total de espacios debe ser al menos 1'
   if (!f.totalCapacity || f.totalCapacity < 1)
     return 'La capacidad total debe ser al menos 1'
+  const hoursError = openingHoursError(f.openingHours)
+  if (hoursError) return `Horario — ${hoursError}`
   return null
+}
+
+/**
+ * Aplica a la zona ya guardada las fotos marcadas para eliminar y las nuevas. Lo que falla queda en
+ * el formulario para reintentar; devuelve los mensajes de error (sin repetir).
+ */
+async function syncPhotos(zoneId: number): Promise<string[]> {
+  const errors = new Set<string>()
+  for (const photoId of [...removedPhotoIds.value]) {
+    const res = await store.deletePhoto(zoneId, photoId)
+    if (res.ok) removedPhotoIds.value = removedPhotoIds.value.filter((id) => id !== photoId)
+    else errors.add(res.error)
+  }
+  const failed: File[] = []
+  for (const file of pendingFiles.value) {
+    const res = await store.uploadPhoto(zoneId, file)
+    if (!res.ok) {
+      errors.add(res.error)
+      failed.push(file)
+    }
+  }
+  pendingFiles.value = failed
+  return [...errors]
 }
 
 async function handleSubmit() {
@@ -241,19 +331,27 @@ async function handleSubmit() {
     return
   }
 
-  let ok: boolean
-  if (editTarget.value) {
-    ok = await store.updateZone(editTarget.value.id, form.value)
-  } else {
-    ok = await store.createZone(form.value)
-  }
-  if (!ok) {
-    formError.value = 'Ocurrió un error, verifica los datos e intenta de nuevo'
+  formError.value = null
+  const editing = !!editTarget.value
+  const saved = editing
+    ? await store.updateZone(editTarget.value!.id, form.value)
+    : await store.createZone(form.value)
+  if (!saved) {
+    formError.value = store.actionError
     return
   }
-  toast.success(editTarget.value ? 'Zona actualizada' : 'Zona creada')
+  // Si fallan las fotos, el formulario queda abierto en modo edición para reintentar solo eso.
+  editTarget.value = saved
+  photosSyncing.value = true
+  const photoErrors = await syncPhotos(saved.id).finally(() => { photosSyncing.value = false })
+  toast.success(editing ? 'Zona actualizada' : 'Zona creada')
+  if (photoErrors.length) {
+    formError.value = `La zona se guardó, pero hubo un problema con las fotos: ${photoErrors.join('. ')}`
+    return
+  }
   closeModal()
 }
+
 
 async function handleDelete(id: number) {
   await store.deleteZone(id)
@@ -286,14 +384,17 @@ onMounted(() => store.fetchZones())
 
     <AdminTableCard
       v-else
-      :columns="['ID', 'Nombre', 'Dirección', 'Espacios', 'Ocupación', 'Estado', 'Acciones']"
+      :columns="['ID', 'Nombre', 'Dirección', 'Horario', 'Espacios', 'Ocupación', 'Estado', 'Acciones']"
       :empty="filtered.length === 0"
       empty-text="No se encontraron zonas"
     >
       <TableRow v-for="z in filtered" :key="z.id">
         <TableCell class="font-mono text-xs text-muted-foreground">#{{ z.id }}</TableCell>
         <TableCell class="font-semibold text-navy">{{ z.name }}</TableCell>
-        <TableCell class="text-muted-foreground">{{ z.street }}, {{ z.district }}</TableCell>
+        <TableCell class="text-muted-foreground">{{ formatZoneAddress({ street: z.street, district: z.district }) }}</TableCell>
+        <TableCell class="max-w-[220px] text-xs text-muted-foreground">
+          <span class="line-clamp-2" :title="formatOpeningHours(z.openingHours)">{{ formatOpeningHours(z.openingHours) }}</span>
+        </TableCell>
         <TableCell>{{ z.totalSpaces }}</TableCell>
         <TableCell>
           <OccupancyBar :percentage="z.occupancyPercentage" :color="classColor(z.classification)" />
@@ -325,7 +426,7 @@ onMounted(() => store.fetchZones())
 
     <!-- Create / Edit -->
     <Dialog v-model:open="showModal">
-      <DialogContent>
+      <DialogContent class="sm:max-w-[640px]" @interact-outside="busy && $event.preventDefault()">
         <DialogHeader>
           <DialogTitle>{{ editTarget ? 'Editar zona' : 'Nueva zona' }}</DialogTitle>
         </DialogHeader>
@@ -421,12 +522,32 @@ onMounted(() => store.fetchZones())
             </AdminField>
           </div>
 
+          <div class="my-1 flex items-center gap-2.5 text-[11px] font-semibold tracking-[0.5px] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+            Horario de atención
+          </div>
+
+          <OpeningHoursEditor v-model="form.openingHours" />
+
+          <div class="my-1 flex items-center gap-2.5 text-[11px] font-semibold tracking-[0.5px] text-muted-foreground uppercase before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+            Fotos
+          </div>
+
+          <ZonePhotosField
+            v-model:pending="pendingFiles"
+            v-model:removed="removedPhotoIds"
+            :existing="existingPhotos"
+            :google-photos="googlePhotos"
+            :google-loading="googlePhotosLoading"
+            :has-google-place="!!form.googlePlaceId"
+            @unlink-google="unlinkGoogle"
+          />
+
           <FormAlert :message="formError" />
 
           <DialogFooter>
-            <Button type="button" variant="outline" @click="closeModal">Cancelar</Button>
-            <Button type="submit" :disabled="store.saving">
-              {{ store.saving ? 'Guardando...' : editTarget ? 'Actualizar' : 'Crear zona' }}
+            <Button type="button" variant="outline" :disabled="busy" @click="closeModal">Cancelar</Button>
+            <Button type="submit" :disabled="busy">
+              {{ photosSyncing ? 'Subiendo fotos...' : store.saving ? 'Guardando...' : editTarget ? 'Actualizar' : 'Crear zona' }}
             </Button>
           </DialogFooter>
         </form>

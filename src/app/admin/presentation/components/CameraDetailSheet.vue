@@ -6,7 +6,7 @@ import { useAdminCamerasStore } from '../../application/admin-cameras.store'
 import { useAdminZonesStore } from '../../application/admin-zones.store'
 import { useAdminNodesStore } from '../../application/admin-nodes.store'
 import type { AdminCamera, AdminCameraDeviceForm, AdminCameraForm } from '../../domain/model/admin-camera.model'
-import { batteryBadge, deviceFieldErrors, hasDeviceErrors, normalizeMac, sameCapture } from '../../domain/camera-device'
+import { CAPTURE_DEFAULTS, batteryBadge, deviceFieldErrors, hasDeviceErrors, normalizeMac, sameCapture } from '../../domain/camera-device'
 import { formatRelative } from '@/app/shared/helpers/date'
 import { Badge } from '@/app/shared/presentation/components/ui/badge'
 import { Button } from '@/app/shared/presentation/components/ui/button'
@@ -68,7 +68,7 @@ async function saveGeneral() {
 }
 
 // ── Dispositivo ──────────────────────────────────────────────────────────
-const deviceForm   = ref<AdminCameraDeviceForm>({ mac: '', rotation: 0, capture: { intervalSec: 300, framesize: 'SVGA', jpegQuality: 12 } })
+const deviceForm   = ref<AdminCameraDeviceForm>({ mac: '', rotation: 0, capture: { ...CAPTURE_DEFAULTS } })
 const deviceError  = ref<string | null>(null)
 const deviceTried  = ref(false)
 const checkingRoi  = ref(false)

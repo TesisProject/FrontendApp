@@ -1,3 +1,7 @@
+import type { OpeningHoursDto, ZonePhotoResponse } from '../../parking/infrastructure/zone-response'
+
+export type { OpeningHoursDto, ZonePhotoResponse }
+
 /** Zona estática del catálogo de parking. La ocupación viva viene de vision (availability). */
 export interface AdminZoneResponse {
   id:            number
@@ -9,6 +13,11 @@ export interface AdminZoneResponse {
   longitude:     number
   totalSpaces:   number
   totalCapacity: number
+  /** `[]` = sin información. */
+  openingHours?:  OpeningHoursDto[] | null
+  googlePlaceId?: string | null
+  /** Fotos subidas (URLs presignadas). */
+  photos?:        ZonePhotoResponse[] | null
   active:        boolean
 }
 
@@ -21,6 +30,10 @@ export interface AdminZoneRequest {
   longitude:     number
   totalSpaces:   number
   totalCapacity: number
+  /** Máximo 8 tramos (uno por día + feriados). `[]` borra el horario. */
+  openingHours:  OpeningHoursDto[]
+  /** ≤ 300 caracteres. Las fotos no van aquí: tienen sus propios endpoints. */
+  googlePlaceId: string | null
 }
 
 /** CaptureSettingsResource / CaptureSettingsRequest — `framesize` ∈ QVGA, VGA, SVGA, XGA. */
@@ -65,7 +78,7 @@ export interface CameraBatteryDto {
 
 /**
  * RegisterCameraRequest — `zoneId` y `mac` son obligatorios (la MAC, además, única). El `code`
- * (CAM-001…) lo genera el Cloud. Sin `rotation`/`capture` el backend pone 0 y 300 s · SVGA · 12.
+ * (CAM-001…) lo genera el Cloud. Sin `rotation`/`capture` el backend pone 0 y 30 s · SVGA · 12.
  */
 export interface AdminCameraCreateRequest {
   nodeId?:        number

@@ -4,6 +4,8 @@
 
 > **Contrato vigente (2026-10-18):** el MCP `parkvision-api` (`.mcp.json`, código en `cloud-service/tools/api-mcp`) lee el OpenAPI de la nube desplegada: endpoints, roles de cada uno y esquemas. Si este documento y el MCP no coinciden, manda el MCP. Aquí queda lo que el spec no cuenta: reglas de negocio, mensajes de error y notas de cambios.
 
+> **Cambios 2026-11-03:** HU-09 — `ZoneResource` agrega `openingHours` (estructurado), `googlePlaceId` y `photos`; nuevos endpoints de fotos de zona (ver [Horario y fotos](#reglas-horario)). HU-08/20 — la captura por defecto pasa de 300 s a **30 s** y el panel admin refresca la ocupación cada 30 s.
+
 ## 1. Punto de entrada y entornos
 
 Todo el tráfico del frontend pasa por el **API Gateway**. Nunca llames a los servicios por su puerto individual — usa siempre el gateway como único origen.
@@ -1808,6 +1810,8 @@ Catálogo de zonas y espacios, y sus reseñas.
 | `GET` | `/api/v1/parking/zones/{zoneId}` | JWT | Obtener una zona por su id |
 | `PUT` | `/api/v1/parking/zones/{zoneId}` | ADMIN · OPERATOR | Actualizar los datos de una zona |
 | `DELETE` | `/api/v1/parking/zones/{zoneId}` | ADMIN · OPERATOR | Eliminar una zona |
+| `POST` | `/api/v1/parking/zones/{zoneId}/photos` | ADMIN · OPERATOR | Subir una foto de la zona (HU-09) |
+| `DELETE` | `/api/v1/parking/zones/{zoneId}/photos/{photoId}` | ADMIN · OPERATOR | Eliminar una foto subida (HU-09) |
 | `GET` | `/api/v1/parking/zones/{zoneId}/ratings` | JWT | Listar reseñas públicas de una zona |
 
 ### `POST` /api/v1/parking/spaces
@@ -1941,7 +1945,10 @@ _(sin cuerpo)_
 | `longitude` | number (double) | sí |
 | `totalSpaces` | integer (int32) | sí |
 | `totalCapacity` | integer (int32) | sí |
+| `openingHours` | array de [`OpeningHours`](#modelo-openinghours) (máx. 8) | no (`[]` = sin información) |
+| `googlePlaceId` | string (≤ 300) \| null | no |
 
+Las fotos **no** van en este body: tienen sus propios endpoints (`/zones/{zoneId}/photos`).
 
 ```json
 {
@@ -1952,9 +1959,16 @@ _(sin cuerpo)_
   "latitude": 0.75,
   "longitude": 0.75,
   "totalSpaces": 1,
-  "totalCapacity": 1
+  "totalCapacity": 1,
+  "openingHours": [
+    { "dayOfWeek": 1, "holiday": false, "opensAt": "08:00", "closesAt": "15:00" },
+    { "dayOfWeek": null, "holiday": true, "opensAt": "09:00", "closesAt": "13:00" }
+  ],
+  "googlePlaceId": "ChIJ..."
 }
 ```
+
+Un tramo que viola las [reglas del horario](#reglas-horario) responde `400` con el mensaje del campo.
 
 **Respuesta `200`:**
 
@@ -1969,6 +1983,9 @@ _(sin cuerpo)_
 | `longitude` | number (double) | no |
 | `totalSpaces` | integer (int32) | no |
 | `totalCapacity` | integer (int32) | no |
+| `openingHours` | array de [`OpeningHours`](#modelo-openinghours) | no (`[]` = sin información) |
+| `googlePlaceId` | string \| null | no |
+| `photos` | array de [`ZonePhotoResource`](#modelo-zonephotoresource) | no |
 | `active` | boolean | no |
 | `createdAt` | date-time | no |
 | `updatedAt` | date-time | no |
@@ -1985,6 +2002,9 @@ _(sin cuerpo)_
   "longitude": 0.75,
   "totalSpaces": 1,
   "totalCapacity": 1,
+  "openingHours": [{ "dayOfWeek": 1, "holiday": false, "opensAt": "08:00", "closesAt": "15:00" }],
+  "googlePlaceId": "ChIJ...",
+  "photos": [{ "id": "3f1c…", "url": "https://…presignada", "expiresInSeconds": 900 }],
   "active": true,
   "createdAt": "2026-07-03T14:00:00Z",
   "updatedAt": "2026-07-03T14:00:00Z"
@@ -2012,6 +2032,9 @@ Array de [`ZoneResource`](#modelo-zoneresource).
 | `longitude` | number (double) | no |
 | `totalSpaces` | integer (int32) | no |
 | `totalCapacity` | integer (int32) | no |
+| `openingHours` | array de [`OpeningHours`](#modelo-openinghours) | no (`[]` = sin información) |
+| `googlePlaceId` | string \| null | no |
+| `photos` | array de [`ZonePhotoResource`](#modelo-zonephotoresource) | no |
 | `active` | boolean | no |
 | `createdAt` | date-time | no |
 | `updatedAt` | date-time | no |
@@ -2029,6 +2052,9 @@ Array de [`ZoneResource`](#modelo-zoneresource).
     "longitude": 0.75,
     "totalSpaces": 1,
     "totalCapacity": 1,
+    "openingHours": [],
+    "googlePlaceId": null,
+    "photos": [],
     "active": true,
     "createdAt": "2026-07-03T14:00:00Z",
     "updatedAt": "2026-07-03T14:00:00Z"
@@ -2056,6 +2082,9 @@ Array de [`ZoneResource`](#modelo-zoneresource).
 | `longitude` | number (double) | no |
 | `totalSpaces` | integer (int32) | no |
 | `totalCapacity` | integer (int32) | no |
+| `openingHours` | array de [`OpeningHours`](#modelo-openinghours) | no (`[]` = sin información) |
+| `googlePlaceId` | string \| null | no |
+| `photos` | array de [`ZonePhotoResource`](#modelo-zonephotoresource) | no |
 | `active` | boolean | no |
 | `createdAt` | date-time | no |
 | `updatedAt` | date-time | no |
@@ -2072,6 +2101,9 @@ Array de [`ZoneResource`](#modelo-zoneresource).
   "longitude": 0.75,
   "totalSpaces": 1,
   "totalCapacity": 1,
+  "openingHours": [{ "dayOfWeek": 1, "holiday": false, "opensAt": "08:00", "closesAt": "15:00" }],
+  "googlePlaceId": "ChIJ...",
+  "photos": [{ "id": "3f1c…", "url": "https://…presignada", "expiresInSeconds": 900 }],
   "active": true,
   "createdAt": "2026-07-03T14:00:00Z",
   "updatedAt": "2026-07-03T14:00:00Z"
@@ -2097,7 +2129,10 @@ Array de [`ZoneResource`](#modelo-zoneresource).
 | `longitude` | number (double) | sí |
 | `totalSpaces` | integer (int32) | sí |
 | `totalCapacity` | integer (int32) | sí |
+| `openingHours` | array de [`OpeningHours`](#modelo-openinghours) (máx. 8) | no (`[]` = sin información) |
+| `googlePlaceId` | string (≤ 300) \| null | no |
 
+Las fotos **no** van en este body: tienen sus propios endpoints (`/zones/{zoneId}/photos`).
 
 ```json
 {
@@ -2108,9 +2143,16 @@ Array de [`ZoneResource`](#modelo-zoneresource).
   "latitude": 0.75,
   "longitude": 0.75,
   "totalSpaces": 1,
-  "totalCapacity": 1
+  "totalCapacity": 1,
+  "openingHours": [
+    { "dayOfWeek": 1, "holiday": false, "opensAt": "08:00", "closesAt": "15:00" },
+    { "dayOfWeek": null, "holiday": true, "opensAt": "09:00", "closesAt": "13:00" }
+  ],
+  "googlePlaceId": "ChIJ..."
 }
 ```
+
+Un tramo que viola las [reglas del horario](#reglas-horario) responde `400` con el mensaje del campo.
 
 **Respuesta `200`:**
 
@@ -2125,6 +2167,9 @@ Array de [`ZoneResource`](#modelo-zoneresource).
 | `longitude` | number (double) | no |
 | `totalSpaces` | integer (int32) | no |
 | `totalCapacity` | integer (int32) | no |
+| `openingHours` | array de [`OpeningHours`](#modelo-openinghours) | no (`[]` = sin información) |
+| `googlePlaceId` | string \| null | no |
+| `photos` | array de [`ZonePhotoResource`](#modelo-zonephotoresource) | no |
 | `active` | boolean | no |
 | `createdAt` | date-time | no |
 | `updatedAt` | date-time | no |
@@ -2141,6 +2186,9 @@ Array de [`ZoneResource`](#modelo-zoneresource).
   "longitude": 0.75,
   "totalSpaces": 1,
   "totalCapacity": 1,
+  "openingHours": [{ "dayOfWeek": 1, "holiday": false, "opensAt": "08:00", "closesAt": "15:00" }],
+  "googlePlaceId": "ChIJ...",
+  "photos": [{ "id": "3f1c…", "url": "https://…presignada", "expiresInSeconds": 900 }],
   "active": true,
   "createdAt": "2026-07-03T14:00:00Z",
   "updatedAt": "2026-07-03T14:00:00Z"
@@ -2157,6 +2205,65 @@ Array de [`ZoneResource`](#modelo-zoneresource).
 **Respuesta `200`:**
 
 _(sin cuerpo)_
+
+### `POST` /api/v1/parking/zones/{zoneId}/photos
+
+**Subir una foto de la zona** (HU-09)
+
+- **Auth:** 🔒 JWT · roles: **ADMIN · OPERATOR**
+- **Path params:** `zoneId` (integer (int64))
+- **Body:** `multipart/form-data` con el campo `file` (JPEG, PNG o WebP, ≤ 5 MB). Máximo **10 fotos** por zona.
+- Se guarda en R2 con la clave `zones/{zoneId}/photos/{uuid}.{ext}`.
+
+**Respuesta `201`:** [`ZonePhotoResource`](#modelo-zonephotoresource).
+
+```json
+{ "id": "3f1c2a9e-…", "url": "https://…presignada", "expiresInSeconds": 900 }
+```
+
+| Código | Cuándo | Mensaje en el panel |
+|---|---|---|
+| `400` | Tipo o tamaño no válido | «La foto debe ser JPG, PNG o WebP y pesar como máximo 5 MB» |
+| `409` | La zona ya tiene 10 fotos | «La zona ya tiene el máximo de 10 fotos…» |
+| `503` | R2 no está configurado o no responde | «El almacenamiento de fotos (R2) no está disponible…» |
+
+El panel valida tipo, tamaño y límite antes de subir, y sube las fotos **después** de crear o actualizar la zona.
+Si alguna falla, la zona queda guardada y el formulario sigue abierto para reintentar solo las fotos.
+
+### `DELETE` /api/v1/parking/zones/{zoneId}/photos/{photoId}
+
+**Eliminar una foto subida** (HU-09)
+
+- **Auth:** 🔒 JWT · roles: **ADMIN · OPERATOR**
+- **Path params:** `zoneId` (integer (int64)), `photoId` (uuid)
+
+**Respuesta `204`:** _(sin cuerpo)_
+
+<a name="reglas-horario"></a>
+### Horario y fotos de la zona (HU-09)
+
+**Reglas de `openingHours`** (las aplica el dominio del backend; el formulario del panel las replica en
+`parking/domain/opening-hours.ts › openingHoursError`):
+
+- `holiday = true` exige `dayOfWeek = null`; `holiday = false` exige `dayOfWeek` entre 1 (lunes) y 7 (domingo), ISO-8601.
+- Máximo **un tramo por día** y uno solo para feriados (8 entradas como mucho).
+- `opensAt < closesAt`, formato `HH:mm`. No hay tramos que crucen la medianoche: 24 h = `00:00`–`23:59`.
+- Lista vacía = «Sin información». Con datos, los días que faltan son «cerrado» y, si falta el feriado,
+  «Feriados: sin información».
+
+**Cómo lo muestra el frontend** (`formatOpeningHours` / `describeOpeningHours`): agrupa los días consecutivos
+con el mismo tramo y lista aparte la excepción de en medio, p. ej.
+«Lunes–Viernes de 08:00 a 15:00, Miércoles de 10:00 a 18:00, Sábado y Domingo: cerrado, Feriados de 09:00 a 13:00».
+
+**Prellenado desde Google Places** (formulario admin, al elegir la dirección): `place.fetchFields` pide `id`,
+`photos` y `regularOpeningHours`. Google numera 0 = domingo (→ ISO 7); con varios tramos el mismo día se toma
+el primer inicio y el último cierre; un tramo que cruza la medianoche se corta a las 23:59; un único periodo sin
+cierre = abierto 24 h los 7 días. Google no informa feriados: esa fila queda vacía.
+
+**Fotos:** las subidas (`photos[]`) traen una URL presignada que vence a los `expiresInSeconds`; `url` es `null`
+si R2 no está configurado. Las de Google **no se guardan** (ToS): el frontend las resuelve en cada visita con
+`new Place({ id: googlePlaceId }).fetchFields({ fields: ['photos'] })` y muestra el autor y «Google» junto a
+cada una. En el detalle de zona se muestran primero las subidas y luego las de Google.
 
 ### `GET` /api/v1/parking/zones/{zoneId}/ratings
 
@@ -2216,6 +2323,19 @@ Array de [`ZoneRatingResource`](#modelo-zoneratingresource).
 | `longitude` | number (double) | sí |
 | `totalSpaces` | integer (int32) | sí |
 | `totalCapacity` | integer (int32) | sí |
+| `openingHours` | array de [`OpeningHours`](#modelo-openinghours) (máx. 8) | no |
+| `googlePlaceId` | string (≤ 300) \| null | no |
+
+
+<a name="modelo-openinghours"></a>
+**`OpeningHours`** (`OpeningHoursRequest` / `OpeningHoursResource`)
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| `dayOfWeek` | integer 1–7 (ISO, 1 = lunes) \| null | sí (`null` solo si `holiday`) |
+| `holiday` | boolean | sí |
+| `opensAt` | string `HH:mm` | sí |
+| `closesAt` | string `HH:mm` (> `opensAt`) | sí |
 
 
 <a name="modelo-parkingspaceresource"></a>
@@ -2243,6 +2363,18 @@ Array de [`ZoneRatingResource`](#modelo-zoneratingresource).
 | `longitude` | number (double) | sí |
 | `totalSpaces` | integer (int32) | sí |
 | `totalCapacity` | integer (int32) | sí |
+| `openingHours` | array de [`OpeningHours`](#modelo-openinghours) (máx. 8) | no |
+| `googlePlaceId` | string (≤ 300) \| null | no |
+
+
+<a name="modelo-zonephotoresource"></a>
+**`ZonePhotoResource`**
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| `id` | string (uuid) | sí |
+| `url` | string (URL presignada) \| null | no (`null` sin R2) |
+| `expiresInSeconds` | integer | sí |
 
 
 <a name="modelo-zoneratingresource"></a>
@@ -2272,6 +2404,9 @@ Array de [`ZoneRatingResource`](#modelo-zoneratingresource).
 | `longitude` | number (double) | no |
 | `totalSpaces` | integer (int32) | no |
 | `totalCapacity` | integer (int32) | no |
+| `openingHours` | array de [`OpeningHours`](#modelo-openinghours) | no (`[]` = sin información) |
+| `googlePlaceId` | string \| null | no |
+| `photos` | array de [`ZonePhotoResource`](#modelo-zonephotoresource) | no |
 | `active` | boolean | no |
 | `createdAt` | date-time | no |
 | `updatedAt` | date-time | no |
@@ -2338,7 +2473,7 @@ Cámaras, nodos Fog, ROI de espacios, disponibilidad e historial de ocupación.
 | `name` | string (≤ 200) | no |
 | `location` | string (≤ 300) | no |
 | `rotation` | 0 \| 90 \| 180 \| 270 | no (0) |
-| `capture` | [`CaptureSettings`](#config-dispositivos) | no (300 s · SVGA · 12) |
+| `capture` | [`CaptureSettings`](#config-dispositivos) | no (30 s · SVGA · 12; HU-08) |
 
 
 ```json
@@ -2349,7 +2484,7 @@ Cámaras, nodos Fog, ROI de espacios, disponibilidad e historial de ocupación.
   "location": "Poste central",
   "mac": "24:6F:28:AB:CD:EF",
   "rotation": 0,
-  "capture": { "intervalSec": 300, "framesize": "SVGA", "jpegQuality": 12 }
+  "capture": { "intervalSec": 30, "framesize": "SVGA", "jpegQuality": 12 }
 }
 ```
 

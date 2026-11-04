@@ -7,7 +7,7 @@ import type {
   AdminNodeResponse, AdminNodeCreateRequest, AdminNodeUpdateRequest,
   AdminApiKeyResponse, AdminApiKeyCreateRequest, AdminCreatedApiKeyResponse,
   MonitoredSpaceResponse, UpdateSpaceRoiRequest, CameraScreenshotResponse,
-  FirmwareReleaseResponse, CameraFirmwareResponse,
+  FirmwareReleaseResponse, CameraFirmwareResponse, ZonePhotoResponse,
 } from './admin-response'
 import type { AdminSpaceResponse } from './admin-response'
 
@@ -24,6 +24,15 @@ export class AdminApi {
   }
   deleteZone(id: number): Promise<void> {
     return httpClient.delete(`/parking/zones/${id}`)
+  }
+  /** multipart `file` (jpeg/png/webp, ≤ 5 MB, máx. 10 por zona). 400 tipo/tamaño · 409 límite · 503 sin R2. */
+  uploadZonePhoto(zoneId: number, file: File): Promise<ZonePhotoResponse> {
+    const form = new FormData()
+    form.append('file', file)
+    return httpClient.postForm(`/parking/zones/${zoneId}/photos`, form)
+  }
+  deleteZonePhoto(zoneId: number, photoId: string): Promise<void> {
+    return httpClient.delete(`/parking/zones/${zoneId}/photos/${encodeURIComponent(photoId)}`)
   }
 
   // Users — /api/v1/iam/users

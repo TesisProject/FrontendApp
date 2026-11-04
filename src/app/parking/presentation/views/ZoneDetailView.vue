@@ -15,6 +15,8 @@ import StateMessage from '../../../shared/presentation/components/StateMessage.v
 import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
 import OccupancyHistoryChart from '../components/OccupancyHistoryChart.vue'
 import ZoneForecastCard from '../components/ZoneForecastCard.vue'
+import ZoneInfoCard from '../components/ZoneInfoCard.vue'
+import { formatZoneAddress } from '../../domain/zone-address'
 import ClassificationBadge from '../components/ClassificationBadge.vue'
 import OccupancyMeter from '../components/OccupancyMeter.vue'
 import ZoneSpacesPanel from '../components/ZoneSpacesPanel.vue'
@@ -140,7 +142,7 @@ onUnmounted(() => clearInterval(refreshTimer))
           <h1 class="mb-1.5 font-display text-2xl font-bold text-heading">{{ zoneStore.zone.name }}</h1>
           <p class="flex items-center gap-1 text-[13px] text-muted-foreground">
             <MapPin class="size-[13px] shrink-0" aria-hidden="true" />
-            {{ zoneStore.zone.street }}, {{ zoneStore.zone.district }} · {{ zoneStore.zone.city }}
+            {{ formatZoneAddress(zoneStore.zone) }}
           </p>
         </div>
         <div class="mt-1 flex shrink-0 items-center gap-2.5">
@@ -183,6 +185,9 @@ onUnmounted(() => clearInterval(refreshTimer))
           <span class="text-xs font-medium text-muted-foreground">Ocupación</span>
         </div>
       </div>
+
+      <!-- HU-09: dirección, capacidad, disponibles, distancia, horario y fotos -->
+      <ZoneInfoCard v-if="zoneStore.zone" :zone="zoneStore.zone" />
 
       <!-- Spaces, agrupados por lo que ve cada cámara -->
       <SectionCard

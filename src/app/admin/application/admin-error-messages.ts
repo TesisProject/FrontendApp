@@ -59,3 +59,26 @@ export function adminErrorMessage(error: unknown, fallback = 'Ocurrió un error,
   }
   return STATUS_MESSAGES[status] ?? fallback
 }
+
+/** Al guardar una zona: un 400 casi siempre es el horario (las reglas que el formulario ya revisa). */
+export function zoneSaveErrorMessage(error: unknown): string {
+  if (errorStatus(error) === 400) {
+    return 'El servidor rechazó los datos de la zona. Revisa el horario (inicio antes del fin, un tramo por día) y los demás campos'
+  }
+  return adminErrorMessage(error, 'Ocurrió un error, verifica los datos e intenta de nuevo')
+}
+
+/** Mensajes de `POST/DELETE /parking/zones/{id}/photos` por código HTTP (el contrato no fija códigos de error). */
+const ZONE_PHOTO_STATUS_MESSAGES: Record<number, string> = {
+  400: 'La foto debe ser JPG, PNG o WebP y pesar como máximo 5 MB',
+  404: 'La foto o la zona ya no existe. Recarga la página',
+  409: 'La zona ya tiene el máximo de 10 fotos. Elimina alguna antes de subir otra',
+  413: 'La foto pesa más de 5 MB',
+  503: 'El almacenamiento de fotos (R2) no está disponible. Inténtalo más tarde o avisa al responsable del backend',
+}
+
+export function zonePhotoErrorMessage(error: unknown): string {
+  const status = errorStatus(error)
+  if (status !== undefined && ZONE_PHOTO_STATUS_MESSAGES[status]) return ZONE_PHOTO_STATUS_MESSAGES[status]
+  return adminErrorMessage(error, 'No se pudo procesar la foto, intenta de nuevo')
+}

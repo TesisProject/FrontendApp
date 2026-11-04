@@ -5,6 +5,9 @@ import FilterPills from '../../../shared/presentation/components/FilterPills.vue
 import SectionCard from '../../../shared/presentation/components/SectionCard.vue'
 import StateMessage from '../../../shared/presentation/components/StateMessage.vue'
 import OccupancyMeter from './OccupancyMeter.vue'
+import ForecastComparisonChart, { type ForecastChartPoint } from './ForecastComparisonChart.vue'
+import ForecastLegend, { barColor } from './ForecastLegend.vue'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/app/shared/presentation/components/ui/tooltip'
 import { computed, nextTick, ref, watch } from 'vue'
 import { predictionApi } from '../../../predictions/infrastructure/prediction-api'
 import { toForecast, toForecastSnapshot, toModelMetrics } from '../../../predictions/infrastructure/prediction-assembler'
@@ -126,9 +129,26 @@ const actualByBucket = computed(() => {
 const metrics = ref<ZoneModelMetrics | null>(null)
 
 const modelBars = computed(() => [
-  { label: 'Entrenamiento', pct: metrics.value?.trainingPct ?? null },
-  { label: 'Confiabilidad', pct: metrics.value?.reliabilityPct ?? null },
+  {
+    label: 'Entrenamiento',
+    pct: metrics.value?.trainingPct ?? null,
+    help: `Cuántos días de lecturas reales tiene ya el modelo para aprender esta zona, sobre los ${HISTORY_DAYS} que necesita. 100 % = historial completo.`,
+  },
+  {
+    label: 'Confiabilidad',
+    pct: metrics.value?.reliabilityPct ?? null,
+    help: `Porcentaje de horas ya pasadas en que la predicción quedó a ±${HIT_TOLERANCE_PCT} pts de lo que vieron las cámaras. Se mide con lo que se predijo antes de que ocurriera.`,
+  },
 ])
+
+/** Nivel de confianza (HU-14): baja <50, media 50–74, alta ≥75, según la confiabilidad medida. */
+const confidence = computed(() => {
+  const pct = metrics.value?.reliabilityPct
+  if (pct === null || pct === undefined) return null
+  if (pct >= 75) return { label: 'Confianza alta', tone: 'bg-success-soft text-success', hint: 'Suele coincidir con lo que miden las cámaras.' }
+  if (pct >= 50) return { label: 'Confianza media', tone: 'bg-warning-soft text-warning', hint: 'Acierta a menudo, pero tómala como referencia.' }
+  return { label: 'Confianza baja', tone: 'bg-destructive-soft text-destructive', hint: 'Aún falla con frecuencia: úsala solo como orientación.' }
+})
 
 watch(
   () => props.zoneId,
@@ -146,6 +166,12 @@ watch(
 )
 
 const modelVersion = computed(() => forecasts.value[0]?.modelVersion ?? null)
+/** "Modelo v3" si la versión es numérica; "Modelo profile-anchor-v1" si ya es un nombre. */
+const modelVersionLabel = computed(() => {
+  const v = modelVersion.value?.trim()
+  if (!v) return null
+  return /^\d/.test(v) ? `Modelo v${v}` : `Modelo ${v}`
+})
 
 /** La franja ya terminó, así que puede compararse con lo que vieron las cámaras. */
 const isElapsed = (start: number) => isPast.value || (isToday.value && start + bucketMinutes.value <= nowMinute)
@@ -217,11 +243,22 @@ const evaluation = computed(() => {
   return { total: evaluated.length, hits: evaluated.filter(r => r.verdict === 'hit').length }
 })
 
-function barColor(pct: number): string {
-  if (pct >= 70) return '#38a169'
-  if (pct >= 30) return '#f2894a'
-  return '#e53e3e'
-}
+/** Mismas franjas que la tabla, para el mini gráfico de predicción vs. real. */
+const chartPoints = computed<ForecastChartPoint[]>(() =>
+  rows.value.map(r => ({ start: r.start, predicted: r.pct, actual: showComparison.value ? (r.actual?.pct ?? null) : null })),
+)
+
+/** Por qué el gráfico solo muestra la predicción (HU-15 E2). */
+const chartNotice = computed(() => {
+  if (!isPast.value && !isToday.value) return 'Fecha futura: aún no hay disponibilidad real con qué comparar.'
+  if (props.historyUnavailable) {
+    return 'El histórico de ocupación no está disponible: solo se muestra la curva predicha, sin comparación con lo real.'
+  }
+  if (chartPoints.value.some(p => p.actual !== null)) return null
+  return hasElapsedBuckets.value
+    ? 'No hay lecturas de las cámaras para este día: solo se muestra la curva predicha.'
+    : 'Todavía no termina ninguna franja de hoy: la curva real aparecerá a medida que pasen.'
+})
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
@@ -292,7 +329,15 @@ watch(
       <template v-else>Aún no hay predicciones para {{ isToday ? 'hoy' : 'este día' }} en esta zona.</template>
     </StateMessage>
 
-    <template v-else>
+    <TooltipProvider v-else :delay-duration="150">
+      <ForecastComparisonChart
+        class="mb-3"
+        :points="chartPoints"
+        :bucket-minutes="bucketMinutes"
+        :now-minute="isToday ? nowMinute : null"
+        :notice="chartNotice"
+      />
+
       <p v-if="evaluation.total > 0" class="mb-2.5 text-xs text-muted-foreground">
         Acertó en <strong class="text-heading">{{ evaluation.hits }} de {{ evaluation.total }}</strong> {{ bucketUnit }} con lectura real
         <span class="opacity-70">· margen ±{{ HIT_TOLERANCE_PCT }} pts</span>
@@ -301,6 +346,8 @@ watch(
         Sin lecturas de las cámaras para {{ isToday ? `las ${bucketUnit} ya transcurridas` : 'este día' }}:
         no se puede comprobar si la predicción acertó.
       </p>
+
+      <ForecastLegend class="mb-2.5" :tolerance="HIT_TOLERANCE_PCT" :show-comparison="showComparison" />
 
       <div role="table" :aria-label="`Predicción ${bucketSub}`">
         <div :class="[rowGrid, 'pt-0 pb-1.5 text-[10.5px] font-semibold tracking-[0.4px] text-muted-foreground uppercase']" role="row">
@@ -329,7 +376,29 @@ watch(
             :aria-current="isCurrentRow(row.start) ? 'time' : undefined"
           >
             <span class="text-[12.5px] font-semibold text-heading tabular-nums" role="cell">{{ row.label }}</span>
-            <span role="cell"><OccupancyMeter :percentage="row.pct" :color="barColor(row.pct)" class="h-2" /></span>
+            <span role="cell">
+              <Tooltip v-if="showComparison && row.actual">
+                <TooltipTrigger as-child>
+                  <span
+                    class="relative block cursor-help rounded-full py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    tabindex="0"
+                    :aria-label="`Real: ${row.actual.pct} % · Predicción: ${row.pct} %`"
+                  >
+                    <OccupancyMeter :percentage="row.pct" :color="barColor(row.pct)" class="h-2" />
+                    <!-- Marca de la disponibilidad real medida por las cámaras -->
+                    <span
+                      class="pointer-events-none absolute top-1/2 h-[14px] w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-heading ring-2 ring-card"
+                      :style="{ left: `${Math.min(100, Math.max(0, row.actual.pct))}%` }"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" class="tabular-nums">
+                  Real: {{ row.actual.pct }} % · Predicción: {{ row.pct }} %
+                </TooltipContent>
+              </Tooltip>
+              <OccupancyMeter v-else :percentage="row.pct" :color="barColor(row.pct)" class="h-2" />
+            </span>
             <span class="text-right text-xs font-bold text-heading tabular-nums" role="cell">{{ row.pct }}%</span>
   
             <!-- Escritorio: columnas de la fila. Móvil: segunda línea bajo la barra. -->
@@ -373,13 +442,30 @@ watch(
       </div>
 
       <div v-if="metrics" class="mt-3.5 grid gap-2.5 border-t pt-3 md:grid-cols-2 md:gap-6">
-        <div v-for="bar in modelBars" :key="bar.label" class="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 text-xs">
-          <span class="text-muted-foreground">{{ bar.label }}</span>
+        <div v-for="bar in modelBars" :key="bar.label" class="grid grid-cols-[auto_1fr_auto] items-center gap-x-2.5 gap-y-1 text-xs">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <button
+                type="button"
+                class="inline-flex cursor-help items-center gap-1 rounded text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                :aria-label="`${bar.label}: ${bar.help}`"
+              >
+                {{ bar.label }}
+                <Info class="size-3 opacity-70" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" class="max-w-[260px]">{{ bar.help }}</TooltipContent>
+          </Tooltip>
           <OccupancyMeter :percentage="bar.pct ?? 0" color="var(--heading)" />
           <strong v-if="bar.pct !== null" class="text-heading tabular-nums">{{ bar.pct }}%</strong>
           <span v-else class="text-[11.5px] text-muted-foreground" title="Aún no hay datos suficientes para calcularlo">
             Sin datos suficientes
           </span>
+          <!-- HU-14: nivel de confianza junto a Confiabilidad -->
+          <p v-if="bar.label === 'Confiabilidad' && confidence" class="col-span-3 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-muted-foreground">
+            <span class="rounded-full px-2 py-px font-semibold" :class="confidence.tone">{{ confidence.label }}</span>
+            <span>{{ confidence.hint }}</span>
+          </p>
         </div>
       </div>
 
@@ -387,9 +473,9 @@ watch(
         <Info class="mt-0.5 size-[13px] shrink-0" aria-hidden="true" />
         <span>
           Las predicciones son generadas por inteligencia artificial y pueden contener errores.
-          <template v-if="modelVersion">· Modelo v{{ modelVersion }}</template>
+          <template v-if="modelVersionLabel">· {{ modelVersionLabel }}</template>
         </span>
       </p>
-    </template>
+    </TooltipProvider>
   </SectionCard>
 </template>

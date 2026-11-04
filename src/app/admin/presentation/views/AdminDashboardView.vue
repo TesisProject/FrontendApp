@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, type Component } from 'vue'
+import { computed, onMounted, onUnmounted, type Component } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ChartNoAxesColumn, CircleUserRound, Users, Video } from '@lucide/vue'
 import { Button } from '@/app/shared/presentation/components/ui/button'
@@ -59,11 +59,27 @@ const loading = computed(() => zonesStore.loading || camerasStore.loading || use
 
 const cardBase = 'flex items-center gap-3.5 rounded-xl border bg-card p-5 text-left shadow-[var(--pv-shadow-sm)]'
 
-onMounted(() => Promise.all([
-  zonesStore.fetchZones(),
-  camerasStore.fetchCameras(),
-  usersStore.fetchUsers(),
-]))
+/** HU-08/20: la ocupación del panel se refresca al mismo ritmo que capturan las cámaras (30 s). */
+const REFRESH_MS = 30_000
+
+let refreshTimer: ReturnType<typeof setInterval> | undefined
+let disposed = false
+
+onMounted(async () => {
+  await Promise.all([
+    zonesStore.fetchZones(),
+    camerasStore.fetchCameras(),
+    usersStore.fetchUsers(),
+  ])
+  if (disposed) return
+  // Solo la ocupación cambia sola; usuarios y cámaras se recargan al entrar en la vista.
+  refreshTimer = setInterval(() => zonesStore.fetchZones({ silent: true }), REFRESH_MS)
+})
+
+onUnmounted(() => {
+  disposed = true
+  clearInterval(refreshTimer)
+})
 </script>
 
 <template>

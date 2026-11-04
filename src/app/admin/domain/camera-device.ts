@@ -34,7 +34,7 @@ export const CAPTURE_LIMITS = {
 } as const
 
 /** Lo que pone el backend si el alta no trae `capture`. */
-export const CAPTURE_DEFAULTS: CaptureSettings = { intervalSec: 300, framesize: 'SVGA', jpegQuality: 12 }
+export const CAPTURE_DEFAULTS: CaptureSettings = { intervalSec: 30, framesize: 'SVGA', jpegQuality: 12 }
 
 export function sameCapture(a: CaptureSettings, b: CaptureSettings): boolean {
   return a.intervalSec === b.intervalSec && a.framesize === b.framesize && a.jpegQuality === b.jpegQuality

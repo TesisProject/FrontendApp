@@ -1,4 +1,5 @@
-import type { AdminZone } from '../domain/model/admin-zone.model'
+import type { AdminZone, AdminZoneForm } from '../domain/model/admin-zone.model'
+import { toOpeningHours, toZonePhoto } from '../../parking/infrastructure/zone-assembler'
 import type { AdminCamera, AdminCameraBattery } from '../domain/model/admin-camera.model'
 import type { AdminUser, AdminRole } from '../domain/model/admin-user.model'
 import type { AdminNode } from '../domain/model/admin-node.model'
@@ -8,7 +9,7 @@ import {
   type CaptureSettings, type FrameSize,
 } from '../domain/camera-device'
 import type {
-  AdminZoneResponse, AdminCameraResponse, AdminUserResponse,
+  AdminZoneResponse, AdminZoneRequest, AdminCameraResponse, AdminUserResponse,
   AdminNodeResponse, AdminApiKeyResponse, CaptureSettingsDto, CameraBatteryDto,
   FirmwareReleaseResponse, CameraFirmwareResponse,
 } from './admin-response'
@@ -26,11 +27,30 @@ export function toAdminZone(r: AdminZoneResponse, availability?: ZoneAvailabilit
     latitude:            r.latitude,
     longitude:           r.longitude,
     totalSpaces:         r.totalSpaces,
+    totalCapacity:       r.totalCapacity ?? r.totalSpaces,
     occupiedCount:       availability?.occupied ?? 0,
     freeCount:           availability?.available ?? r.totalSpaces,
     occupancyPercentage: availability?.occupancyPercentage ?? 0,
     classification:      availability?.classification ?? 'LIBRE',
+    openingHours:        toOpeningHours(r.openingHours),
+    googlePlaceId:       r.googlePlaceId?.trim() || null,
+    photos:              (r.photos ?? []).map(toZonePhoto),
     active:              r.active,
+  }
+}
+
+export function toAdminZoneRequest(f: AdminZoneForm): AdminZoneRequest {
+  return {
+    name:          f.name.trim(),
+    street:        f.street.trim(),
+    district:      f.district.trim(),
+    city:          f.city.trim(),
+    latitude:      f.latitude,
+    longitude:     f.longitude,
+    totalSpaces:   f.totalSpaces,
+    totalCapacity: f.totalCapacity,
+    openingHours:  f.openingHours.map(e => ({ dayOfWeek: e.dayOfWeek, holiday: e.holiday, opensAt: e.opensAt, closesAt: e.closesAt })),
+    googlePlaceId: f.googlePlaceId?.trim() || null,
   }
 }
 
