@@ -1,16 +1,20 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted, toRef } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   BrainCircuit, ScrollText,
   CircleUserRound, Cpu, KeyRound, LayoutGrid, Server, User, Users, Video,
 } from '@lucide/vue'
-import { ChartColumnBig, Flame } from '@lucide/vue'
+import { Bell, ChartColumnBig, Flame } from '@lucide/vue'
 import { useAuthStore } from '../../../iam/application/auth.store'
+import { useCameraAlertsStore } from '../../../notifications/application/camera-alerts.store'
 import AppShell from './AppShell.vue'
 import type { NavItem } from './nav-item'
 
 const router    = useRouter()
 const authStore = useAuthStore()
+// Campana de alertas de cámara (HU-17): avisos sin leer del usuario, refrescados cada 30 s.
+const alertsStore = useCameraAlertsStore()
 
 const nav: NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutGrid },
@@ -24,13 +28,18 @@ const nav: NavItem[] = [
   { to: '/admin/demand',     label: 'Demanda',      icon: Flame },
   { to: '/admin/audit',     label: 'Auditoría', icon: ScrollText },
   { to: '/admin/model',     label: 'Modelo IA', icon: BrainCircuit },
+  { to: '/admin/alerts',    label: 'Alertas',   icon: Bell, badge: toRef(alertsStore, 'unreadCount') },
 ]
 
 const footerNav: NavItem[] = [
   { to: '/admin/profile', label: 'Mi perfil', icon: User },
 ]
 
+onMounted(() => alertsStore.startInboxPolling())
+onUnmounted(() => alertsStore.stopInboxPolling())
+
 function handleLogout() {
+  alertsStore.stopInboxPolling()
   authStore.logout()
   router.push('/admin')
 }

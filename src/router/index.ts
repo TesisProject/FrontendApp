@@ -56,6 +56,7 @@ const router = createRouter({
         { path: 'demand',     component: () => import('../app/analytics/presentation/views/AdminDemandView.vue') },
         { path: 'audit',     component: () => import('../app/admin/presentation/views/AdminAuditView.vue') },
         { path: 'model',     component: () => import('../app/admin/presentation/views/AdminModelView.vue') },
+        { path: 'alerts',    component: () => import('../app/notifications/presentation/views/AdminAlertsView.vue') },
       ],
     },
 

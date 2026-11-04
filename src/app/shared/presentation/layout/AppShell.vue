@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NavItem } from './nav-item'
+import { unref } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { LogOut } from '@lucide/vue'
 import {
@@ -32,6 +33,10 @@ const emit = defineEmits<{ logout: [] }>()
 
 const route = useRoute()
 
+function badgeOf(item: NavItem): number {
+  return unref(item.badge) ?? 0
+}
+
 function isActive(item: NavItem) {
   return item.exact ? route.path === item.to : route.path.startsWith(item.to)
 }
@@ -54,9 +59,18 @@ function isActive(item: NavItem) {
           <SidebarMenu class="gap-1">
             <SidebarMenuItem v-for="item in nav" :key="item.to">
               <SidebarMenuButton as-child :is-active="isActive(item)" :tooltip="item.label">
-                <RouterLink :to="item.to" :aria-current="isActive(item) ? 'page' : undefined">
+                <RouterLink :to="item.to" :aria-current="isActive(item) ? 'page' : undefined" class="relative">
                   <component :is="item.icon" />
                   <span>{{ item.label }}</span>
+                  <span
+                    v-if="badgeOf(item) > 0"
+                    class="ml-auto min-w-5 rounded-full bg-amber px-1.5 text-center text-[11px] leading-5 font-semibold text-white
+                           group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:-top-1 group-data-[collapsible=icon]:-right-1
+                           group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:min-w-4 group-data-[collapsible=icon]:px-1
+                           group-data-[collapsible=icon]:text-[10px] group-data-[collapsible=icon]:leading-4"
+                    :aria-label="`${badgeOf(item)} sin leer`"
+                    data-testid="nav-badge"
+                  >{{ badgeOf(item) > 99 ? '99+' : badgeOf(item) }}</span>
                 </RouterLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
