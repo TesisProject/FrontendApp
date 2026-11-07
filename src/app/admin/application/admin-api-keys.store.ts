@@ -18,8 +18,9 @@ export const useAdminApiKeysStore = defineStore('admin-api-keys', () => {
   /** Metadata de la key recién creada (para adaptar las instrucciones al rol). */
   const createdMetadata = ref<AdminApiKey | null>(null)
 
-  async function fetchApiKeys() {
-    loading.value = true
+  /** `silent` recarga sin pasar la tabla a «Cargando» (tras crear una key). */
+  async function fetchApiKeys(options?: { silent?: boolean }) {
+    if (!options?.silent) loading.value = true
     error.value   = null
     try {
       const res = await adminApi.getApiKeys()
@@ -44,9 +45,11 @@ export const useAdminApiKeysStore = defineStore('admin-api-keys', () => {
       }
       const res = await adminApi.createApiKey(body)
       const metadata = toAdminApiKey(res.metadata)
-      apiKeys.value.push(metadata)
+      apiKeys.value = [...apiKeys.value, metadata]
       createdKey.value      = res.apiKey
       createdMetadata.value = metadata
+      // La lista se alinea con la del servidor (orden y estado) sin esperar a recargar la página.
+      void fetchApiKeys({ silent: true })
       return true
     } catch (e) {
       actionError.value = adminErrorMessage(e)
@@ -60,7 +63,8 @@ export const useAdminApiKeysStore = defineStore('admin-api-keys', () => {
     actionError.value = null
     try {
       await adminApi.revokeApiKey(id)
-      apiKeys.value = apiKeys.value.filter(k => k.id !== id)
+      // El backend conserva las keys revocadas (y las lista): aquí también, marcada como inactiva.
+      apiKeys.value = apiKeys.value.map(k => (k.id === id ? { ...k, active: false } : k))
       return true
     } catch (e) {
       actionError.value = adminErrorMessage(e, 'No se pudo revocar la API key')

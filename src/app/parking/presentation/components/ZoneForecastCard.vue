@@ -99,10 +99,19 @@ const headerDate = computed(() => {
   return isToday.value ? `Hoy, ${text}` : text
 })
 
+const SHORT_DAY = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' })
+const formatIsoDay = (iso: string) => SHORT_DAY.format(new Date(`${iso}T12:00:00`))
+/** HU-11 E3: si se pide un día fuera del horizonte se informa el rango válido. */
+const rangeNotice = ref<string | null>(null)
+
 function onDateChange(e: Event) {
   const value = (e.target as HTMLInputElement).value
+  const inRange = value >= earliestDate && value <= maxDate
   // Un campo vacío o fuera de rango vuelve a hoy en vez de dejar el card sin día.
-  selectedDate.value = value >= earliestDate && value <= maxDate ? value : todayIso
+  selectedDate.value = inRange ? value : todayIso
+  rangeNotice.value = inRange || !value
+    ? null
+    : `Solo hay predicciones del ${formatIsoDay(earliestDate)} al ${formatIsoDay(maxDate)}. Se muestra hoy.`
 }
 
 interface ActualReading {
@@ -332,6 +341,10 @@ watch(
         />
       </div>
     </header>
+
+    <p v-if="rangeNotice" role="status" class="mx-5 mb-3 rounded-lg bg-warning-soft px-3 py-2 text-body text-foreground">
+      {{ rangeNotice }}
+    </p>
 
     <div v-if="loading || error || rows.length === 0" class="px-5 pb-5">
       <StateMessage v-if="loading" compact>Cargando predicciones...</StateMessage>

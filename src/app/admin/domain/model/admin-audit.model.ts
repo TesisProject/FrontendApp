@@ -1,10 +1,12 @@
 /** Acciones del log de auditoría (`AuditAction` del backend). */
 export const AUDIT_ACTIONS = [
   'ZONE_CREATED', 'ZONE_UPDATED', 'ZONE_DELETED',
-  'CAMERA_REGISTERED', 'CAMERA_UPDATED', 'CAMERA_ACTIVATED', 'CAMERA_DEACTIVATED',
+  'SPACE_CREATED', 'SPACE_DELETED',
+  'CAMERA_REGISTERED', 'CAMERA_UPDATED', 'CAMERA_ACTIVATED', 'CAMERA_DEACTIVATED', 'CAMERA_DELETED',
+  'CAMERA_DEVICE_CONFIG_UPDATED', 'CAMERA_FIRMWARE_ASSIGNED', 'CAMERA_ENROLLMENT_RESET',
   'USER_ROLE_CHANGED', 'USER_ACTIVATED', 'USER_DEACTIVATED',
   'MODEL_RETRAIN_REQUESTED', 'MODEL_RETRAIN_FAILED',
-  'CAMERA_ALERT_OPENED', 'CAMERA_ALERT_RESOLVED',
+  'CAMERA_ALERT_OPENED', 'CAMERA_ALERT_ACKNOWLEDGED', 'CAMERA_ALERT_RESOLVED',
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
@@ -13,16 +15,23 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   ZONE_CREATED:            'Zona creada',
   ZONE_UPDATED:            'Zona actualizada',
   ZONE_DELETED:            'Zona eliminada',
+  SPACE_CREATED:           'Espacio registrado',
+  SPACE_DELETED:           'Espacio eliminado',
   CAMERA_REGISTERED:       'Cámara registrada',
   CAMERA_UPDATED:          'Cámara actualizada',
   CAMERA_ACTIVATED:        'Cámara activada',
   CAMERA_DEACTIVATED:      'Cámara desactivada',
+  CAMERA_DELETED:          'Cámara eliminada',
+  CAMERA_DEVICE_CONFIG_UPDATED: 'Configuración de cámara guardada',
+  CAMERA_FIRMWARE_ASSIGNED: 'Firmware asignado a cámara',
+  CAMERA_ENROLLMENT_RESET: 'Alta de cámara reiniciada',
   USER_ROLE_CHANGED:       'Rol de usuario cambiado',
   USER_ACTIVATED:          'Usuario activado',
   USER_DEACTIVATED:        'Usuario desactivado',
   MODEL_RETRAIN_REQUESTED: 'Reentrenamiento solicitado',
   MODEL_RETRAIN_FAILED:    'Reentrenamiento fallido',
   CAMERA_ALERT_OPENED:     'Alerta de cámara abierta',
+  CAMERA_ALERT_ACKNOWLEDGED: 'Alerta de cámara reconocida',
   CAMERA_ALERT_RESOLVED:   'Alerta de cámara resuelta',
 }
 

@@ -50,6 +50,10 @@ const MESSAGES: Record<string, string> = {
   CAMERA_ZONE_REQUIRED:              'La cámara no tiene zona (se eliminó la suya): asígnale una antes de activarla',
 
   // Usuarios (HU-24)
+  SELF_ACCOUNT_CHANGE_NOT_ALLOWED:   'No puedes cambiar tu propio rol ni desactivar tu propia cuenta: pídeselo a otro administrador',
+  API_KEY_EXPIRATION_IN_PAST:        'La fecha de expiración debe ser futura (o déjala vacía para que no expire)',
+  SPACE_NUMBER_ALREADY_EXISTS:       'Ya existe un espacio con ese número en esta zona',
+  ZONE_SPACE_LIMIT_REACHED:          'La zona ya tiene todos los espacios que declara: aumenta su total de espacios para agregar más',
   LAST_ACTIVE_ADMIN:                 'Es el último administrador activo: activa o asigna otro administrador antes de desactivarlo o cambiarle el rol',
   INVALID_ROLE:                      'Ese rol no existe',
   USER_NOT_FOUND:                    'El usuario ya no existe. Recarga la página',

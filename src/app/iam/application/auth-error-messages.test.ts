@@ -15,6 +15,11 @@ describe('auth-error-messages', () => {
     expect(isOtpExpired({ status: 400, error: 'INVALID_OTP' })).toBe(false)
   })
 
+  it('credenciales inválidas: mensaje en español sin decir qué campo falló (HU-01 E2)', () => {
+    const msg = authErrorMessage({ status: 401, error: 'INVALID_CREDENTIALS', message: 'Invalid username or password' }, 'x')
+    expect(msg).toBe('Correo o contraseña incorrectos.')
+  })
+
   it('429 sin código conocido', () => {
     expect(authErrorMessage({ status: 429 }, 'x')).toContain('Demasiados intentos')
   })

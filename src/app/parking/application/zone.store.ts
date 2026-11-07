@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useAsyncState } from '../../shared/helpers/async-state'
+import { errorStatus } from '../../shared/infrastructure/http-client'
 import { ZoneApi } from '../infrastructure/zone-api'
 import { SpaceApi } from '../infrastructure/space-api'
 import { AvailabilityApi, type HistoryBucketQuery } from '../infrastructure/availability-api'
@@ -123,7 +124,10 @@ export const useZoneStore = defineStore('zone', () => {
       ])
       zoneState.setData(toZone(response, availability))
     } catch (err: any) {
-      zoneState.setError(err?.message ?? 'Error al cargar la zona')
+      // Un id inexistente o de una zona dada de baja no debe mostrar el texto del backend (en inglés).
+      zoneState.setError(errorStatus(err) === 404
+        ? 'Esta zona no existe o ya no está disponible.'
+        : 'No se pudo cargar la zona. Inténtalo de nuevo.')
     }
   }
 

@@ -10,6 +10,7 @@ import { Input } from '@/app/shared/presentation/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/app/shared/presentation/components/ui/native-select'
 import { TableCell, TableRow } from '@/app/shared/presentation/components/ui/table'
 import AdminPage from '../components/AdminPage.vue'
+import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
 import AdminField from '../components/AdminField.vue'
 import AdminStateBox from '../components/AdminStateBox.vue'
 import AdminTableCard from '../components/AdminTableCard.vue'
@@ -32,11 +33,21 @@ function zoneName(zoneId: number | null) {
   return zonesStore.zones.find(z => z.id === zoneId)?.name ?? `Zona ${zoneId} (eliminada)`
 }
 
+const rangeError = ref<string | null>(null)
+
 function applyFilters() {
+  // Las fechas ISO (YYYY-MM-DD) se comparan bien como texto.
+  const { from, to } = filters.value
+  if (from && to && from > to) {
+    rangeError.value = 'La fecha «Desde» no puede ser posterior a «Hasta»'
+    return
+  }
+  rangeError.value = null
   void store.search(filters.value)
 }
 
 function clearFilters() {
+  rangeError.value = null
   filters.value = emptyAuditFilters()
   void store.search(filters.value)
 }
@@ -61,7 +72,7 @@ onMounted(() => {
       </Button>
     </template>
 
-    <form class="mb-4 grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-5 sm:items-end" @submit.prevent="applyFilters">
+    <form class="mb-4 grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-5 sm:items-end" novalidate @submit.prevent="applyFilters">
       <AdminField v-slot="{ id }" label="Desde">
         <Input :id="id" v-model="filters.from" type="date" />
       </AdminField>
@@ -84,6 +95,7 @@ onMounted(() => {
         <Button type="submit" :disabled="store.loading">Filtrar</Button>
         <Button type="button" variant="outline" :disabled="store.loading" @click="clearFilters">Limpiar</Button>
       </div>
+      <FormAlert :message="rangeError" class="sm:col-span-5" />
     </form>
 
     <AdminStateBox v-if="store.error" tone="error">{{ store.error }}</AdminStateBox>

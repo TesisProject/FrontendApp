@@ -76,7 +76,11 @@ const waitingLocation = computed(() => !position.value && ['idle', 'locating'].i
       <StateMessage v-if="store.loading">Buscando las mejores zonas...</StateMessage>
       <StateMessage v-else-if="store.error" tone="error">{{ store.error }}</StateMessage>
       <StateMessage v-else-if="store.recommendations.length === 0" tone="empty" :icon="Sparkles">
-        No hay sugerencias disponibles por el momento. Vuelve a intentarlo en unos minutos.
+        No hay sugerencias disponibles por el momento: no encontramos zonas con disponibilidad estimada a
+        menos de {{ RECOMMENDATION_RADIUS_KM }} km de tu ubicación.
+        <template #action>
+          <Button size="sm" variant="outline" @click="router.push('/dashboard/zones')">Ver todas las zonas</Button>
+        </template>
       </StateMessage>
       <template v-else>
         <div class="flex flex-col gap-3" aria-live="polite">

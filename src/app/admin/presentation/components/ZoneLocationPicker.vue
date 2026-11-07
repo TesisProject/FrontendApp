@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { loadGoogleMaps } from '../../../shared/infrastructure/maps-loader'
+import { roundCoordinate } from '../../../parking/domain/geo'
 
 /**
  * ZoneLocationPicker — mapa con pin ajustable para fijar la ubicación exacta
@@ -29,7 +30,6 @@ const hasLocation = computed(() =>
   !!latitude.value && !!longitude.value,
 )
 
-const round6 = (n: number) => Math.round(n * 1e6) / 1e6
 
 function toLiteral(
   p: google.maps.LatLng | google.maps.LatLngLiteral | google.maps.LatLngAltitude | null | undefined,
@@ -55,8 +55,8 @@ function createPinElement(): HTMLElement {
 }
 
 function setCoords(pos: google.maps.LatLngLiteral) {
-  latitude.value  = round6(pos.lat)
-  longitude.value = round6(pos.lng)
+  latitude.value  = roundCoordinate(pos.lat)
+  longitude.value = roundCoordinate(pos.lng)
 }
 
 function placeMarker(pos: google.maps.LatLngLiteral) {

@@ -66,9 +66,28 @@ function openCreate() {
 
 function closeModal() { showModal.value = false }
 
+/** Valor mínimo del selector de expiración: ahora, en hora local («YYYY-MM-DDTHH:mm»). */
+const minExpiry = computed(() => {
+  const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
+  return d.toISOString().slice(0, 16)
+})
+
+function isExpired(k: AdminApiKey) {
+  return !!k.expiresAt && new Date(k.expiresAt).getTime() <= Date.now()
+}
+
+function statusLabel(k: AdminApiKey) {
+  if (k.active && !isExpired(k)) return 'Activa'
+  return isExpired(k) ? 'Expirada' : 'Revocada'
+}
+
 async function handleSubmit() {
   if (!form.value.name.trim()) {
     formError.value = 'El nombre de la key es obligatorio'
+    return
+  }
+  if (form.value.expiresAt && new Date(form.value.expiresAt).getTime() <= Date.now()) {
+    formError.value = 'La fecha de expiración debe ser futura (o déjala vacía para que no expire)'
     return
   }
   if (needsNode.value && form.value.nodeId === '') {
@@ -139,12 +158,13 @@ onMounted(() => Promise.all([store.fetchApiKeys(), nodesStore.fetchNodes()]))
         <TableCell class="text-body text-muted-foreground">{{ formatDate(k.lastUsedAt) }}</TableCell>
         <TableCell class="text-body text-muted-foreground">{{ formatDate(k.expiresAt) }}</TableCell>
         <TableCell>
-          <Badge :variant="k.active ? 'success' : 'neutral'" size="status">
-            {{ k.active ? 'Activa' : 'Revocada' }}
+          <Badge :variant="statusLabel(k) === 'Activa' ? 'success' : 'neutral'" size="status">
+            {{ statusLabel(k) }}
           </Badge>
         </TableCell>
         <TableCell>
-          <Button size="sm" variant="outline-destructive" @click="openRevoke(k.id)">Revocar</Button>
+          <Button v-if="k.active" size="sm" variant="outline-destructive" @click="openRevoke(k.id)">Revocar</Button>
+          <span v-else class="text-caption text-muted-foreground">—</span>
         </TableCell>
       </TableRow>
     </AdminTableCard>
@@ -168,7 +188,7 @@ onMounted(() => Promise.all([store.fetchApiKeys(), nodesStore.fetchNodes()]))
           <DialogTitle>Nueva API key</DialogTitle>
         </DialogHeader>
 
-        <form class="grid gap-3.5" @submit.prevent="handleSubmit">
+        <form class="grid gap-3.5" novalidate @submit.prevent="handleSubmit">
           <AdminField v-slot="{ id }" label="Nombre" required>
             <Input :id="id" v-model="form.name" placeholder="fog-001" />
           </AdminField>
@@ -197,7 +217,7 @@ onMounted(() => Promise.all([store.fetchApiKeys(), nodesStore.fetchNodes()]))
           </p>
 
           <AdminField v-slot="{ id }" label="Expiración" optional>
-            <Input :id="id" v-model="form.expiresAt" type="datetime-local" />
+            <Input :id="id" v-model="form.expiresAt" type="datetime-local" :min="minExpiry" />
           </AdminField>
 
           <FormAlert :message="formError" />

@@ -116,6 +116,7 @@ function openDetail(id: number) {
 // ── Baja ────────────────────────────────────────────────────────────────
 const confirmId   = ref<number | null>(null)
 const deleteError = ref<string | null>(null)
+const confirmCamera = computed(() => store.cameras.find(c => c.id === confirmId.value) ?? null)
 
 function openDelete(id: number) {
   deleteError.value = null
@@ -123,9 +124,10 @@ function openDelete(id: number) {
 }
 
 async function handleDelete(id: number) {
+  const code = confirmCamera.value?.code
   if (await store.deleteCamera(id)) {
     confirmId.value = null
-    toast.success('Cámara eliminada')
+    toast.success(code ? `Cámara ${code} eliminada` : 'Cámara eliminada')
   } else {
     deleteError.value = store.actionError
   }
@@ -203,7 +205,11 @@ onMounted(async () => {
       @cancel="confirmId = null"
       @confirm="handleDelete(confirmId!)"
     >
-      ¿Eliminar esta cámara?
+      <template v-if="confirmCamera">
+        ¿Eliminar la cámara {{ confirmCamera.code }}<template v-if="confirmCamera.name"> ({{ confirmCamera.name }})</template>?
+        Dejará de monitorear sus espacios y la acción no se puede deshacer.
+      </template>
+      <template v-else>¿Eliminar esta cámara?</template>
     </ConfirmDialog>
 
     <CameraDetailSheet v-model:open="showDetail" :camera-id="detailId" />

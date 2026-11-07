@@ -124,7 +124,7 @@ function exportPdf() {
       <header class="hidden print:block">
         <h1 class="font-signage text-2xl font-semibold text-navy">ParkVision · Picos de demanda</h1>
         <p class="text-body">{{ filterSummary }}</p>
-        <p class="text-body">Generado el {{ printedAt }}. Pico: ocupación promedio ≥ {{ peaks.thresholdPct }} % o percentil 90 ({{ formatPct(peaks.percentile90) }}).</p>
+        <p class="text-body">Generado el {{ printedAt }} · Pico: ocupación promedio ≥ {{ peaks.thresholdPct }} % o percentil 90 ({{ formatPct(peaks.percentile90) }}).</p>
       </header>
 
       <p class="text-body text-muted-foreground print:hidden">{{ filterSummary }}</p>

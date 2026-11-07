@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAdminUsersStore } from '../../application/admin-users.store'
+import { useAuthStore } from '../../../iam/application/auth.store'
 import { adminApi } from '../../infrastructure/admin-api'
 import type { AdminRole } from '../../domain/model/admin-user.model'
 import { toast } from 'vue-sonner'
@@ -19,6 +20,10 @@ import AdminField from '../components/AdminField.vue'
 import FilterPills from '../../../shared/presentation/components/FilterPills.vue'
 
 const store  = useAdminUsersStore()
+const authStore = useAuthStore()
+/** La propia cuenta no se degrada ni se desactiva desde aquí: el admin podría quedarse sin acceso. */
+const isSelf = (id: number) => id === authStore.user?.id
+const SELF_HINT = 'No puedes cambiar el rol ni desactivar tu propia cuenta'
 const search = ref('')
 const activeFilter = ref<AdminRole | 'TODOS'>('TODOS')
 
@@ -200,6 +205,8 @@ onMounted(() => Promise.all([load(), store.refreshActiveAdminCount()]))
             wrapper-class="w-fit"
             class="h-8 w-auto py-1 pr-8 pl-2.5 text-caption font-semibold"
             :class="roleClass[u.role]"
+            :disabled="isSelf(u.id)"
+            :title="isSelf(u.id) ? SELF_HINT : undefined"
             @update:model-value="requestRoleChange(u.id, u.role, $event as AdminRole)"
           >
             <NativeSelectOption v-for="r in roles" :key="r" :value="r">{{ roleLabel[r] }}</NativeSelectOption>
@@ -208,9 +215,11 @@ onMounted(() => Promise.all([load(), store.refreshActiveAdminCount()]))
         <TableCell>
           <button
             type="button"
-            class="rounded-full px-3 py-1 text-caption font-bold transition-opacity hover:opacity-75 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+            class="rounded-full px-3 py-1 text-caption font-bold transition-opacity hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
             :class="u.active ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
             :aria-label="`${u.active ? 'Desactivar' : 'Activar'} a ${u.email}`"
+            :disabled="isSelf(u.id)"
+            :title="isSelf(u.id) ? SELF_HINT : undefined"
             @click="requestStatusToggle(u.id, u.active)"
           >
             {{ u.active ? 'Activo' : 'Inactivo' }}

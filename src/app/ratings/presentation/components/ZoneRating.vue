@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/app/shared/presentation/components/ui/
 import { useAuthStore }    from '../../../iam/application/auth.store'
 import { useRatingsStore } from '../../application/ratings.store'
 import FormAlert from '../../../shared/presentation/components/FormAlert.vue'
+import ConfirmDialog from '../../../shared/presentation/components/ConfirmDialog.vue'
 import { formatShortDate } from '../../../shared/helpers/date'
 import StarRating from './StarRating.vue'
 
@@ -61,9 +62,16 @@ async function save() {
   }
 }
 
+// Eliminar la reseña pide confirmación, como quitar un favorito: no se puede deshacer.
+const confirmingDelete = ref(false)
+
 async function deleteRating() {
   const ok = await ratingsStore.remove(userId.value, props.zoneId)
-  if (ok) await ratingsStore.fetchByZone(props.zoneId)
+  if (ok) {
+    confirmingDelete.value = false
+    toast.success('Calificación eliminada')
+    await ratingsStore.fetchByZone(props.zoneId)
+  }
 }
 
 onMounted(async () => {
@@ -132,7 +140,7 @@ onMounted(async () => {
           <Button size="sm" variant="outline-primary" class="border-emphasis text-emphasis hover:bg-emphasis hover:text-emphasis-foreground" @click="startEdit">
             Editar
           </Button>
-          <Button size="sm" variant="outline-destructive" :disabled="ratingsStore.saving" @click="deleteRating">Eliminar</Button>
+          <Button size="sm" variant="outline-destructive" :disabled="ratingsStore.saving" @click="confirmingDelete = true">Eliminar</Button>
         </div>
       </div>
 
@@ -163,5 +171,16 @@ onMounted(async () => {
         </div>
       </form>
     </div>
+    <ConfirmDialog
+      :open="confirmingDelete"
+      title="Eliminar calificación"
+      confirm-label="Eliminar"
+      destructive
+      :loading="ratingsStore.saving"
+      @cancel="confirmingDelete = false"
+      @confirm="deleteRating"
+    >
+      ¿Eliminar tu calificación de esta zona? El promedio se recalculará sin ella.
+    </ConfirmDialog>
   </section>
 </template>

@@ -13,12 +13,13 @@ import { fetchGooglePlacePhotos, toGooglePlacePhotos } from '../../../parking/in
 import type { GooglePlacePhoto } from '../../../parking/domain/model/zone-photo.model'
 import { formatOpeningHours, openingHoursError } from '../../../parking/domain/opening-hours'
 import { formatZoneAddress } from '../../../parking/domain/zone-address'
+import { roundCoordinate } from '../../../parking/domain/geo'
 import { loadGoogleMaps } from '../../../shared/infrastructure/maps-loader'
 import type {
   AdminZone,
   AdminZoneForm,
 } from '../../domain/model/admin-zone.model'
-import { CLASSIFICATION_COLOR } from '../../../parking/domain/zone-classification'
+import { CLASSIFICATION_COLOR, classificationLabel } from '../../../parking/domain/zone-classification'
 import type { ZoneClassification } from '../../../parking/domain/model/zone.model'
 import { Plus, Search, Trash2 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
@@ -42,10 +43,13 @@ const spacesStore = useAdminSpacesStore()
 // Spaces modal
 const showSpaces = ref(false)
 const spaceZoneName = ref('')
+const spaceZoneLimit = ref<number | undefined>(undefined)
 const newSpaceNum = ref('')
+const spaceToDelete = ref<{ id: number; number: string } | null>(null)
 
 async function openSpaces(zone: AdminZone) {
   spaceZoneName.value = zone.name
+  spaceZoneLimit.value = zone.totalSpaces
   newSpaceNum.value = ''
   showSpaces.value = true
   await spacesStore.fetchByZone(zone.id)
@@ -57,8 +61,17 @@ function closeSpaces() {
 }
 
 async function submitSpace() {
-  const ok = await spacesStore.addSpace(newSpaceNum.value)
+  const ok = await spacesStore.addSpace(newSpaceNum.value, spaceZoneLimit.value)
   if (ok) newSpaceNum.value = ''
+}
+
+async function confirmRemoveSpace() {
+  if (!spaceToDelete.value) return
+  const { id, number } = spaceToDelete.value
+  if (await spacesStore.removeSpace(id)) {
+    toast.success(`Espacio ${number} eliminado`)
+    spaceToDelete.value = null
+  }
 }
 
 // ROI editor (por zona: todos los espacios sobre un mismo lienzo)
@@ -219,15 +232,20 @@ async function selectAddr(item: {
   }
 
   if (place.location) {
-    form.value.latitude = place.location.lat()
-    form.value.longitude = place.location.lng()
+    form.value.latitude = roundCoordinate(place.location.lat())
+    form.value.longitude = roundCoordinate(place.location.lng())
   }
 
   const components: { longText: string; types: string[] }[] =
     place.addressComponents ?? []
-  const get = (...types: string[]) =>
-    components.find((c) => types.some((t) => c.types.includes(t)))?.longText ??
-    ''
+  // Los tipos van en orden de prioridad: gana el primer tipo presente, no el primer componente.
+  const get = (...types: string[]) => {
+    for (const type of types) {
+      const hit = components.find((c) => c.types.includes(type))
+      if (hit) return hit.longText
+    }
+    return ''
+  }
 
   const streetNumber = get('street_number')
   const route = get('route')
@@ -236,12 +254,10 @@ async function selectAddr(item: {
       ? `${route} ${streetNumber}`
       : route
     : item.mainText
-  form.value.district = get('sublocality_level_1', 'sublocality', 'locality')
-  form.value.city = get(
-    'administrative_area_level_2',
-    'administrative_area_level_1',
-    'locality',
-  )
+  // En el Perú Google entrega el distrito como `locality` (Miraflores, La Punta) y la provincia como
+  // `administrative_area_level_2` (Lima, Callao); `sublocality` es la urbanización.
+  form.value.district = get('locality', 'sublocality_level_1', 'sublocality')
+  form.value.city = get('administrative_area_level_2', 'administrative_area_level_1', 'locality')
 
   addrQuery.value = `${item.mainText}${item.secondaryText ? ', ' + item.secondaryText : ''}`
 }
@@ -294,6 +310,12 @@ function closeModal() {
   showModal.value = false
 }
 
+/** Rectángulo que contiene al Perú (con un pequeño margen). */
+const PERU_BOUNDS = { minLat: -18.6, maxLat: 0.2, minLng: -81.5, maxLng: -68.5 }
+function insidePeru(lat: number, lng: number): boolean {
+  return lat >= PERU_BOUNDS.minLat && lat <= PERU_BOUNDS.maxLat && lng >= PERU_BOUNDS.minLng && lng <= PERU_BOUNDS.maxLng
+}
+
 /** Revisa todos los campos y deja el error de cada uno en `fieldErrors`; devuelve el primero. */
 function validate(): string | null {
   const f = form.value
@@ -308,6 +330,9 @@ function validate(): string | null {
   } else {
     if (Math.abs(f.latitude) > 90) errors.latitude = ZONE_FIELD_LABELS.latitude!
     if (Math.abs(f.longitude) > 180) errors.longitude = ZONE_FIELD_LABELS.longitude!
+    // Las zonas son en el Perú: un pin fuera del país suele ser un error de tipeo en las coordenadas.
+    if (!errors.latitude && !errors.longitude && !insidePeru(f.latitude, f.longitude))
+      errors.latitude = 'La ubicación queda fuera del Perú: revisa la latitud y la longitud'
   }
   if (!f.totalSpaces || f.totalSpaces < 1 || !Number.isInteger(f.totalSpaces))
     errors.totalSpaces = 'El total de espacios debe ser un entero mayor o igual a 1'
@@ -410,7 +435,7 @@ onMounted(() => store.fetchZones())
 </script>
 
 <template>
-  <AdminPage title="Zonas" :sub="`${store.zones.length} zonas registradas`">
+  <AdminPage title="Zonas" :sub="`${store.zones.length} ${store.zones.length === 1 ? 'zona registrada' : 'zonas registradas'}`">
     <template #actions>
       <Button @click="openCreate"><Plus /> Nueva zona</Button>
     </template>
@@ -435,10 +460,11 @@ onMounted(() => store.fetchZones())
         </TableCell>
         <TableCell>{{ z.totalSpaces }}</TableCell>
         <TableCell>
-          <OccupancyBar :percentage="z.occupancyPercentage" :color="classColor(z.classification)" />
+          <span v-if="z.classification === 'SIN_DATOS'" class="text-body text-muted-foreground">—</span>
+          <OccupancyBar v-else :percentage="z.occupancyPercentage" :color="classColor(z.classification)" />
         </TableCell>
         <TableCell>
-          <Badge :variant="classVariant[z.classification] ?? 'neutral'" size="status">{{ z.classification }}</Badge>
+          <Badge :variant="classVariant[z.classification] ?? 'neutral'" size="status">{{ classificationLabel(z.classification as ZoneClassification) }}</Badge>
         </TableCell>
         <TableCell>
           <div class="flex flex-wrap gap-1.5">
@@ -490,7 +516,7 @@ onMounted(() => store.fetchZones())
           <DialogTitle>{{ editTarget ? 'Editar zona' : 'Nueva zona' }}</DialogTitle>
         </DialogHeader>
 
-        <form class="grid gap-3.5" @submit.prevent="handleSubmit">
+        <form class="grid gap-3.5" novalidate @submit.prevent="handleSubmit">
           <AdminField v-slot="{ id }" label="Nombre de la zona" hint="Nombre interno con el que identificarás esta zona." :error="fieldErrors.name">
             <Input :id="id" v-model="form.name" placeholder="Ej: Zona Norte, Zona Centro, Estacionamiento Sur" />
           </AdminField>
@@ -658,7 +684,7 @@ onMounted(() => store.fetchZones())
               class="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
               :aria-label="`Eliminar espacio ${s.spaceNumber}`"
               :disabled="spacesStore.saving"
-              @click="spacesStore.removeSpace(s.id)"
+              @click="spaceToDelete = { id: s.id, number: s.spaceNumber }"
             >
               <Trash2 />
             </Button>
@@ -673,6 +699,19 @@ onMounted(() => store.fetchZones())
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      :open="spaceToDelete !== null"
+      title="Eliminar espacio"
+      confirm-label="Eliminar"
+      destructive
+      :loading="spacesStore.saving"
+      :error="spacesStore.error"
+      @cancel="spaceToDelete = null"
+      @confirm="confirmRemoveSpace"
+    >
+      ¿Eliminar el espacio {{ spaceToDelete?.number }} de {{ spaceZoneName }}? También se borra su ROI.
+    </ConfirmDialog>
 
     <!-- ROI editor (por zona) -->
     <ZoneRoiEditorModal

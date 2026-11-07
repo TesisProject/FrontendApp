@@ -56,6 +56,11 @@ function openEdit(node: AdminNode) {
 function closeModal() { showModal.value = false }
 
 async function handleSubmit() {
+  // Un nodo nuevo necesita un nombre reconocible: sin él, un clic en «Registrar» crea uno vacío.
+  if (!editTarget.value && !form.value.name.trim()) {
+    formError.value = 'Ponle un nombre al nodo (p. ej. «Nodo estacionamiento central»)'
+    return
+  }
   let ok: boolean
   if (editTarget.value) {
     ok = await store.updateNode(editTarget.value.id, form.value)
@@ -153,7 +158,7 @@ onMounted(() => {
         </DialogHeader>
 
         <form class="grid gap-3.5" @submit.prevent="handleSubmit">
-          <AdminField v-slot="{ id }" label="Nombre" optional>
+          <AdminField v-slot="{ id }" label="Nombre" :optional="!!editTarget">
             <Input :id="id" v-model="form.name" placeholder="Nodo estacionamiento central" />
           </AdminField>
 

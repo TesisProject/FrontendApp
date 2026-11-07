@@ -4,40 +4,58 @@ import { RouterLink } from 'vue-router'
 import { ChartNoAxesColumn, Check, ChevronRight, CircleX, House } from '@lucide/vue'
 import { useAuthStore } from '../../../iam/application/auth.store'
 import { useZoneStore } from '../../../parking/application/zone.store'
+import { useProfileStore } from '../../../profile/application/profile.store'
 import { CLASSIFICATION_COLOR, CLASSIFICATION_LABEL } from '../../../parking/domain/zone-classification'
 import type { Zone, ZoneClassification } from '../../../parking/domain/model/zone.model'
 import ClassificationBadge from '../../../parking/presentation/components/ClassificationBadge.vue'
 import OccupancyMeter from '../../../parking/presentation/components/OccupancyMeter.vue'
 import OccupancyRing from '../../../parking/presentation/components/OccupancyRing.vue'
 import SpaceCounts from '../../../parking/presentation/components/SpaceCounts.vue'
+import StaleBadge from '../../../parking/presentation/components/StaleBadge.vue'
 import StateMessage from '../components/StateMessage.vue'
 
-const authStore  = useAuthStore()
-const zoneStore  = useZoneStore()
+const authStore    = useAuthStore()
+const zoneStore    = useZoneStore()
+const profileStore = useProfileStore()
 
 const zones  = computed(() => zoneStore.zones as Zone[])
 
-const totalFree     = computed(() => zones.value.reduce((sum, z) => sum + z.freeCount, 0))
-const totalOccupied = computed(() => zones.value.reduce((sum, z) => sum + z.occupiedCount, 0))
-
-const globalOccupancy = computed(() => {
-  const total = totalFree.value + totalOccupied.value
-  return total === 0 ? 0 : Math.round((totalOccupied.value / total) * 100)
-})
-
-// zones sorted with most available first — surfaces where the user can park now
-const sortedZones = computed(() =>
-  [...zones.value].sort((a, b) => a.occupancyPercentage - b.occupancyPercentage),
+// El saludo usa el nombre del perfil; mientras carga (o si no tiene nombre) cae al correo.
+const greetingName = computed(() =>
+  profileStore.profile?.firstName?.trim() || authStore.user?.email?.split('@')[0] || '',
 )
 
+// HU-12 E2: una zona «Sin datos» no tiene una lectura actual, así que no entra en los totales del
+// momento. Se lista igual, con su último estado conocido y el aviso de datos no actualizados (HU-08).
+const liveZones = computed(() => zones.value.filter(z => z.classification !== 'SIN_DATOS'))
+
+const totalFree     = computed(() => liveZones.value.reduce((sum, z) => sum + z.freeCount, 0))
+const totalOccupied = computed(() => liveZones.value.reduce((sum, z) => sum + z.occupiedCount, 0))
+
+/** `null` cuando ninguna zona tiene lecturas actuales: se muestra «—» y no un 0 % o 100 % engañoso. */
+const globalOccupancy = computed<number | null>(() => {
+  const total = totalFree.value + totalOccupied.value
+  return total === 0 ? null : Math.round((totalOccupied.value / total) * 100)
+})
+
+// Zonas con lecturas primero (más disponibles arriba); las «Sin datos», al final.
+const sortedZones = computed(() =>
+  [...zones.value].sort((a, b) => {
+    const aNo = a.classification === 'SIN_DATOS', bNo = b.classification === 'SIN_DATOS'
+    if (aNo !== bNo) return aNo ? 1 : -1
+    return a.occupancyPercentage - b.occupancyPercentage
+  }),
+)
+
+const noLive = computed(() => liveZones.value.length === 0)
 const metrics = computed(() => [
-  { label: 'Zonas registradas', value: zones.value.length,   icon: House,             accent: '#3182ce', tint: '#ebf8ff' },
-  { label: 'Espacios libres',   value: totalFree.value,      icon: Check,             accent: '#38a169', tint: '#f0fff4' },
-  { label: 'Espacios ocupados', value: totalOccupied.value,  icon: CircleX,           accent: '#e53e3e', tint: '#fff5f5' },
-  { label: 'Ocupación global',  value: globalOccupancy.value, unit: '%', icon: ChartNoAxesColumn, accent: '#f2894a', tint: '#fffbeb' },
+  { label: 'Zonas registradas', value: zones.value.length,                    icon: House,             accent: '#3182ce', tint: '#ebf8ff' },
+  { label: 'Espacios libres',   value: noLive.value ? '—' : totalFree.value,     icon: Check,             accent: '#38a169', tint: '#f0fff4' },
+  { label: 'Espacios ocupados', value: noLive.value ? '—' : totalOccupied.value, icon: CircleX,           accent: '#e53e3e', tint: '#fff5f5' },
+  { label: 'Ocupación global',  value: globalOccupancy.value ?? '—', unit: globalOccupancy.value === null ? undefined : '%', icon: ChartNoAxesColumn, accent: '#f2894a', tint: '#fffbeb' },
 ])
 
-const classifications = (['LIBRE', 'MODERADO', 'OCUPADO'] as ZoneClassification[]).map(c => ({
+const classifications = (['LIBRE', 'MODERADO', 'OCUPADO', 'SIN_DATOS'] as ZoneClassification[]).map(c => ({
   key:   c,
   label: CLASSIFICATION_LABEL[c],
   color: CLASSIFICATION_COLOR[c],
@@ -50,6 +68,8 @@ const stagger = (i: number, base = 0) => ({ animationDelay: `${base + Math.min(i
 
 onMounted(() => {
   zoneStore.fetchZones()
+  const id = authStore.user?.id
+  if (id && !profileStore.profile) void profileStore.fetchProfile(id)
 })
 </script>
 
@@ -62,13 +82,13 @@ onMounted(() => {
           Panel en vivo
         </span>
         <h1 class="mb-1.5 font-display text-display font-bold tracking-[-0.02em] text-heading capitalize">
-          Hola, {{ authStore.user?.email?.split('@')[0] }}
+          Hola, {{ greetingName }}
         </h1>
         <p class="text-body text-muted-foreground">El estado de los estacionamientos, en tiempo real</p>
       </div>
       <div class="flex shrink-0 flex-col items-start leading-none sm:items-end" aria-hidden="true">
         <span class="font-display text-display-lg font-bold tracking-[-0.02em] text-heading tabular-nums">
-          {{ globalOccupancy }}<span class="ml-px text-lg text-muted-foreground">%</span>
+          {{ globalOccupancy ?? '—' }}<span v-if="globalOccupancy !== null" class="ml-px text-lg text-muted-foreground">%</span>
         </span>
         <span class="mt-1.5 text-caption tracking-[0.08em] text-muted-foreground uppercase">ocupación ahora</span>
       </div>
@@ -134,6 +154,7 @@ onMounted(() => {
                   class="mb-2"
                 />
                 <SpaceCounts :free="zone.freeCount" :occupied="zone.occupiedCount" :total="zone.totalSpaces" />
+                <StaleBadge :freshness="zone" class="mt-2" />
               </div>
 
               <ChevronRight
@@ -163,14 +184,15 @@ onMounted(() => {
               <div class="h-3 flex-1 overflow-hidden rounded-lg bg-muted">
                 <div
                   class="h-full rounded-lg bg-linear-to-r from-zone-moderado to-zone-ocupado transition-[width] duration-500 ease-out"
-                  :style="{ width: `${globalOccupancy}%` }"
+                  :style="{ width: `${globalOccupancy ?? 0}%` }"
                 />
               </div>
               <span class="min-w-10 font-display text-lg font-bold text-heading tabular-nums">
-                {{ globalOccupancy }}<span class="text-caption text-muted-foreground">%</span>
+                {{ globalOccupancy ?? '—' }}<span v-if="globalOccupancy !== null" class="text-caption text-muted-foreground">%</span>
               </span>
             </div>
-            <div class="flex gap-5 text-body text-foreground/80">
+            <p v-if="noLive" class="text-body text-muted-foreground">Ninguna zona tiene lecturas recientes de las cámaras.</p>
+            <div v-else class="flex gap-5 text-body text-foreground/80">
               <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-zone-ocupado" />{{ totalOccupied }} ocupados</span>
               <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-zone-libre" />{{ totalFree }} libres</span>
             </div>

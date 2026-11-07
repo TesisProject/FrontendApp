@@ -8,6 +8,8 @@ import { errorCode, errorStatus } from '../../shared/infrastructure/http-client'
 export const OTP_EXPIRED_MESSAGE = 'El código ya no es válido (venció, ya se usó o superó los 5 intentos). Solicita uno nuevo.'
 
 const MESSAGES: Record<string, string> = {
+  // Login: el mismo mensaje para correo o contraseña errados (HU-01 E2: no se dice cuál falló).
+  INVALID_CREDENTIALS: 'Correo o contraseña incorrectos.',
   USER_ALREADY_EXISTS: 'Este correo ya está en uso. Inicia sesión o recupera tu contraseña.',
   INVALID_OTP:         'El código no es correcto. Revisa el correo e inténtalo de nuevo.',
   OTP_EXPIRED:         OTP_EXPIRED_MESSAGE,

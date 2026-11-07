@@ -7,6 +7,7 @@ import type {
 import type { AdminCamera } from '../domain/model/admin-camera.model'
 import { toAdminCamera } from '../infrastructure/admin-assembler'
 import { AvailabilityApi } from '../../parking/infrastructure/availability-api'
+import { adminErrorMessage } from './admin-error-messages'
 
 const availabilityApi = new AvailabilityApi()
 
@@ -48,16 +49,29 @@ export const useAdminSpacesStore = defineStore('adminSpaces', () => {
     }
   }
 
-  async function addSpace(spaceNumber: string) {
-    if (!zoneId.value || !spaceNumber.trim()) return false
+  /**
+   * Agrega un espacio a la zona abierta. Se rechaza antes de llamar al backend un número repetido en
+   * la zona o pasar del total de espacios declarado (`maxSpaces`); el backend valida lo mismo.
+   */
+  async function addSpace(spaceNumber: string, maxSpaces?: number) {
+    const number = spaceNumber.trim().toUpperCase()
+    if (!zoneId.value || !number) return false
+    error.value = null
+    if (spaces.value.some(s => s.spaceNumber.trim().toUpperCase() === number)) {
+      error.value = `Ya existe el espacio ${number} en esta zona`
+      return false
+    }
+    if (maxSpaces !== undefined && spaces.value.length >= maxSpaces) {
+      error.value = `La zona admite ${maxSpaces} espacio${maxSpaces !== 1 ? 's' : ''}: aumenta el total de espacios de la zona para agregar más`
+      return false
+    }
     saving.value = true
-    error.value  = null
     try {
-      const created = await adminApi.createSpace(zoneId.value, spaceNumber.trim().toUpperCase())
+      const created = await adminApi.createSpace(zoneId.value, number)
       spaces.value.push({ ...created, occupied: false, monitored: false })
       return true
-    } catch {
-      error.value = 'Error al crear el espacio'
+    } catch (err) {
+      error.value = adminErrorMessage(err, 'Error al crear el espacio')
       return false
     } finally {
       saving.value = false

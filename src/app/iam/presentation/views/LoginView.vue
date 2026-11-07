@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
@@ -13,6 +13,7 @@ import SubmitButton from '../components/SubmitButton.vue'
 import TextLink from '../../../shared/presentation/components/TextLink.vue'
 
 const router    = useRouter()
+const route     = useRoute()
 const authStore = useAuthStore()
 
 const schema = toTypedSchema(z.object({
@@ -37,9 +38,16 @@ const [password, passwordAttrs] = defineField<'password', string>('password', fi
 // track which fields the user has interacted with (for green valid border)
 const touched = reactive({ email: false, password: false })
 
+// HU-05: tras iniciar sesión se vuelve a la pantalla que se pidió sin sesión. Solo se aceptan rutas
+// internas del área del usuario, para que el parámetro no sirva de redirección abierta.
+function safeReturnUrl(value: unknown): string {
+  const url = typeof value === 'string' ? value : ''
+  return url.startsWith('/dashboard') && !url.startsWith('//') ? url : '/dashboard'
+}
+
 const onSubmit = handleSubmit(async (values) => {
   const ok = await authStore.login(values.email, values.password)
-  if (ok) router.push('/dashboard')
+  if (ok) router.push(safeReturnUrl(route.query.returnUrl))
 })
 </script>
 

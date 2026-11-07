@@ -37,8 +37,8 @@ export const useAuthStore = defineStore('auth', () => {
       const authToken = toAuthToken(response)
       startSession(authToken.token, authToken.user)
       return true
-    } catch (err: any) {
-      loginState.setError(err?.message ?? 'Credenciales incorrectas')
+    } catch (err) {
+      loginState.setError(authErrorMessage(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.'))
       return false
     }
   }
@@ -70,8 +70,8 @@ export const useAuthStore = defineStore('auth', () => {
       const authToken = toAuthToken(response)
       startSession(authToken.token, authToken.user)
       return true
-    } catch (err: any) {
-      loginState.setError(err?.message ?? 'Credenciales incorrectas')
+    } catch (err) {
+      loginState.setError(authErrorMessage(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.'))
       return false
     }
   }

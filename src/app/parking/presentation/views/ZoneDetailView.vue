@@ -123,7 +123,12 @@ onUnmounted(() => clearInterval(refreshTimer))
 
     <ConnectivityNotice :online="online" />
 
-    <StateMessage v-if="zoneStore.zoneError" tone="error">{{ zoneStore.zoneError }}</StateMessage>
+    <div v-if="zoneStore.zoneError" class="flex flex-col items-center gap-3">
+      <StateMessage tone="error">{{ zoneStore.zoneError }}</StateMessage>
+      <Button as-child variant="outline" size="sm">
+        <RouterLink to="/dashboard/zones">Ver todas las zonas</RouterLink>
+      </Button>
+    </div>
 
     <!-- Mientras carga la zona se ve la silueta de la página; cada sección maneja además su propia carga. -->
     <template v-else>
@@ -140,7 +145,7 @@ onUnmounted(() => clearInterval(refreshTimer))
       </div>
       <div v-else class="flex flex-wrap items-start justify-between gap-4">
         <h1 class="min-w-0 font-display text-page font-bold text-balance text-heading">{{ zoneStore.zone.name }}</h1>
-        <div class="mt-1 flex shrink-0 items-center gap-2.5">
+        <div class="mt-1 flex flex-wrap items-center gap-2.5">
           <StaleBadge :freshness="zoneStore.zone" class="px-3 py-[5px] text-caption" />
           <ClassificationBadge :classification="zoneStore.zone.classification" class="px-3.5 py-[5px] text-caption" />
           <Button
@@ -182,7 +187,7 @@ onUnmounted(() => clearInterval(refreshTimer))
         :sub="zoneStore.views.length ? 'Pasa el cursor por un espacio para ubicarlo en la foto.' : undefined"
       >
         <template #actions>
-          <div class="flex shrink-0 flex-wrap items-center gap-4 pt-0.5 text-body text-muted-foreground">
+          <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 pt-0.5 text-body text-muted-foreground">
             <StaleBadge v-if="zoneStore.zone" :freshness="zoneStore.zone" />
             <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-libre" /> Libre</span>
             <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[2px] bg-zone-ocupado" /> Ocupado</span>

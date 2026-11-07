@@ -55,3 +55,11 @@ export function withinRadius<T extends { id: number; latitude: number; longitude
     .forEach(([id, d]) => distances.set(id, d))
   return distances
 }
+
+/**
+ * Redondea una coordenada a 6 decimales (~11 cm), la precisión con la que se guarda y se edita.
+ * Google devuelve 7 o más: sin redondear, el input numérico (step 0.000001) la marca inválida.
+ */
+export function roundCoordinate(value: number): number {
+  return Math.round(value * 1e6) / 1e6
+}

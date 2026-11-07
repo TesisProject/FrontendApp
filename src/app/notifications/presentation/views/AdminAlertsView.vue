@@ -91,7 +91,7 @@ onMounted(refresh)
 <template>
   <AdminPage
     title="Alertas"
-    :sub="`${store.openCount} abiertas · ${store.unreadCount} avisos sin leer`"
+    :sub="`${store.openCount} ${store.openCount === 1 ? 'abierta' : 'abiertas'} · ${store.unreadCount} ${store.unreadCount === 1 ? 'aviso sin leer' : 'avisos sin leer'}`"
   >
     <template #actions>
       <Button variant="outline" :disabled="store.unreadCount === 0" @click="handleMarkAllRead">
