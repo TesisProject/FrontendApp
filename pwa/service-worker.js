@@ -1,7 +1,8 @@
 /* global self, caches, fetch, URL, Response */
 /**
  * Service worker de ParkVision (HU-32). Lo genera el plugin `parkvisionPwa` de vite.config.ts al hacer
- * `pnpm build`: reemplaza __PRECACHE__ por la lista de archivos del build y __VERSION__ por su hash.
+ * `pnpm build` con `renderServiceWorker` (pwa/render-service-worker.ts): pone la lista de archivos del
+ * build en PRECACHE y su hash en VERSION.
  *
  * - Instalación: precachea el app shell (index.html, JS, CSS, íconos), incluido el chunk de la Ayuda,
  *   para que las preguntas frecuentes se puedan consultar sin conexión.

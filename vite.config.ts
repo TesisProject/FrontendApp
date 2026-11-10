@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
+import { renderServiceWorker } from './pwa/render-service-worker'
 
 /**
  * PWA mínima (HU-32): emite `sw.js` con la lista de archivos del build para precachear el app shell
@@ -25,9 +26,7 @@ function parkvisionPwa(): Plugin {
       this.emitFile({
         type: 'asset',
         fileName: 'sw.js',
-        source: template
-          .replace('__VERSION__', version)
-          .replace('__PRECACHE__', JSON.stringify(precache)),
+        source: renderServiceWorker(template, precache, version),
       })
     },
   }
