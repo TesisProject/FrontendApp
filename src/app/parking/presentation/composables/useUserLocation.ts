@@ -29,6 +29,11 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
   const position = ref<LatLng | null>(null)
   const status = ref<UserLocationStatus>('idle')
   let watchId: number | null = null
+  let permissionStatus: PermissionStatus | null = null
+
+  function onPermissionChange() {
+    if (permissionStatus?.state === 'granted' && status.value !== 'ready') request()
+  }
 
   function onSuccess(pos: GeolocationPosition) {
     position.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
@@ -68,6 +73,11 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
       const permission = await navigator.permissions?.query({ name: 'geolocation' })
       if (permission?.state === 'granted') request()
       else if (permission?.state === 'denied') status.value = 'denied'
+      // HU-06 (CP016): si el usuario vuelve a permitir la ubicación desde el navegador, se reintenta sola.
+      if (permission) {
+        permissionStatus = permission
+        permission.addEventListener('change', onPermissionChange)
+      }
     } catch {
       // Permissions API no disponible (algunos Safari): se espera a que el usuario lo pida.
     }
@@ -75,6 +85,7 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
 
   onUnmounted(() => {
     if (watchId != null) navigator.geolocation.clearWatch(watchId)
+    permissionStatus?.removeEventListener('change', onPermissionChange)
   })
 
   return { position, status, request }

@@ -6,7 +6,7 @@ import type { UserLocationStatus } from '../composables/useUserLocation'
 /**
  * ConnectivityNotice — HU-06/HU-07: avisa, sin bloquear la pantalla, que no hay conexión o que el GPS
  * no está disponible, y sugiere cómo activarlo. Se puede cerrar; vuelve a aparecer si el problema
- * cambia.
+ * cambia. Ante un GPS sin señal o un permiso bloqueado ofrece "Reintentar" (CP016).
  */
 const props = defineProps<{
   online: boolean
@@ -25,7 +25,7 @@ watch(() => props.locationStatus, () => { locationDismissed.value = false })
 const locationMessage = computed(() => {
   switch (props.locationStatus) {
     case 'denied':
-      return 'Bloqueaste el acceso a tu ubicación. Permítelo en la configuración del navegador para ver los estacionamientos cercanos.'
+      return 'Bloqueaste el acceso a tu ubicación. Permítelo en la configuración del navegador (ícono junto a la dirección) y vuelve a intentarlo para ver los estacionamientos cercanos.'
     case 'unavailable':
       return 'No pudimos obtener tu ubicación. Activa el GPS (ubicación) del dispositivo e inténtalo de nuevo.'
     case 'unsupported':
@@ -56,7 +56,7 @@ const box = 'flex items-start gap-2.5 rounded-[10px] border px-3 py-2.5 text-bod
       <p class="flex-1">
         {{ locationMessage }}
         <button
-          v-if="locationStatus === 'unavailable'"
+          v-if="locationStatus === 'unavailable' || locationStatus === 'denied'"
           type="button"
           class="ml-1 font-medium text-link underline-offset-2 hover:underline"
           @click="emit('retry-location')"
