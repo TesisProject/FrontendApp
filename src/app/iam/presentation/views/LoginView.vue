@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import { useAuthStore } from '../../application/auth.store'
+import { resolveReturnUrl } from '../../domain/return-url'
 import AuthCard from '../components/AuthCard.vue'
 import AuthField from '../components/AuthField.vue'
 import AuthInput from '../components/AuthInput.vue'
@@ -13,6 +14,7 @@ import SubmitButton from '../components/SubmitButton.vue'
 import TextLink from '../../../shared/presentation/components/TextLink.vue'
 
 const router    = useRouter()
+const route     = useRoute()
 const authStore = useAuthStore()
 
 const schema = toTypedSchema(z.object({
@@ -39,7 +41,8 @@ const touched = reactive({ email: false, password: false })
 
 const onSubmit = handleSubmit(async (values) => {
   const ok = await authStore.login(values.email, values.password)
-  if (ok) router.push('/dashboard')
+  // HU-05 (CP014): vuelve a la pantalla protegida que se pidió antes de iniciar sesión.
+  if (ok) router.push(resolveReturnUrl(route.query.returnUrl))
 })
 </script>
 
