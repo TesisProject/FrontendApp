@@ -133,6 +133,15 @@ const actualByBucket = computed(() => {
 // Métricas del modelo calculadas por el backend. Si la petición falla se ocultan solo estas barras.
 const metrics = ref<ZoneModelMetrics | null>(null)
 
+/**
+ * HU-11 (CP028): el modelo no publicó ninguna predicción para la zona, o su historial todavía no está
+ * completo. En ese caso el aviso dice que la disponibilidad no se puede estimar por falta de historial,
+ * en vez del genérico "aún no hay predicciones".
+ */
+const lacksHistory = computed(() =>
+  forecasts.value.length === 0 || (metrics.value?.trainingPct != null && metrics.value.trainingPct < 100),
+)
+
 const modelBars = computed(() => [
   {
     label: 'Entrenamiento',
@@ -338,6 +347,11 @@ watch(
       <StateMessage v-else-if="error" tone="error" compact>{{ error }}</StateMessage>
       <StateMessage v-else tone="empty" compact>
         <template v-if="isPast">No quedó registrada la predicción de este día para esta zona.</template>
+        <template v-else-if="lacksHistory">
+          No se puede estimar la disponibilidad para este horario: la zona aún no tiene suficiente
+          historial de lecturas<template v-if="metrics?.trainingPct != null"> ({{ metrics.trainingPct }} % del necesario)</template>.
+          La predicción aparecerá cuando las cámaras acumulen más datos.
+        </template>
         <template v-else>Aún no hay predicciones para {{ isToday ? 'hoy' : 'este día' }} en esta zona.</template>
       </StateMessage>
     </div>
