@@ -210,14 +210,26 @@ onMounted(() => Promise.all([load(), store.refreshActiveAdminCount()]))
             type="button"
             class="rounded-full px-3 py-1 text-caption font-bold transition-opacity hover:opacity-75 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
             :class="u.active ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'"
-            :aria-label="`${u.active ? 'Desactivar' : 'Activar'} a ${u.email}`"
+            :aria-label="`Estado de ${u.email}: ${u.active ? 'activo' : 'inactivo'}. Cambiar estado`"
+            :title="u.active ? 'Clic para desactivar' : 'Clic para activar'"
             @click="requestStatusToggle(u.id, u.active)"
           >
             {{ u.active ? 'Activo' : 'Inactivo' }}
           </button>
         </TableCell>
         <TableCell>
-          <Button size="sm" variant="outline-primary" @click="openEdit(u.id, u.email)">Editar</Button>
+          <!-- HU-22 (CP052): activar/desactivar también como acción explícita, no solo en la pastilla de estado. -->
+          <div class="flex flex-wrap gap-1.5">
+            <Button size="sm" variant="outline-primary" @click="openEdit(u.id, u.email)">Editar</Button>
+            <Button
+              size="sm"
+              :variant="u.active ? 'outline-destructive' : 'secondary'"
+              :aria-label="`${u.active ? 'Desactivar' : 'Activar'} a ${u.email}`"
+              @click="requestStatusToggle(u.id, u.active)"
+            >
+              {{ u.active ? 'Desactivar' : 'Activar' }}
+            </Button>
+          </div>
         </TableCell>
       </TableRow>
     </AdminTableCard>
