@@ -16,7 +16,7 @@ import AdminStateBox from '../../../admin/presentation/components/AdminStateBox.
 import AdminTableCard from '../../../admin/presentation/components/AdminTableCard.vue'
 import { useCameraAlertsStore } from '../../application/camera-alerts.store'
 import {
-  alertStatus, alertTypeLabel, type CameraAlert, type CameraAlertStatus,
+  alertStatus, alertTimeline, alertTypeLabel, type CameraAlert, type CameraAlertStatus,
 } from '../../domain/model/camera-alert.model'
 import { formatDateTime } from '../alert-format'
 
@@ -135,6 +135,15 @@ onMounted(refresh)
         <TableCell class="text-body text-muted-foreground">{{ formatDateTime(a.detectedAt) }}</TableCell>
         <TableCell>
           <Badge :variant="STATUS[alertStatus(a)].variant" size="status">{{ STATUS[alertStatus(a)].label }}</Badge>
+          <!-- HU-16 (CP039): historial de estados de la alerta. -->
+          <ol class="mt-1.5 grid gap-0.5 text-caption text-muted-foreground" :aria-label="`Historial de la alerta de ${a.cameraLabel}`">
+            <li v-for="step in alertTimeline(a)" :key="step.key">
+              <span class="font-medium text-foreground">{{ step.label }}</span> · {{ formatDateTime(step.at) }}
+            </li>
+          </ol>
+          <p v-if="a.secondAlertSentAt && !a.resolvedAt" class="mt-1 max-w-[13.75rem] text-caption text-muted-foreground">
+            No se volverá a notificar hasta que la cámara cambie de estado.
+          </p>
           <p v-if="a.resolutionNote" class="mt-1 max-w-[13.75rem] text-caption text-muted-foreground">{{ a.resolutionNote }}</p>
         </TableCell>
         <TableCell>

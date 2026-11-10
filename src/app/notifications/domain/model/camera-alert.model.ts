@@ -54,3 +54,23 @@ const TYPE_LABELS: Record<CameraAlertType, string> = {
 export function alertTypeLabel(type: string): string {
   return TYPE_LABELS[type as CameraAlertType] ?? type
 }
+
+/** Un cambio de estado de la alerta, para su historial (HU-16, CP039). */
+export interface CameraAlertTimelineStep {
+  key:   'detected' | 'second-alert' | 'acknowledged' | 'resolved'
+  label: string
+  at:    string
+}
+
+/**
+ * Historial de estados de una alerta, del más antiguo al más reciente: detectada → 2.º aviso →
+ * reconocida → resuelta. Solo aparecen los pasos que ocurrieron. Sirve para ver en el panel que, tras
+ * el 2.º aviso, no se volvió a notificar hasta que la alerta cambió de estado.
+ */
+export function alertTimeline(alert: CameraAlert): CameraAlertTimelineStep[] {
+  const steps: CameraAlertTimelineStep[] = [{ key: 'detected', label: 'Detectada', at: alert.detectedAt }]
+  if (alert.secondAlertSentAt) steps.push({ key: 'second-alert', label: '2.º aviso (escalada)', at: alert.secondAlertSentAt })
+  if (alert.acknowledgedAt) steps.push({ key: 'acknowledged', label: 'Reconocida', at: alert.acknowledgedAt })
+  if (alert.resolvedAt) steps.push({ key: 'resolved', label: 'Resuelta', at: alert.resolvedAt })
+  return steps.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+}
