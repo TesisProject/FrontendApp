@@ -134,6 +134,12 @@ export interface ZoneDeletionImpactResponse {
   monitoredSpaces: number
   cameras:         number
   activeCameras:   number
+  /** Lecturas del historial de ocupación de la zona (CP049). */
+  occupancyRecords?: number
+  /** Reseñas de los conductores. */
+  ratings?:          number
+  /** Conductores que la tienen en favoritos. */
+  favorites?:        number
   hasActiveData:   boolean
 }
 

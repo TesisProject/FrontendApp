@@ -4,7 +4,7 @@ export const AUDIT_ACTIONS = [
   'CAMERA_REGISTERED', 'CAMERA_UPDATED', 'CAMERA_ACTIVATED', 'CAMERA_DEACTIVATED',
   'USER_ROLE_CHANGED', 'USER_ACTIVATED', 'USER_DEACTIVATED',
   'MODEL_RETRAIN_REQUESTED', 'MODEL_RETRAIN_FAILED',
-  'CAMERA_ALERT_OPENED', 'CAMERA_ALERT_RESOLVED',
+  'CAMERA_ALERT_OPENED', 'CAMERA_ALERT_ESCALATED', 'CAMERA_ALERT_ACKNOWLEDGED', 'CAMERA_ALERT_RESOLVED',
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
@@ -23,6 +23,8 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   MODEL_RETRAIN_REQUESTED: 'Reentrenamiento solicitado',
   MODEL_RETRAIN_FAILED:    'Reentrenamiento fallido',
   CAMERA_ALERT_OPENED:     'Alerta de cámara abierta',
+  CAMERA_ALERT_ESCALATED:  'Alerta de cámara escalada (2.º aviso)',
+  CAMERA_ALERT_ACKNOWLEDGED: 'Alerta de cámara reconocida',
   CAMERA_ALERT_RESOLVED:   'Alerta de cámara resuelta',
 }
 

@@ -531,7 +531,14 @@ onMounted(() => store.fetchZones())
         <strong>{{ deleteImpact.monitoredSpaces }} espacio(s) monitoreado(s)</strong> con su ROI, y
         <strong>{{ deleteImpact.cameras }} cámara(s)</strong>
         ({{ deleteImpact.activeCameras }} activa(s)) quedarán desactivadas y sin zona.
-        El historial de ocupación se conserva. ¿Confirmas la eliminación?
+        <template v-if="deleteImpact.occupancyRecords || deleteImpact.ratings || deleteImpact.favorites">
+          Además, la zona tiene
+          <strong>{{ deleteImpact.occupancyRecords ?? 0 }} lectura(s) de historial</strong>,
+          <strong>{{ deleteImpact.ratings ?? 0 }} reseña(s)</strong> y
+          <strong>{{ deleteImpact.favorites ?? 0 }} conductor(es) que la guardaron en favoritos</strong>:
+          dejarán de mostrarse en la app.
+        </template>
+        ¿Confirmas la eliminación?
       </template>
     </ConfirmDialog>
 

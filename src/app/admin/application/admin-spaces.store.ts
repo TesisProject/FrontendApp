@@ -7,11 +7,24 @@ import type {
 import type { AdminCamera } from '../domain/model/admin-camera.model'
 import { toAdminCamera } from '../infrastructure/admin-assembler'
 import { AvailabilityApi } from '../../parking/infrastructure/availability-api'
+import { errorCode } from '../../shared/infrastructure/http-client'
 
 const availabilityApi = new AvailabilityApi()
 
 /** Espacio del catálogo + estado vivo superpuesto desde la disponibilidad de vision. */
 export type AdminSpace = AdminSpaceResponse & { occupied: boolean; monitored: boolean }
+
+/** Mensaje para el error del backend al crear un espacio (HU-20, CP048). */
+export function spaceErrorMessage(err: unknown, spaceNumber: string): string {
+  switch (errorCode(err)) {
+    case 'SPACE_NUMBER_ALREADY_EXISTS':
+      return `Ya existe un espacio con el número ${spaceNumber} en esta zona`
+    case 'ZONE_SPACE_LIMIT_REACHED':
+      return 'La zona ya tiene registrados todos sus espacios. Aumenta el total de espacios de la zona para agregar otro.'
+    default:
+      return 'Error al crear el espacio'
+  }
+}
 
 export const useAdminSpacesStore = defineStore('adminSpaces', () => {
   const spaces   = ref<AdminSpace[]>([])
@@ -50,14 +63,20 @@ export const useAdminSpacesStore = defineStore('adminSpaces', () => {
 
   async function addSpace(spaceNumber: string) {
     if (!zoneId.value || !spaceNumber.trim()) return false
+    const number = spaceNumber.trim().toUpperCase()
+    // HU-20 (CP048): el backend también lo rechaza; aquí se avisa sin ir al servidor.
+    if (spaces.value.some(s => s.spaceNumber.toUpperCase() === number)) {
+      error.value = `Ya existe un espacio con el número ${number} en esta zona`
+      return false
+    }
     saving.value = true
     error.value  = null
     try {
-      const created = await adminApi.createSpace(zoneId.value, spaceNumber.trim().toUpperCase())
+      const created = await adminApi.createSpace(zoneId.value, number)
       spaces.value.push({ ...created, occupied: false, monitored: false })
       return true
-    } catch {
-      error.value = 'Error al crear el espacio'
+    } catch (err) {
+      error.value = spaceErrorMessage(err, number)
       return false
     } finally {
       saving.value = false
