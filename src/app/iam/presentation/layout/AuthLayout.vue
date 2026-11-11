@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { RouterView } from 'vue-router'
+import { RouterLink, RouterView } from 'vue-router'
 import BrandWordmark from '../../../shared/presentation/components/BrandWordmark.vue'
 
 const year = new Date().getFullYear()
@@ -88,8 +88,8 @@ onBeforeUnmount(() => clearInterval(flipTimer))
       <footer class="relative z-1 flex items-center justify-between text-body text-white/45">
         <span>© {{ year }} ParkVision</span>
         <nav class="flex gap-5">
-          <a href="#" class="text-white/55 hover:text-white">Términos</a>
-          <a href="#" class="text-white/55 hover:text-white">Privacidad</a>
+          <RouterLink to="/terms" class="text-white/55 hover:text-white">Términos</RouterLink>
+          <RouterLink to="/privacy" class="text-white/55 hover:text-white">Privacidad</RouterLink>
         </nav>
       </footer>
     </aside>

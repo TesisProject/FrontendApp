@@ -225,7 +225,9 @@ const onSubmit = handleSubmit(async (values) => {
 
     <p class="text-center text-body text-muted-foreground">
       Al registrarte aceptas nuestros
-      <TextLink href="#">Términos de uso</TextLink>
+      <TextLink to="/terms">Términos y condiciones</TextLink>
+      y la
+      <TextLink to="/privacy">Política de privacidad</TextLink>
     </p>
   </AuthCard>
 </template>

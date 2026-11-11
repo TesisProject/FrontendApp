@@ -3,6 +3,7 @@ import { authGuard }  from '../app/iam/infrastructure/auth.guard'
 import { sessionGuard } from '../app/iam/infrastructure/auth.guard'
 import { adminGuard } from '../app/iam/infrastructure/admin.guard'
 import { useThemeStore, type Surface } from '../app/shared/application/theme.store'
+import { TERMS, PRIVACY } from '../app/legal/domain/legal-content'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -27,6 +28,20 @@ const router = createRouter({
         { path: 'otp',             component: () => import('../app/iam/presentation/views/OtpView.vue') },
         { path: 'reset-password',  component: () => import('../app/iam/presentation/views/ResetPasswordView.vue') },
       ],
+    },
+
+    // Documentos legales públicos (con o sin sesión).
+    {
+      path: '/terms',
+      component: () => import('../app/legal/presentation/views/LegalDocumentView.vue'),
+      props: () => ({ doc: TERMS }),
+      meta: { surface: 'auth' },
+    },
+    {
+      path: '/privacy',
+      component: () => import('../app/legal/presentation/views/LegalDocumentView.vue'),
+      props: () => ({ doc: PRIVACY }),
+      meta: { surface: 'auth' },
     },
 
     {
