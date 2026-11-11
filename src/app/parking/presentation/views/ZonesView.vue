@@ -59,7 +59,7 @@ const filters: { label: string; value: ZoneClassification | 'TODOS' }[] = [
 
 // HU-06: avisos de conexión y de GPS, sin bloquear la pantalla.
 const { online } = useNetworkStatus()
-const { position, status: locationStatus, request: requestLocation } = useUserLocation({ watch: true })
+const { position, status: locationStatus, blocked: locationPermissionBlocked, request: requestLocation } = useUserLocation({ watch: true })
 
 // HU-07/HU-10: "Cerca de mí" y filtro de distancia. 'ALL' = sin filtro; el resto, km como texto.
 const radius = ref<string>('ALL')
@@ -287,6 +287,7 @@ onUnmounted(() => {
         <ConnectivityNotice
           :online="online"
           :location-status="locationStatus"
+          :location-blocked="locationPermissionBlocked"
           class="mt-3"
           @retry-location="requestLocation"
         />

@@ -13,6 +13,12 @@ export type UserLocationStatus = 'idle' | 'locating' | 'ready' | 'denied' | 'una
 
 const GEO_OPTIONS: PositionOptions = { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 }
 
+/**
+ * Un rechazo que llega antes de este tiempo no pasó por el aviso del navegador: lo bloqueó solo
+ * (permiso guardado como "Bloquear" o demasiados avisos descartados).
+ */
+const INSTANT_DENIAL_MS = 600
+
 interface UseUserLocationOptions {
   /**
    * Sigue la posición con `watchPosition` después de obtenerla (HU-13: las recomendaciones se
@@ -28,6 +34,11 @@ interface UseUserLocationOptions {
 export function useUserLocation(options: UseUserLocationOptions = {}) {
   const position = ref<LatLng | null>(null)
   const status = ref<UserLocationStatus>('idle')
+  /**
+   * CP016: el navegador rechaza la ubicación sin volver a preguntar, así que "Reintentar" no puede
+   * hacer nada por sí solo; el usuario tiene que permitirla en la configuración del sitio.
+   */
+  const blocked = ref(false)
   let watchId: number | null = null
   let permissionStatus: PermissionStatus | null = null
 
@@ -38,6 +49,7 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
   function onSuccess(pos: GeolocationPosition) {
     position.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
     status.value = 'ready'
+    blocked.value = false
   }
 
   function onError(err: GeolocationPositionError) {
@@ -51,6 +63,8 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
       status.value = 'unsupported'
       return
     }
+    const wasDenied = status.value === 'denied'
+    const startedAt = Date.now()
     status.value = 'locating'
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -59,7 +73,13 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
           watchId = navigator.geolocation.watchPosition(onSuccess, onError, GEO_OPTIONS)
         }
       },
-      onError,
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          blocked.value = permissionStatus?.state === 'denied'
+            || (wasDenied && Date.now() - startedAt < INSTANT_DENIAL_MS)
+        }
+        onError(err)
+      },
       GEO_OPTIONS,
     )
   }
@@ -72,7 +92,10 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
     try {
       const permission = await navigator.permissions?.query({ name: 'geolocation' })
       if (permission?.state === 'granted') request()
-      else if (permission?.state === 'denied') status.value = 'denied'
+      else if (permission?.state === 'denied') {
+        status.value = 'denied'
+        blocked.value = true
+      }
       // HU-06 (CP016): si el usuario vuelve a permitir la ubicación desde el navegador, se reintenta sola.
       if (permission) {
         permissionStatus = permission
@@ -88,5 +111,5 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
     permissionStatus?.removeEventListener('change', onPermissionChange)
   })
 
-  return { position, status, request }
+  return { position, status, blocked, request }
 }

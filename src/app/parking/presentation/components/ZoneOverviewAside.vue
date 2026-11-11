@@ -25,7 +25,7 @@ import { Skeleton } from '@/app/shared/presentation/components/ui/skeleton'
  */
 const props = defineProps<{ zone: Zone }>()
 
-const { position, status: locationStatus, request: requestLocation } = useUserLocation()
+const { position, status: locationStatus, blocked: locationBlocked, request: requestLocation } = useUserLocation()
 
 const hasCoords = computed(() => !!props.zone.latitude && !!props.zone.longitude)
 const distance = computed(() => {
@@ -191,8 +191,12 @@ const unknown = (text: string) => text === UNKNOWN_TEXT && 'text-muted-foregroun
             >
               <LocateFixed class="size-3.5" aria-hidden="true" /> Activar ubicación
             </button>
-            <span v-if="locationStatus === 'denied'" class="text-caption text-muted-foreground">
-              Bloqueaste el acceso a tu ubicación: permítelo en la configuración del navegador para este sitio.
+            <span v-if="locationStatus === 'denied' && locationBlocked" class="text-caption text-muted-foreground">
+              Está bloqueada en tu navegador: toca el ícono a la izquierda de la dirección web y, en «Ubicación»,
+              elige «Permitir». Se activará sola.
+            </span>
+            <span v-else-if="locationStatus === 'denied'" class="text-caption text-muted-foreground">
+              No compartiste tu ubicación. Actívala y elige «Permitir» para ver la distancia.
             </span>
             <span v-else-if="locationStatus === 'unavailable'" class="text-caption text-muted-foreground">
               No se pudo obtener tu ubicación. Revisa que el GPS esté activo e inténtalo de nuevo.

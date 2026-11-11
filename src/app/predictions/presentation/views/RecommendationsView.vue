@@ -23,7 +23,7 @@ const MOVE_THRESHOLD_M = 100
 const router = useRouter()
 const store = useRecommendationStore()
 const { online } = useNetworkStatus()
-const { position, status: locationStatus, request: requestLocation } = useUserLocation({ watch: true })
+const { position, status: locationStatus, blocked: locationBlocked, request: requestLocation } = useUserLocation({ watch: true })
 
 // Posición con la que se pidieron las últimas recomendaciones: el GPS reporta movimientos mínimos
 // todo el tiempo y no vale la pena pedir otra vez por unos metros.
@@ -59,7 +59,7 @@ const waitingLocation = computed(() => !position.value && ['idle', 'locating'].i
       :sub="`Zonas a menos de ${RECOMMENDATION_RADIUS_KM} km con más probabilidad de encontrar espacio`"
     />
 
-    <ConnectivityNotice :online="online" :location-status="locationStatus" @retry-location="requestLocation" />
+    <ConnectivityNotice :online="online" :location-status="locationStatus" :location-blocked="locationBlocked" @retry-location="requestLocation" />
 
     <StateMessage v-if="!position && locationStatus === 'locating'">Obteniendo tu ubicación...</StateMessage>
     <StateMessage v-else-if="waitingLocation" tone="empty" :icon="LocateFixed" title="Necesitamos tu ubicación">
