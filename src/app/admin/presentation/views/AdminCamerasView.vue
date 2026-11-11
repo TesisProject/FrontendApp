@@ -56,13 +56,32 @@ function zoneName(zoneId: number | null) {
 }
 
 // ── Activar / desactivar (HU-23) ────────────────────────────────────────
-const togglingId = ref<number | null>(null)
+// Se confirma antes de cambiar el estado: desactivar saca la cámara de la medición de ocupación.
+const togglingId   = ref<number | null>(null)
+const pendingToggle = ref<AdminCamera | null>(null)
+const toggleError  = ref<string | null>(null)
 
-async function toggleActive(c: AdminCamera) {
+function openToggle(c: AdminCamera) {
+  toggleError.value = null
+  pendingToggle.value = c
+}
+
+function cancelToggle() {
+  if (togglingId.value === null) pendingToggle.value = null
+}
+
+async function confirmToggle() {
+  const c = pendingToggle.value
+  if (!c) return
+  toggleError.value = null
   togglingId.value = c.id
   const ok = await store.setActive(c.id, !c.active).finally(() => { togglingId.value = null })
-  if (ok) toast.success(c.active ? `${c.code} desactivada` : `${c.code} activada`)
-  else toast.error(store.actionError ?? 'No se pudo cambiar el estado de la cámara')
+  if (ok) {
+    pendingToggle.value = null
+    toast.success(c.active ? `${c.code} desactivada` : `${c.code} activada`)
+  } else {
+    toggleError.value = store.actionError ?? 'No se pudo cambiar el estado de la cámara'
+  }
 }
 
 // ── Alta ────────────────────────────────────────────────────────────────
@@ -183,7 +202,7 @@ onMounted(async () => {
               :variant="c.active ? 'secondary' : 'outline-primary'"
               :disabled="togglingId === c.id"
               :aria-label="`${c.active ? 'Desactivar' : 'Activar'} ${c.code}`"
-              @click="toggleActive(c)"
+              @click="openToggle(c)"
             >
               {{ togglingId === c.id ? 'Guardando...' : c.active ? 'Desactivar' : 'Activar' }}
             </Button>
@@ -193,6 +212,26 @@ onMounted(async () => {
         </TableCell>
       </TableRow>
     </AdminTableCard>
+
+    <ConfirmDialog
+      :open="!!pendingToggle"
+      :title="pendingToggle?.active ? 'Desactivar cámara' : 'Activar cámara'"
+      :confirm-label="togglingId !== null ? 'Guardando...' : pendingToggle?.active ? 'Desactivar' : 'Activar'"
+      :destructive="pendingToggle?.active"
+      :loading="togglingId !== null"
+      :error="toggleError"
+      @cancel="cancelToggle"
+      @confirm="confirmToggle"
+    >
+      <template v-if="pendingToggle?.active">
+        ¿Desactivar <strong>{{ pendingToggle.name }}</strong> ({{ pendingToggle.code }})? Dejará de usarse para medir la
+        ocupación de {{ zoneName(pendingToggle.zoneId) }} hasta que la actives de nuevo.
+      </template>
+      <template v-else-if="pendingToggle">
+        ¿Activar <strong>{{ pendingToggle.name }}</strong> ({{ pendingToggle.code }})? Volverá a usarse para medir la
+        ocupación de {{ zoneName(pendingToggle.zoneId) }}.
+      </template>
+    </ConfirmDialog>
 
     <ConfirmDialog
       :open="confirmId !== null"
