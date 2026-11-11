@@ -18,12 +18,3 @@ export function googleMapsDirectionsUrl(dest: LatLng, origin?: LatLng | null): s
   if (origin) params.set('origin', `${origin.lat},${origin.lng}`)
   return `https://www.google.com/maps/dir/?${params}`
 }
-
-/** "8 min", "1 h 05 min". */
-export function formatDuration(seconds: number): string {
-  const minutes = Math.max(1, Math.round(seconds / 60))
-  if (minutes < 60) return `${minutes} min`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return `${h} h ${String(m).padStart(2, '0')} min`
-}

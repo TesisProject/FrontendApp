@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_RADIUS_KM, formatRadius, widerRadius, withinRadius } from './geo'
 import { formatUpdatedClock, staleNotice } from './availability-freshness'
-import { formatDuration, googleMapsDirectionsUrl, hasValidCoords, wazeUrl } from './navigation-links'
+import { googleMapsDirectionsUrl, hasValidCoords, wazeUrl } from './navigation-links'
 import { CLASSIFICATION_COLOR, classificationLabel, toClassification } from './zone-classification'
 import { toZone } from '../infrastructure/zone-assembler'
 import type { ZoneResponse } from '../infrastructure/zone-response'
@@ -78,11 +78,6 @@ describe('enlaces de navegación (HU-29)', () => {
     expect(hasValidCoords(0, 0)).toBe(false)
     expect(hasValidCoords(-95, -77)).toBe(false)
     expect(hasValidCoords(-12.04, -77.03)).toBe(true)
-  })
-
-  it('formatea la duración del viaje', () => {
-    expect(formatDuration(480)).toBe('8 min')
-    expect(formatDuration(3900)).toBe('1 h 05 min')
   })
 })
 

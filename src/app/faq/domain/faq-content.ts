@@ -60,7 +60,7 @@ export const FAQS: FaqItem[] = [
     id: 20,
     category: 'zonas',
     question: '¿Cómo llego a un estacionamiento?',
-    answer: 'En el detalle de la zona, en "Cómo llegar", verás la distancia y el tiempo estimado en auto desde tu ubicación, y los botones para abrir la ruta en Waze o en Google Maps.',
+    answer: 'En el detalle de la zona, en "Cómo llegar", toca "Abrir en Waze" o "Google Maps": se abre la app (o la web) con la ruta hasta el estacionamiento.',
   },
   {
     id: 6,
