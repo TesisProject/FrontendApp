@@ -35,4 +35,10 @@ describe('auditActionLabel', () => {
     expect(auditActionLabel('CAMERA_DELETED')).toBe('Cámara eliminada')
     expect(AUDIT_ACTIONS).toContain('CAMERA_DELETED')
   })
+
+  it('distingue un reentrenamiento cancelado de uno fallido', () => {
+    expect(auditActionLabel('MODEL_RETRAIN_CANCELLED')).toBe('Reentrenamiento cancelado')
+    expect(auditActionLabel('MODEL_RETRAIN_FAILED')).toBe('Reentrenamiento fallido')
+    expect(AUDIT_ACTIONS).toContain('MODEL_RETRAIN_CANCELLED')
+  })
 })
