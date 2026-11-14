@@ -1,7 +1,7 @@
 /** Acciones del log de auditoría (`AuditAction` del backend). */
 export const AUDIT_ACTIONS = [
   'ZONE_CREATED', 'ZONE_UPDATED', 'ZONE_DELETED',
-  'CAMERA_REGISTERED', 'CAMERA_UPDATED', 'CAMERA_ACTIVATED', 'CAMERA_DEACTIVATED',
+  'CAMERA_REGISTERED', 'CAMERA_UPDATED', 'CAMERA_ACTIVATED', 'CAMERA_DEACTIVATED', 'CAMERA_DELETED',
   'USER_ROLE_CHANGED', 'USER_ACTIVATED', 'USER_DEACTIVATED',
   'MODEL_RETRAIN_REQUESTED', 'MODEL_RETRAIN_FAILED',
   'CAMERA_ALERT_OPENED', 'CAMERA_ALERT_ESCALATED', 'CAMERA_ALERT_ACKNOWLEDGED', 'CAMERA_ALERT_RESOLVED',
@@ -17,6 +17,7 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   CAMERA_UPDATED:          'Cámara actualizada',
   CAMERA_ACTIVATED:        'Cámara activada',
   CAMERA_DEACTIVATED:      'Cámara desactivada',
+  CAMERA_DELETED:          'Cámara eliminada',
   USER_ROLE_CHANGED:       'Rol de usuario cambiado',
   USER_ACTIVATED:          'Usuario activado',
   USER_DEACTIVATED:        'Usuario desactivado',

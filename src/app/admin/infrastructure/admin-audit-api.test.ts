@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { auditQuery } from './admin-audit-api'
 import { auditFiltersError, emptyAuditFilters } from '../application/admin-audit.store'
-import { auditActionLabel } from '../domain/model/admin-audit.model'
+import { AUDIT_ACTIONS, auditActionLabel } from '../domain/model/admin-audit.model'
 
 describe('auditQuery', () => {
   it('sin filtros no manda nada más que la página', () => {
@@ -29,5 +29,10 @@ describe('auditActionLabel', () => {
   it('traduce las acciones conocidas y deja las nuevas tal cual', () => {
     expect(auditActionLabel('USER_ROLE_CHANGED')).toBe('Rol de usuario cambiado')
     expect(auditActionLabel('ALGO_NUEVO')).toBe('ALGO_NUEVO')
+  })
+
+  it('muestra la eliminación de una cámara y la ofrece en el filtro', () => {
+    expect(auditActionLabel('CAMERA_DELETED')).toBe('Cámara eliminada')
+    expect(AUDIT_ACTIONS).toContain('CAMERA_DELETED')
   })
 })
